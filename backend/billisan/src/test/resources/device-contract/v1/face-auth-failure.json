@@ -1,0 +1,13 @@
+{
+  "sessionId": "70000000-0000-0000-0000-000000000002",
+  "authRequestId": "81000000-0000-0000-0000-000000000002",
+  "stationId": "20000000-0000-0000-0000-000000000001",
+  "deviceId": "60000000-0000-0000-0000-000000000001",
+  "mode": "RETURN",
+  "faceResult": {
+    "matched": false,
+    "userId": null,
+    "similarity": 0.31,
+    "modelVersion": "face-model-mock-v1"
+  }
+}

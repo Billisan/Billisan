@@ -1,0 +1,9 @@
+{
+  "inspectionRequestId": "82000000-0000-0000-0000-000000000001",
+  "status": "COMPLETED",
+  "result": "DAMAGED",
+  "confidence": 0.87,
+  "modelVersion": "damage-model-mock-v1",
+  "errorCode": null,
+  "inferenceNode": "JETSON_ORIN_NANO"
+}

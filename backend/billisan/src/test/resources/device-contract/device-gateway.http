@@ -1,0 +1,115 @@
+@baseUrl = http://localhost:8080
+@deviceToken = mock-device-token
+@deviceId = 60000000-0000-0000-0000-000000000001
+@stationId = 20000000-0000-0000-0000-000000000001
+@returnAttemptId = 50000000-0000-0000-0000-000000000001
+
+### AI 얼굴 인증 성공
+POST {{baseUrl}}/api/v1/edge/kiosk-authentications
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{deviceToken}}
+X-Device-Id: {{deviceId}}
+X-Request-Id: b0000000-0000-0000-0000-000000000001
+Idempotency-Key: 81000000-0000-0000-0000-000000000001
+
+< ./v1/face-auth-success.json
+
+### AI 얼굴 인증 실패
+POST {{baseUrl}}/api/v1/edge/kiosk-authentications
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{deviceToken}}
+X-Device-Id: {{deviceId}}
+X-Request-Id: b0000000-0000-0000-0000-000000000002
+Idempotency-Key: 81000000-0000-0000-0000-000000000002
+
+< ./v1/face-auth-failure.json
+
+### AI 파손 판정 결과
+POST {{baseUrl}}/api/v1/edge/return-attempts/{{returnAttemptId}}/inspection-results
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{deviceToken}}
+X-Device-Id: {{deviceId}}
+X-Request-Id: b0000000-0000-0000-0000-000000000003
+Idempotency-Key: 82000000-0000-0000-0000-000000000001
+
+< ./v1/damage-result.json
+
+### 슬롯 센서 이벤트 - 점유
+POST {{baseUrl}}/api/v1/edge/device-operations/90000000-0000-0000-0000-000000000001/events
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{deviceToken}}
+X-Device-Id: {{deviceId}}
+X-Request-Id: b0000000-0000-0000-0000-000000000004
+Idempotency-Key: 91000000-0000-0000-0000-000000000001
+
+< ./v1/slot-sensor-occupied.json
+
+### 슬롯 센서 이벤트 - 비점유
+POST {{baseUrl}}/api/v1/edge/device-operations/90000000-0000-0000-0000-000000000002/events
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{deviceToken}}
+X-Device-Id: {{deviceId}}
+X-Request-Id: b0000000-0000-0000-0000-000000000005
+Idempotency-Key: 91000000-0000-0000-0000-000000000002
+
+< ./v1/slot-sensor-empty.json
+
+### 잠금 명령 성공
+POST {{baseUrl}}/api/v1/edge/device-operations/90000000-0000-0000-0000-000000000003/events
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{deviceToken}}
+X-Device-Id: {{deviceId}}
+X-Request-Id: b0000000-0000-0000-0000-000000000006
+Idempotency-Key: 91000000-0000-0000-0000-000000000003
+
+< ./v1/lock-success.json
+
+### 잠금 명령 실패
+POST {{baseUrl}}/api/v1/edge/device-operations/90000000-0000-0000-0000-000000000004/events
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{deviceToken}}
+X-Device-Id: {{deviceId}}
+X-Request-Id: b0000000-0000-0000-0000-000000000007
+Idempotency-Key: 91000000-0000-0000-0000-000000000004
+
+< ./v1/lock-failure.json
+
+### 정상 Heartbeat
+POST {{baseUrl}}/api/v1/edge/stations/{{stationId}}/heartbeats
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{deviceToken}}
+X-Device-Id: {{deviceId}}
+X-Request-Id: b0000000-0000-0000-0000-000000000008
+Idempotency-Key: 92000000-0000-0000-0000-000000000001
+
+< ./v1/heartbeat-normal.json
+
+### 부팅 Snapshot - 서버 기준과 일치
+POST {{baseUrl}}/api/v1/edge/stations/{{stationId}}/boot-snapshots
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{deviceToken}}
+X-Device-Id: {{deviceId}}
+X-Request-Id: b0000000-0000-0000-0000-000000000009
+Idempotency-Key: a1000000-0000-0000-0000-000000000001
+
+< ./v1/boot-snapshot-match.json
+
+### 부팅 Snapshot - 서버 기준과 불일치
+POST {{baseUrl}}/api/v1/edge/stations/{{stationId}}/boot-snapshots
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{deviceToken}}
+X-Device-Id: {{deviceId}}
+X-Request-Id: b0000000-0000-0000-0000-00000000000a
+Idempotency-Key: a1000000-0000-0000-0000-000000000002
+
+< ./v1/boot-snapshot-mismatch.json
