@@ -113,3 +113,36 @@ X-Request-Id: b0000000-0000-0000-0000-00000000000a
 Idempotency-Key: a1000000-0000-0000-0000-000000000002
 
 < ./v1/boot-snapshot-mismatch.json
+
+### Boot Snapshot - lock mismatch
+POST {{baseUrl}}/api/v1/edge/stations/{{stationId}}/boot-snapshots
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{deviceToken}}
+X-Device-Id: {{deviceId}}
+X-Request-Id: b0000000-0000-0000-0000-00000000000b
+Idempotency-Key: a1000000-0000-0000-0000-000000000003
+
+< ./v1/boot-snapshot-lock-mismatch.json
+
+### Boot Snapshot - unknown slot
+POST {{baseUrl}}/api/v1/edge/stations/{{stationId}}/boot-snapshots
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{deviceToken}}
+X-Device-Id: {{deviceId}}
+X-Request-Id: b0000000-0000-0000-0000-00000000000c
+Idempotency-Key: a1000000-0000-0000-0000-000000000004
+
+< ./v1/boot-snapshot-unknown-slot.json
+
+### Boot Snapshot - incomplete slot list
+POST {{baseUrl}}/api/v1/edge/stations/{{stationId}}/boot-snapshots
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{deviceToken}}
+X-Device-Id: {{deviceId}}
+X-Request-Id: b0000000-0000-0000-0000-00000000000d
+Idempotency-Key: a1000000-0000-0000-0000-000000000005
+
+< ./v1/boot-snapshot-partial.json

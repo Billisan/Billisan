@@ -1,0 +1,14 @@
+{
+  "bootId": "a1000000-0000-0000-0000-000000000005",
+  "deviceId": "60000000-0000-0000-0000-000000000001",
+  "measuredAt": "2026-07-26T20:10:00+09:00",
+  "slots": [
+    {
+      "slotId": "30000000-0000-0000-0000-000000000001",
+      "slotNumber": 1,
+      "occupancyStatus": "EMPTY",
+      "lockStatus": "LOCKED",
+      "sensorHealth": "NORMAL"
+    }
+  ]
+}

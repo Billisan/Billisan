@@ -175,7 +175,10 @@ class DeviceContractFixtureTest {
 			Arguments.of("lock-failure.json", ContractType.DEVICE_EVENT),
 			Arguments.of("heartbeat-normal.json", ContractType.HEARTBEAT),
 			Arguments.of("boot-snapshot-match.json", ContractType.BOOT_SNAPSHOT),
-			Arguments.of("boot-snapshot-mismatch.json", ContractType.BOOT_SNAPSHOT)
+			Arguments.of("boot-snapshot-mismatch.json", ContractType.BOOT_SNAPSHOT),
+			Arguments.of("boot-snapshot-lock-mismatch.json", ContractType.BOOT_SNAPSHOT),
+			Arguments.of("boot-snapshot-unknown-slot.json", ContractType.BOOT_SNAPSHOT),
+			Arguments.of("boot-snapshot-partial.json", ContractType.BOOT_SNAPSHOT)
 		);
 	}
 
