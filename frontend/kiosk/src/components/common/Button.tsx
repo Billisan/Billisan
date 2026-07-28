@@ -26,7 +26,7 @@ export function Button({
       type="button"
       disabled={disabled}
       aria-disabled={disabled}
-      className={`min-h-100 rounded-2xl px-12 py-6 text-[43.2px] font-bold transition-colors ${variantClasses} ${className}`}
+      className={`min-h-112.5 rounded-2xl px-12 py-6 text-[43.2px] font-bold transition-colors ${variantClasses} ${className}`}
       {...rest}
     >
       {children}
