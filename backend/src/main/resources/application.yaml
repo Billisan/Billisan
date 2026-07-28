@@ -1,3 +1,7 @@
 spring:
   application:
     name: billisan
+
+mqtt:
+  broker-url: ${MQTT_BROKER_URL:tcp://localhost:1883}
+  client-id: ${MQTT_CLIENT_ID:billisan-server}
