@@ -18,7 +18,7 @@ export function Button({
     variant === 'outline'
       ? 'border-primary border-6 bg-white text-black'
       : disabled
-        ? 'bg-disabled text-primary-text/50 cursor-not-allowed'
+        ? 'bg-disabled text-black/50 cursor-not-allowed'
         : 'bg-primary text-white active:brightness-95'
 
   return (
