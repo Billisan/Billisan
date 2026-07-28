@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import dayjs from 'dayjs'
 import 'dayjs/locale/ko'
-import logo from '../../assets/logo-umb.svg'
+import logo from '../../assets/logo/logo-umbrella.svg'
 
 dayjs.locale('ko')
 
@@ -19,14 +19,19 @@ export function KioskLayout({ children }: KioskLayoutProps) {
 
   return (
     <div className="bg-kiosk-bg flex min-h-screen flex-col">
-      <header className="flex w-full items-center justify-between px-12 py-8">
+      <header className="flex w-full items-center justify-between px-14 py-4">
         <img src={logo} alt="Billisan" className="h-48 w-48" />
-        <span className="text-navy/70 text-xl font-medium">
-          {now.format('A h:mm')}
-        </span>
+        <div className="flex flex-col items-end">
+          <span className="text-tertiary-text text-lg font-medium">
+            {now.format('YYYY년 M월 D일 dddd')}
+          </span>
+          <span className="text-primary-text/70 text-3xl font-bold">
+            {now.format('A h:mm')}
+          </span>
+        </div>
       </header>
-      <main className="flex flex-1 flex-col items-center justify-center gap-8 px-12 pb-16">
-        <div className="flex w-full max-w-2xl flex-col items-center gap-8">
+      <main className="flex flex-1 flex-col items-center justify-end gap-8">
+        <div className="flex w-full flex-col items-center gap-24 rounded-t-[120px] rounded-b-none bg-white p-24 shadow-[0_-8px_16px_rgba(120,120,120,0.12)]">
           {children}
         </div>
       </main>

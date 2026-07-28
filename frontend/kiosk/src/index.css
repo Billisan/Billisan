@@ -1,13 +1,81 @@
 @import 'tailwindcss';
 
-/*
- * PROJECT_GUIDE.md §14.1 실측 색상 토큰.
- * error-text(#C34E4B)는 표본이 적은 근사치로 문서에 명시됨 — 단일 확정값 아님.
- */
+@font-face {
+  font-family: 'Pretendard';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Thin.woff2')
+    format('woff2');
+  font-weight: 100;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-ExtraLight.woff2')
+    format('woff2');
+  font-weight: 200;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Light.woff2')
+    format('woff2');
+  font-weight: 300;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Regular.woff2')
+    format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Medium.woff2')
+    format('woff2');
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-SemiBold.woff2')
+    format('woff2');
+  font-weight: 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Bold.woff2')
+    format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-ExtraBold.woff2')
+    format('woff2');
+  font-weight: 800;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Black.woff2')
+    format('woff2');
+  font-weight: 900;
+  font-display: swap;
+}
+
 @theme {
   --color-primary: #ffd700;
   --color-kiosk-bg: #fdfae9;
-  --color-navy: #11182a;
+  --color-tertiary-text: #6B6B6B;
   --color-disabled: #d9d9d9;
   --color-error-bg: #ffd8d3;
   --color-error-text: #c34e4b;
@@ -21,8 +89,13 @@ body {
   margin: 0;
   min-height: 100vh;
   background: var(--color-kiosk-bg);
-  color: var(--color-navy);
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  color: var(--color-primary-text);
+  font-family:
+    'Pretendard',
+    system-ui,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
