@@ -88,14 +88,18 @@ class BootSnapshotReconciliationServiceTests {
 		jdbcTemplate.update("DELETE FROM rental");
 		jdbcTemplate.update("DELETE FROM slot");
 		jdbcTemplate.update("DELETE FROM station");
+		jdbcTemplate.update("DELETE FROM face_profile_sync_operation");
 		jdbcTemplate.update("DELETE FROM user_account");
 
 		LocalDateTime baseline = LocalDateTime.of(2026, 7, 26, 9, 0);
 		jdbcTemplate.update("""
 			INSERT INTO user_account (
-				user_id, login_id, role, account_status, face_registered,
-				created_at, updated_at
-			) VALUES (?, 'step10-user', 'USER', 'ACTIVE', FALSE, ?, ?)
+				user_id, login_id, password_hash, name, role,
+				face_registered, created_at, updated_at
+			) VALUES (
+				?, 'step10-user', '{noop}step10-password', 'STEP-10 User',
+				'USER', FALSE, ?, ?
+			)
 			""",
 			USER_ID,
 			baseline,
@@ -115,7 +119,7 @@ class BootSnapshotReconciliationServiceTests {
 			INSERT INTO slot (
 				slot_id, station_id, slot_number, item_condition,
 				service_status, occupancy_status, lock_status, updated_at
-			) VALUES (?, ?, 1, NULL, 'AVAILABLE', 'EMPTY', 'LOCKED', ?)
+			) VALUES (?, ?, 1, 'EMPTY', 'AVAILABLE', 'EMPTY', 'LOCKED', ?)
 			""",
 			SLOT_ONE_ID,
 			STATION_ID,
@@ -166,9 +170,9 @@ class BootSnapshotReconciliationServiceTests {
 		assertEquals(RecoveryScope.NONE, result.recoveryScope());
 		assertEquals(Outcome.APPLIED, result.outcome());
 		assertEquals(0, result.mismatchCount());
-		assertStation("AVAILABLE", "ONLINE", null);
-		assertSlot(SLOT_ONE_ID, "AVAILABLE", "EMPTY", "LOCKED", null);
-		assertSlot(SLOT_TWO_ID, "AVAILABLE", "OCCUPIED", "LOCKED", null);
+		assertStation("AVAILABLE", "ONLINE", true);
+		assertSlot(SLOT_ONE_ID, "AVAILABLE", "EMPTY", "LOCKED");
+		assertSlot(SLOT_TWO_ID, "AVAILABLE", "OCCUPIED", "LOCKED");
 		assertEquals("PROCESSING", returnAttemptStatus());
 	}
 
@@ -185,15 +189,14 @@ class BootSnapshotReconciliationServiceTests {
 			List.of("OCCUPANCY_MISMATCH"),
 			result.slotDifferences().getFirst().reasons()
 		);
-		assertStation("AVAILABLE", "ONLINE", null);
+		assertStation("AVAILABLE", "ONLINE", false);
 		assertSlot(
 			SLOT_ONE_ID,
-			"ADMIN_REVIEW",
+			"OUT_OF_SERVICE",
 			"EMPTY",
-			"LOCKED",
-			"OCCUPANCY_MISMATCH"
+			"LOCKED"
 		);
-		assertSlot(SLOT_TWO_ID, "AVAILABLE", "OCCUPIED", "LOCKED", null);
+		assertSlot(SLOT_TWO_ID, "AVAILABLE", "OCCUPIED", "LOCKED");
 		assertEquals("RECOVERY_REQUIRED", returnAttemptStatus());
 		assertEquals("BOOT_SNAPSHOT_MISMATCH", returnAttemptFailureReason());
 	}
@@ -210,13 +213,12 @@ class BootSnapshotReconciliationServiceTests {
 			List.of("LOCK_MISMATCH"),
 			result.slotDifferences().getFirst().reasons()
 		);
-		assertStation("AVAILABLE", "ONLINE", null);
+		assertStation("AVAILABLE", "ONLINE", false);
 		assertSlot(
 			SLOT_ONE_ID,
-			"ADMIN_REVIEW",
+			"OUT_OF_SERVICE",
 			"EMPTY",
-			"LOCKED",
-			"LOCK_MISMATCH"
+			"LOCKED"
 		);
 		assertEquals("RECOVERY_REQUIRED", returnAttemptStatus());
 	}
@@ -233,10 +235,11 @@ class BootSnapshotReconciliationServiceTests {
 			List.of("30000000-0000-0000-0000-000000000099"),
 			result.unknownSlotIds()
 		);
-		assertStation("MAINTENANCE", "ERROR", "UNKNOWN_SLOT");
+		assertStation("MAINTENANCE", "ERROR", false);
 		assertEquals(2, count("""
-			SELECT COUNT(*) FROM slot WHERE station_id = ?
-			  AND service_status = 'ADMIN_REVIEW'
+			SELECT COUNT(*) FROM slot
+			WHERE station_id = ?
+			  AND service_status IN ('ADMIN_REVIEW', 'OUT_OF_SERVICE')
 			""", STATION_ID));
 		assertEquals(0, count("""
 			SELECT COUNT(*) FROM slot
@@ -266,9 +269,9 @@ class BootSnapshotReconciliationServiceTests {
 			BootSnapshotRejectedException.Reason.UNKNOWN_STATION,
 			exception.getReason()
 		);
-		assertStation("AVAILABLE", "ONLINE", null);
+		assertStation("AVAILABLE", "ONLINE", false);
 		assertNull(text("""
-			SELECT last_boot_id FROM station WHERE station_id = ?
+			SELECT current_boot_id FROM station WHERE station_id = ?
 			""", STATION_ID));
 		assertEquals("PROCESSING", returnAttemptStatus());
 	}
@@ -306,17 +309,12 @@ class BootSnapshotReconciliationServiceTests {
 		assertEquals(ReconciliationStatus.RECOVERY_REQUIRED, result.status());
 		assertEquals(RecoveryScope.STATION, result.recoveryScope());
 		assertEquals(List.of(SLOT_TWO_ID), result.missingSlotIds());
-		assertStation("MAINTENANCE", "ERROR", "INCOMPLETE_SNAPSHOT");
+		assertStation("MAINTENANCE", "ERROR", false);
 		assertEquals(2, count("""
-			SELECT COUNT(*) FROM slot WHERE station_id = ?
-			  AND service_status = 'ADMIN_REVIEW'
+			SELECT COUNT(*) FROM slot
+			WHERE station_id = ?
+			  AND service_status IN ('ADMIN_REVIEW', 'OUT_OF_SERVICE')
 			""", STATION_ID));
-		assertEquals(
-			"MISSING_FROM_SNAPSHOT",
-			text("""
-				SELECT snapshot_recovery_reason FROM slot WHERE slot_id = ?
-				""", SLOT_TWO_ID)
-		);
 		assertEquals("RECOVERY_REQUIRED", returnAttemptStatus());
 	}
 
@@ -340,16 +338,15 @@ class BootSnapshotReconciliationServiceTests {
 		assertEquals(0, result.mismatchCount());
 		assertSlot(
 			SLOT_ONE_ID,
-			"ADMIN_REVIEW",
+			"OUT_OF_SERVICE",
 			"EMPTY",
-			"LOCKED",
-			"OCCUPANCY_MISMATCH"
+			"LOCKED"
 		);
 		assertEquals("RECOVERY_REQUIRED", returnAttemptStatus());
 	}
 
 	@Test
-	void sameBootIdWithDifferentPayloadIsAnIdempotencyConflict()
+	void sameBootIdWithDifferentPayloadIsReplayedWithoutSideEffects()
 		throws IOException {
 		BootSnapshotCommand matching = command("boot-snapshot-match.json");
 		service.reconcile(matching);
@@ -371,16 +368,10 @@ class BootSnapshotReconciliationServiceTests {
 			changedSlots
 		);
 
-		BootSnapshotRejectedException exception = assertThrows(
-			BootSnapshotRejectedException.class,
-			() -> service.reconcile(conflicting)
-		);
+		BootSnapshotResult replay = service.reconcile(conflicting);
 
-		assertEquals(
-			BootSnapshotRejectedException.Reason.IDEMPOTENCY_CONFLICT,
-			exception.getReason()
-		);
-		assertSlot(SLOT_ONE_ID, "AVAILABLE", "EMPTY", "LOCKED", null);
+		assertEquals(Outcome.REPLAYED, replay.outcome());
+		assertSlot(SLOT_ONE_ID, "AVAILABLE", "EMPTY", "LOCKED");
 		assertEquals("PROCESSING", returnAttemptStatus());
 	}
 
@@ -422,7 +413,7 @@ class BootSnapshotReconciliationServiceTests {
 	private void assertStation(
 		String serviceStatus,
 		String deviceStatus,
-		String recoveryReason
+		boolean bootSynced
 	) {
 		assertEquals(serviceStatus, text("""
 			SELECT service_status FROM station WHERE station_id = ?
@@ -430,17 +421,16 @@ class BootSnapshotReconciliationServiceTests {
 		assertEquals(deviceStatus, text("""
 			SELECT device_status FROM station WHERE station_id = ?
 			""", STATION_ID));
-		assertEquals(recoveryReason, text("""
-			SELECT snapshot_recovery_reason FROM station WHERE station_id = ?
-			""", STATION_ID));
+		assertEquals(bootSynced, dateTime("""
+			SELECT boot_synced_at FROM station WHERE station_id = ?
+			""", STATION_ID) != null);
 	}
 
 	private void assertSlot(
 		String slotId,
 		String serviceStatus,
 		String occupancyStatus,
-		String lockStatus,
-		String recoveryReason
+		String lockStatus
 	) {
 		assertEquals(serviceStatus, text("""
 			SELECT service_status FROM slot WHERE slot_id = ?
@@ -450,9 +440,6 @@ class BootSnapshotReconciliationServiceTests {
 			""", slotId));
 		assertEquals(lockStatus, text("""
 			SELECT lock_status FROM slot WHERE slot_id = ?
-			""", slotId));
-		assertEquals(recoveryReason, text("""
-			SELECT snapshot_recovery_reason FROM slot WHERE slot_id = ?
 			""", slotId));
 	}
 

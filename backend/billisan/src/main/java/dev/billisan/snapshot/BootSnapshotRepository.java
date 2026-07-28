@@ -22,11 +22,9 @@ class BootSnapshotRepository {
 				station_id,
 				service_status,
 				device_status,
-				last_boot_id,
-				last_boot_snapshot_hash,
-				last_boot_snapshot_at,
-				snapshot_recovery_reason,
-				snapshot_recovery_boot_id
+				current_boot_id,
+				boot_synced_at,
+				last_seen_at
 			FROM station
 			WHERE station_id = ?
 			FOR UPDATE
@@ -35,11 +33,9 @@ class BootSnapshotRepository {
 				rs.getString("station_id"),
 				rs.getString("service_status"),
 				rs.getString("device_status"),
-				rs.getString("last_boot_id"),
-				rs.getString("last_boot_snapshot_hash"),
-				rs.getObject("last_boot_snapshot_at", LocalDateTime.class),
-				rs.getString("snapshot_recovery_reason"),
-				rs.getString("snapshot_recovery_boot_id")
+				rs.getString("current_boot_id"),
+				rs.getObject("boot_synced_at", LocalDateTime.class),
+				rs.getObject("last_seen_at", LocalDateTime.class)
 			),
 			stationId
 		);
@@ -51,11 +47,10 @@ class BootSnapshotRepository {
 			SELECT
 				slot_id,
 				slot_number,
+				item_condition,
 				service_status,
 				occupancy_status,
-				lock_status,
-				snapshot_recovery_reason,
-				snapshot_recovery_boot_id
+				lock_status
 			FROM slot
 			WHERE station_id = ?
 			ORDER BY slot_number
@@ -64,11 +59,10 @@ class BootSnapshotRepository {
 			(rs, rowNumber) -> new SlotRow(
 				rs.getString("slot_id"),
 				rs.getInt("slot_number"),
+				rs.getString("item_condition"),
 				rs.getString("service_status"),
 				rs.getString("occupancy_status"),
-				rs.getString("lock_status"),
-				rs.getString("snapshot_recovery_reason"),
-				rs.getString("snapshot_recovery_boot_id")
+				rs.getString("lock_status")
 			),
 			stationId
 		);
@@ -77,15 +71,14 @@ class BootSnapshotRepository {
 	void recordSnapshot(
 		String stationId,
 		String bootId,
-		String snapshotHash,
 		LocalDateTime measuredAt,
-		LocalDateTime updatedAt
+		LocalDateTime updatedAt,
+		boolean synchronizedSnapshot
 	) {
 		jdbcTemplate.update("""
 			UPDATE station
-			SET last_boot_id = ?,
-			    last_boot_snapshot_hash = ?,
-			    last_boot_snapshot_at = ?,
+			SET current_boot_id = ?,
+			    boot_synced_at = ?,
 			    last_seen_at = CASE
 			        WHEN last_seen_at IS NULL OR last_seen_at < ? THEN ?
 			        ELSE last_seen_at
@@ -94,8 +87,7 @@ class BootSnapshotRepository {
 			WHERE station_id = ?
 			""",
 			bootId,
-			snapshotHash,
-			measuredAt,
+			synchronizedSnapshot ? updatedAt : null,
 			measuredAt,
 			measuredAt,
 			updatedAt,
@@ -105,21 +97,16 @@ class BootSnapshotRepository {
 
 	void markStationRecovery(
 		String stationId,
-		String bootId,
-		String reason,
 		LocalDateTime updatedAt
 	) {
 		jdbcTemplate.update("""
 			UPDATE station
 			SET service_status = 'MAINTENANCE',
 			    device_status = 'ERROR',
-			    snapshot_recovery_reason = ?,
-			    snapshot_recovery_boot_id = ?,
+			    boot_synced_at = NULL,
 			    updated_at = ?
 			WHERE station_id = ?
 			""",
-			reason,
-			bootId,
 			updatedAt,
 			stationId
 		);
@@ -128,24 +115,46 @@ class BootSnapshotRepository {
 	void markSlotRecovery(
 		String stationId,
 		String slotId,
-		String bootId,
-		String reason,
 		LocalDateTime updatedAt
 	) {
 		jdbcTemplate.update("""
 			UPDATE slot
-			SET service_status = 'ADMIN_REVIEW',
-			    snapshot_recovery_reason = ?,
-			    snapshot_recovery_boot_id = ?,
+			SET service_status = CASE
+			        WHEN occupancy_status = 'EMPTY'
+			            THEN 'OUT_OF_SERVICE'
+			        ELSE 'ADMIN_REVIEW'
+			    END,
+			    item_condition = CASE
+			        WHEN occupancy_status = 'EMPTY' THEN 'EMPTY'
+			        ELSE 'UNKNOWN'
+			    END,
 			    updated_at = ?
 			WHERE station_id = ?
 			  AND slot_id = ?
 			""",
-			reason,
-			bootId,
 			updatedAt,
 			stationId,
 			slotId
+		);
+	}
+
+	void markPriorBootOperationsUnknown(
+		String stationId,
+		String currentBootId,
+		LocalDateTime updatedAt
+	) {
+		jdbcTemplate.update("""
+			UPDATE device_operation
+			SET status = 'OUTCOME_UNKNOWN',
+			    result_code = 'PI_BOOT_CHANGED',
+			    completed_at = ?
+			WHERE station_id = ?
+			  AND issued_boot_id <> ?
+			  AND status IN ('REQUESTED', 'ACKED')
+			""",
+			updatedAt,
+			stationId,
+			currentBootId
 		);
 	}
 
@@ -165,28 +174,27 @@ class BootSnapshotRepository {
 		String stationId,
 		String serviceStatus,
 		String deviceStatus,
-		String lastBootId,
-		String lastBootSnapshotHash,
-		LocalDateTime lastBootSnapshotAt,
-		String snapshotRecoveryReason,
-		String snapshotRecoveryBootId
+		String currentBootId,
+		LocalDateTime bootSyncedAt,
+		LocalDateTime lastSeenAt
 	) {
 		boolean hasSnapshotRecovery() {
-			return snapshotRecoveryReason != null;
+			return "MAINTENANCE".equals(serviceStatus)
+				&& "ERROR".equals(deviceStatus);
 		}
 	}
 
 	record SlotRow(
 		String slotId,
 		int slotNumber,
+		String itemCondition,
 		String serviceStatus,
 		String occupancyStatus,
-		String lockStatus,
-		String snapshotRecoveryReason,
-		String snapshotRecoveryBootId
+		String lockStatus
 	) {
 		boolean hasSnapshotRecovery() {
-			return snapshotRecoveryReason != null;
+			return "ADMIN_REVIEW".equals(serviceStatus)
+				|| "OUT_OF_SERVICE".equals(serviceStatus);
 		}
 	}
 }

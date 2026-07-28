@@ -146,8 +146,8 @@ class InventoryQueryRepositoryTests {
 		assertEquals(
 			List.of(
 				"AVAILABLE",
-				"RENTING",
-				"RETURNING",
+				"AVAILABLE",
+				"AVAILABLE",
 				"ADMIN_REVIEW",
 				"AVAILABLE"
 			),
@@ -157,9 +157,8 @@ class InventoryQueryRepositoryTests {
 			.filter(slot -> slot.slotId().equals(SLOT_ADMIN_REVIEW_ID))
 			.findFirst()
 			.orElseThrow();
-		assertEquals("REVIEW_REQUIRED", adminReview.itemCondition());
+		assertEquals("UNKNOWN", adminReview.itemCondition());
 		assertEquals("ERROR", adminReview.lockStatus());
-		assertNull(adminReview.recoveryReason());
 	}
 
 	@Test

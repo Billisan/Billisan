@@ -220,19 +220,22 @@ class DeviceContractFixtureTest {
 
 	private static void validateDeviceEvent(JsonNode fixture) {
 		requireUuid(fixture, "eventId");
+		requireUuid(fixture, "commandId");
+		requireUuid(fixture, "bootId");
 		requireEnum(
 			fixture,
 			"eventType",
 			Set.of(
-				"COMMAND_ACKED",
-				"LOCK_UNLOCKED",
-				"UMBRELLA_WITHDRAWN",
-				"UMBRELLA_INSERTED",
-				"LOCK_LOCKED",
-				"COMMAND_FAILED",
-				"SENSOR_UNSTABLE"
+				"OPERATION_COMPLETED",
+				"OPERATION_FAILED"
 			)
 		);
+		if (!fixture.path("evidenceSchemaVersion").canConvertToInt()
+			|| fixture.path("evidenceSchemaVersion").intValue() < 1) {
+			throw new IllegalArgumentException(
+				"evidenceSchemaVersion must be positive"
+			);
+		}
 		requireOffsetDateTime(fixture, "occurredAt");
 		requireUuid(fixture, "slotId");
 		requireNullableUuid(fixture, "rentalId");
@@ -256,6 +259,14 @@ class DeviceContractFixtureTest {
 		}
 		if (!success.booleanValue() && fixture.path("errorCode").isNull()) {
 			throw new IllegalArgumentException("failed device event requires errorCode");
+		}
+		String expectedEventType = success.booleanValue()
+			? "OPERATION_COMPLETED"
+			: "OPERATION_FAILED";
+		if (!expectedEventType.equals(fixture.path("eventType").asString())) {
+			throw new IllegalArgumentException(
+				"terminal event type does not match success"
+			);
 		}
 	}
 

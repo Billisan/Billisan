@@ -53,10 +53,11 @@ class BillisanApplicationTests {
 	}
 
 	@Test
-	void createsExactlyNineBusinessTables() {
+	void createsExactlyTenBusinessTables() {
 		List<String> expectedTables = List.of(
 			"damage_inspection",
 			"device_operation",
+			"face_profile_sync_operation",
 			"payment_attempt",
 			"rental",
 			"return_attempt",
@@ -109,6 +110,11 @@ class BillisanApplicationTests {
 		);
 		assertUniqueIndex(
 			"payment_attempt",
+			"creation_request_id",
+			"uk_payment_attempt_creation_request_id"
+		);
+		assertUniqueIndex(
+			"payment_attempt",
 			"toss_order_id",
 			"uk_payment_attempt_toss_order_id"
 		);
@@ -117,18 +123,36 @@ class BillisanApplicationTests {
 			"toss_payment_key",
 			"uk_payment_attempt_toss_payment_key"
 		);
+		assertUniqueIndex(
+			"face_profile_sync_operation",
+			"request_id",
+			"uk_face_profile_sync_operation_request_id"
+		);
+		assertForeignKey(
+			"face_profile_sync_operation",
+			"user_id",
+			"user_account",
+			"fk_face_profile_sync_operation_user_account"
+		);
+		assertColumnNullable("rental", "due_at", true);
+		assertColumnNullable("return_attempt", "return_slot_id", true);
+		assertColumnNullable("user_account", "password_hash", false);
+		assertColumnNullable("user_account", "name", false);
+		assertColumnNullable("device_operation", "issued_boot_id", false);
 	}
 
 	@Test
 	void allowsASecondReturnAttemptForTheSameRental() {
 		jdbcTemplate.update("""
 			INSERT INTO user_account (
-				user_id, login_id, role, account_status, face_registered, created_at, updated_at
+				user_id, login_id, password_hash, name, role,
+				face_registered, created_at, updated_at
 			) VALUES (
 				'10000000-0000-0000-0000-000000000001',
 				'migration-test-user',
+				'{noop}migration-test-password',
+				'Migration Test User',
 				'USER',
-				'ACTIVE',
 				FALSE,
 				NOW(6),
 				NOW(6)
@@ -155,7 +179,7 @@ class BillisanApplicationTests {
 					'30000000-0000-0000-0000-000000000001',
 					'20000000-0000-0000-0000-000000000001',
 					1,
-					NULL,
+					'EMPTY',
 					'AVAILABLE',
 					'EMPTY',
 					'LOCKED',
@@ -165,7 +189,7 @@ class BillisanApplicationTests {
 					'30000000-0000-0000-0000-000000000002',
 					'20000000-0000-0000-0000-000000000001',
 					2,
-					NULL,
+					'EMPTY',
 					'AVAILABLE',
 					'EMPTY',
 					'LOCKED',
@@ -264,6 +288,17 @@ class BillisanApplicationTests {
 			WHERE table_schema = DATABASE()
 			  AND (
 				(table_name = 'payment_attempt' AND column_name = 'rental_request_id')
+				OR (
+					table_name = 'user_account'
+					AND column_name = 'account_status'
+				)
+				OR column_name IN (
+					'last_boot_id',
+					'last_boot_snapshot_hash',
+					'last_boot_snapshot_at',
+					'snapshot_recovery_reason',
+					'snapshot_recovery_boot_id'
+				)
 				OR column_name = 'umbrella_id'
 			  )
 			""", Integer.class);
@@ -289,6 +324,21 @@ class BillisanApplicationTests {
 			  AND non_unique = 0
 			""", Integer.class, table, column, index);
 		assertEquals(1, count);
+	}
+
+	private void assertColumnNullable(
+		String table,
+		String column,
+		boolean expectedNullable
+	) {
+		String nullable = jdbcTemplate.queryForObject("""
+			SELECT is_nullable
+			FROM information_schema.columns
+			WHERE table_schema = DATABASE()
+			  AND table_name = ?
+			  AND column_name = ?
+			""", String.class, table, column);
+		assertEquals(expectedNullable ? "YES" : "NO", nullable);
 	}
 
 	private void assertNonUniqueIndex(String table, String column, String index) {

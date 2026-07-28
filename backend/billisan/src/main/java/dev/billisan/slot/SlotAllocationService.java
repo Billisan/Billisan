@@ -26,28 +26,19 @@ public class SlotAllocationService {
 		validate(command);
 
 		LocalDateTime requestedAt = now();
-		if (!command.dueAt().isAfter(requestedAt)) {
-			throw new IllegalArgumentException("dueAt must be after allocation time");
-		}
-
 		String slotId = repository
 			.lockNextRentalSlot(command.stationId())
 			.orElseThrow(() -> new SlotUnavailableException(
 				command.stationId(),
 				WorkType.RENTAL
 			));
-		if (repository.markSlotRenting(slotId, requestedAt) != 1) {
-			throw new SlotUnavailableException(command.stationId(), WorkType.RENTAL);
-		}
-
 		String rentalId = UUID.randomUUID().toString();
 		repository.insertRental(
 			rentalId,
 			command.userId(),
 			slotId,
 			command.rentalRequestId(),
-			requestedAt,
-			command.dueAt()
+			requestedAt
 		);
 		return new RentalAllocationResult(
 			rentalId,
@@ -72,10 +63,6 @@ public class SlotAllocationService {
 				command.stationId(),
 				WorkType.RETURN
 			));
-		if (repository.markSlotReturning(slotId, createdAt) != 1) {
-			throw new SlotUnavailableException(command.stationId(), WorkType.RETURN);
-		}
-
 		String returnAttemptId = UUID.randomUUID().toString();
 		repository.insertReturnAttempt(
 			returnAttemptId,
@@ -100,7 +87,6 @@ public class SlotAllocationService {
 		requireText(command.rentalRequestId(), "rentalRequestId");
 		requireText(command.userId(), "userId");
 		requireText(command.stationId(), "stationId");
-		Objects.requireNonNull(command.dueAt(), "dueAt");
 	}
 
 	private void validate(ReturnAllocationCommand command) {
@@ -129,8 +115,7 @@ public class SlotAllocationService {
 	public record RentalAllocationCommand(
 		String rentalRequestId,
 		String userId,
-		String stationId,
-		LocalDateTime dueAt
+		String stationId
 	) {
 	}
 

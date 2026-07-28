@@ -41,6 +41,8 @@ final class Backend2QueryScenarioFixture {
 		"55000000-0000-0000-0000-000000000012";
 	private static final String RETURN_COMPLETED_ID =
 		"55000000-0000-0000-0000-000000000013";
+	private static final String BOOT_ID =
+		"aa000000-0000-0000-0000-000000000011";
 
 	private final JdbcTemplate jdbcTemplate;
 	private final DataSource dataSource;
@@ -89,6 +91,7 @@ final class Backend2QueryScenarioFixture {
 		jdbcTemplate.update("DELETE FROM rental");
 		jdbcTemplate.update("DELETE FROM slot");
 		jdbcTemplate.update("DELETE FROM station");
+		jdbcTemplate.update("DELETE FROM face_profile_sync_operation");
 		jdbcTemplate.update("DELETE FROM user_account");
 	}
 
@@ -96,11 +99,17 @@ final class Backend2QueryScenarioFixture {
 		LocalDateTime createdAt = time(8, 0);
 		jdbcTemplate.update("""
 			INSERT INTO user_account (
-				user_id, login_id, role, account_status, face_registered,
-				created_at, updated_at
+				user_id, login_id, password_hash, name, role,
+				face_registered, created_at, updated_at
 			) VALUES
-				(?, 'fixture-user-01', 'USER', 'ACTIVE', FALSE, ?, ?),
-				(?, 'fixture-admin-01', 'ADMIN', 'ACTIVE', FALSE, ?, ?)
+				(
+					?, 'fixture-user-01', '{noop}fixture-password-01',
+					'Fixture User', 'USER', FALSE, ?, ?
+				),
+				(
+					?, 'fixture-admin-01', '{noop}fixture-password-02',
+					'Fixture Admin', 'ADMIN', FALSE, ?, ?
+				)
 			""",
 			USER_ONE_ID,
 			createdAt,
@@ -115,13 +124,17 @@ final class Backend2QueryScenarioFixture {
 		jdbcTemplate.update("""
 			INSERT INTO station (
 				station_id, station_code, name, location_text,
-				service_status, device_status, last_seen_at, updated_at
+				service_status, device_status, current_boot_id,
+				boot_synced_at, last_seen_at, updated_at
 			) VALUES (
 				?, 'FIXTURE-STATION-01', 'TEST FIXTURE STATION',
-				'NON_PRODUCTION_LOCATION', 'AVAILABLE', 'ONLINE', ?, ?
+				'NON_PRODUCTION_LOCATION', 'AVAILABLE', 'ONLINE',
+				?, ?, ?, ?
 			)
 			""",
 			STATION_ID,
+			BOOT_ID,
+			time(9, 0),
 			time(9, 0),
 			time(9, 0)
 		);
@@ -134,10 +147,10 @@ final class Backend2QueryScenarioFixture {
 				service_status, occupancy_status, lock_status, updated_at
 			) VALUES
 				(?, ?, 1, 'NORMAL', 'AVAILABLE', 'OCCUPIED', 'LOCKED', ?),
-				(?, ?, 2, 'NORMAL', 'RENTING', 'OCCUPIED', 'LOCKED', ?),
-				(?, ?, 3, NULL, 'RETURNING', 'EMPTY', 'LOCKED', ?),
-				(?, ?, 4, 'REVIEW_REQUIRED', 'ADMIN_REVIEW', 'OCCUPIED', 'ERROR', ?),
-				(?, ?, 5, NULL, 'AVAILABLE', 'EMPTY', 'LOCKED', ?)
+				(?, ?, 2, 'NORMAL', 'AVAILABLE', 'OCCUPIED', 'LOCKED', ?),
+				(?, ?, 3, 'EMPTY', 'AVAILABLE', 'EMPTY', 'LOCKED', ?),
+				(?, ?, 4, 'UNKNOWN', 'ADMIN_REVIEW', 'OCCUPIED', 'ERROR', ?),
+				(?, ?, 5, 'EMPTY', 'AVAILABLE', 'EMPTY', 'LOCKED', ?)
 			""",
 			SLOT_AVAILABLE_ID,
 			STATION_ID,
@@ -164,7 +177,7 @@ final class Backend2QueryScenarioFixture {
 				status, requested_at, rented_at, due_at, ended_at
 			) VALUES
 				(?, ?, ?, 'fixture-rental-active', 'ACTIVE', ?, ?, ?, NULL),
-				(?, ?, ?, 'fixture-rental-requested', 'REQUESTED', ?, NULL, ?, NULL),
+				(?, ?, ?, 'fixture-rental-requested', 'REQUESTED', ?, NULL, NULL, NULL),
 				(?, ?, ?, 'fixture-rental-returning', 'RETURNING', ?, ?, ?, NULL),
 				(?, ?, ?, 'fixture-rental-completed', 'COMPLETED', ?, ?, ?, ?)
 			""",
@@ -178,7 +191,6 @@ final class Backend2QueryScenarioFixture {
 			USER_TWO_ID,
 			SLOT_RENTING_ID,
 			time(8, 20),
-			time(8, 20).plusDays(1),
 			RENTAL_RETURNING_ID,
 			USER_ONE_ID,
 			SLOT_AVAILABLE_ID,
@@ -230,32 +242,45 @@ final class Backend2QueryScenarioFixture {
 		jdbcTemplate.update("""
 			INSERT INTO device_operation (
 				operation_id, station_id, slot_id, rental_id,
-				return_attempt_id, command_id, event_id, operation_type,
-				status, result_code, requested_at, acked_at, completed_at
+				return_attempt_id, command_id, event_id, issued_boot_id,
+				operation_type, status, terminal_event_type, result_code,
+				observed_occupancy_status, observed_lock_status,
+				evidence_schema_version, evidence_observed_at, evidence_payload,
+				requested_at, acked_at, completed_at
 			) VALUES
 				('99000000-0000-0000-0000-000000000011', ?, ?, ?, NULL,
-					'fixture-command-requested', NULL, 'UNLOCK',
-					'REQUESTED', NULL, ?, NULL, NULL),
+					'fixture-command-requested', NULL, ?, 'UNLOCK',
+					'REQUESTED', NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+					?, NULL, NULL),
 				('99000000-0000-0000-0000-000000000012', ?, ?, ?, ?,
-					'fixture-command-succeeded', 'fixture-event-succeeded', 'LOCK',
-					'SUCCEEDED', 'OK', ?, ?, ?),
+					'fixture-command-succeeded', 'fixture-event-succeeded', ?,
+					'LOCK', 'SUCCEEDED', 'OPERATION_COMPLETED', 'OK',
+					'EMPTY', 'LOCKED', 1, ?, JSON_OBJECT('fixture', TRUE),
+					?, ?, ?),
 				('99000000-0000-0000-0000-000000000013', ?, ?, NULL, NULL,
-					'fixture-command-failed', 'fixture-event-failed', 'VERIFY_SLOT',
-					'FAILED', 'FIXTURE_SENSOR_ERROR', ?, ?, ?)
+					'fixture-command-failed', 'fixture-event-failed', ?,
+					'VERIFY_SLOT', 'FAILED', 'OPERATION_FAILED',
+					'FIXTURE_SENSOR_ERROR', 'OCCUPIED', 'ERROR', 1, ?,
+					JSON_OBJECT('fixture', TRUE), ?, ?, ?)
 			""",
 			STATION_ID,
 			SLOT_RENTING_ID,
 			RENTAL_REQUESTED_ID,
+			BOOT_ID,
 			time(9, 10),
 			STATION_ID,
 			SLOT_RETURNING_ID,
 			RENTAL_RETURNING_ID,
 			RETURN_PROCESSING_ID,
+			BOOT_ID,
+			time(9, 12),
 			time(9, 11),
 			time(9, 11),
 			time(9, 12),
 			STATION_ID,
 			SLOT_ADMIN_REVIEW_ID,
+			BOOT_ID,
+			time(9, 14),
 			time(9, 13),
 			time(9, 13),
 			time(9, 14)

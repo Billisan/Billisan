@@ -1,3 +1,7 @@
 spring:
   application:
     name: billisan
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate

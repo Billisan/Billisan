@@ -18,14 +18,26 @@ class SlotAllocationRepository {
 
 	Optional<String> lockNextRentalSlot(String stationId) {
 		return queryOptionalSlot("""
-			SELECT slot_id
-			FROM slot FORCE INDEX (idx_slot_station_allocation_candidate)
-			WHERE station_id = ?
-			  AND service_status = 'AVAILABLE'
-			  AND occupancy_status = 'OCCUPIED'
-			  AND lock_status = 'LOCKED'
-			  AND item_condition = 'NORMAL'
-			ORDER BY slot_number
+			SELECT candidate.slot_id
+			FROM slot candidate FORCE INDEX (idx_slot_station_allocation_candidate)
+			WHERE candidate.station_id = ?
+			  AND candidate.service_status = 'AVAILABLE'
+			  AND candidate.occupancy_status = 'OCCUPIED'
+			  AND candidate.lock_status = 'LOCKED'
+			  AND candidate.item_condition = 'NORMAL'
+			  AND NOT EXISTS (
+			      SELECT 1
+			      FROM rental active_rental
+			      WHERE active_rental.checkout_slot_id = candidate.slot_id
+			        AND active_rental.status = 'REQUESTED'
+			  )
+			  AND NOT EXISTS (
+			      SELECT 1
+			      FROM device_operation active_operation
+			      WHERE active_operation.slot_id = candidate.slot_id
+			        AND active_operation.status IN ('REQUESTED', 'ACKED')
+			  )
+			ORDER BY candidate.slot_number
 			LIMIT 1
 			FOR UPDATE SKIP LOCKED
 			""",
@@ -35,50 +47,34 @@ class SlotAllocationRepository {
 
 	Optional<String> lockNextReturnSlot(String stationId) {
 		return queryOptionalSlot("""
-			SELECT slot_id
-			FROM slot FORCE INDEX (idx_slot_station_allocation_candidate)
-			WHERE station_id = ?
-			  AND service_status = 'AVAILABLE'
-			  AND occupancy_status = 'EMPTY'
-			  AND lock_status = 'LOCKED'
-			  AND item_condition IS NULL
-			ORDER BY slot_number
+			SELECT candidate.slot_id
+			FROM slot candidate FORCE INDEX (idx_slot_station_allocation_candidate)
+			WHERE candidate.station_id = ?
+			  AND candidate.service_status = 'AVAILABLE'
+			  AND candidate.occupancy_status = 'EMPTY'
+			  AND candidate.lock_status = 'LOCKED'
+			  AND candidate.item_condition = 'EMPTY'
+			  AND NOT EXISTS (
+			      SELECT 1
+			      FROM return_attempt active_return
+			      WHERE active_return.return_slot_id = candidate.slot_id
+			        AND active_return.status IN (
+			            'PROCESSING',
+			            'PHYSICAL_DONE',
+			            'RECOVERY_REQUIRED'
+			        )
+			  )
+			  AND NOT EXISTS (
+			      SELECT 1
+			      FROM device_operation active_operation
+			      WHERE active_operation.slot_id = candidate.slot_id
+			        AND active_operation.status IN ('REQUESTED', 'ACKED')
+			  )
+			ORDER BY candidate.slot_number
 			LIMIT 1
 			FOR UPDATE SKIP LOCKED
 			""",
 			stationId
-		);
-	}
-
-	int markSlotRenting(String slotId, LocalDateTime updatedAt) {
-		return jdbcTemplate.update("""
-			UPDATE slot
-			SET service_status = 'RENTING',
-			    updated_at = ?
-			WHERE slot_id = ?
-			  AND service_status = 'AVAILABLE'
-			  AND occupancy_status = 'OCCUPIED'
-			  AND lock_status = 'LOCKED'
-			  AND item_condition = 'NORMAL'
-			""",
-			updatedAt,
-			slotId
-		);
-	}
-
-	int markSlotReturning(String slotId, LocalDateTime updatedAt) {
-		return jdbcTemplate.update("""
-			UPDATE slot
-			SET service_status = 'RETURNING',
-			    updated_at = ?
-			WHERE slot_id = ?
-			  AND service_status = 'AVAILABLE'
-			  AND occupancy_status = 'EMPTY'
-			  AND lock_status = 'LOCKED'
-			  AND item_condition IS NULL
-			""",
-			updatedAt,
-			slotId
 		);
 	}
 
@@ -87,8 +83,7 @@ class SlotAllocationRepository {
 		String userId,
 		String slotId,
 		String rentalRequestId,
-		LocalDateTime requestedAt,
-		LocalDateTime dueAt
+		LocalDateTime requestedAt
 	) {
 		jdbcTemplate.update("""
 			INSERT INTO rental (
@@ -97,16 +92,14 @@ class SlotAllocationRepository {
 				checkout_slot_id,
 				rental_request_id,
 				status,
-				requested_at,
-				due_at
-			) VALUES (?, ?, ?, ?, 'REQUESTED', ?, ?)
+				requested_at
+			) VALUES (?, ?, ?, ?, 'REQUESTED', ?)
 			""",
 			rentalId,
 			userId,
 			slotId,
 			rentalRequestId,
-			requestedAt,
-			dueAt
+			requestedAt
 		);
 	}
 

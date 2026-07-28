@@ -1,21 +1,14 @@
 package dev.billisan.snapshot;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HexFormat;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,7 +38,6 @@ public class BootSnapshotReconciliationService {
 	public BootSnapshotResult reconcile(BootSnapshotCommand command) {
 		validate(command);
 
-		String snapshotHash = snapshotHash(command);
 		LocalDateTime measuredAt = command
 			.measuredAt()
 			.atZoneSameInstant(BUSINESS_ZONE)
@@ -59,46 +51,40 @@ public class BootSnapshotReconciliationService {
 		List<SlotRow> storedSlots =
 			repository.lockStationSlots(command.stationId());
 
-		if (command.bootId().equals(station.lastBootId())) {
-			if (!snapshotHash.equals(station.lastBootSnapshotHash())) {
-				throw new BootSnapshotRejectedException(
-					BootSnapshotRejectedException.Reason.IDEMPOTENCY_CONFLICT,
-					command.bootId()
-				);
-			}
+		Evaluation evaluation = evaluate(storedSlots, command.slots());
+		if (command.bootId().equals(station.currentBootId())) {
 			return result(
 				command,
 				station,
 				storedSlots,
-				evaluate(storedSlots, command.slots()),
+				evaluation,
 				Outcome.REPLAYED
 			);
 		}
-		if (station.lastBootSnapshotAt() != null
-			&& !measuredAt.isAfter(station.lastBootSnapshotAt())) {
+		if (!command.bootId().equals(station.currentBootId())
+			&& station.lastSeenAt() != null
+			&& !measuredAt.isAfter(station.lastSeenAt())) {
 			throw new BootSnapshotRejectedException(
 				BootSnapshotRejectedException.Reason.STALE_SNAPSHOT,
 				command.bootId()
 			);
 		}
 
-		Evaluation evaluation = evaluate(storedSlots, command.slots());
 		LocalDateTime processedAt = now();
-		try {
-			repository.recordSnapshot(
+		if (!command.bootId().equals(station.currentBootId())) {
+			repository.markPriorBootOperationsUnknown(
 				command.stationId(),
 				command.bootId(),
-				snapshotHash,
-				measuredAt,
 				processedAt
 			);
-		} catch (DuplicateKeyException exception) {
-			throw new BootSnapshotRejectedException(
-				BootSnapshotRejectedException.Reason.IDEMPOTENCY_CONFLICT,
-				command.bootId(),
-				exception
-			);
 		}
+		repository.recordSnapshot(
+			command.stationId(),
+			command.bootId(),
+			measuredAt,
+			processedAt,
+			!evaluation.hasMismatch()
+		);
 
 		applyRecovery(command, storedSlots, evaluation, processedAt);
 		return result(
@@ -147,8 +133,6 @@ public class BootSnapshotReconciliationService {
 		if (evaluation.scope() == BootSnapshotPolicy.RecoveryScope.STATION) {
 			repository.markStationRecovery(
 				command.stationId(),
-				command.bootId(),
-				evaluation.stationReason(),
 				processedAt
 			);
 			for (SlotRow slot : storedSlots) {
@@ -184,8 +168,6 @@ public class BootSnapshotReconciliationService {
 		repository.markSlotRecovery(
 			command.stationId(),
 			slotId,
-			command.bootId(),
-			reason,
 			processedAt
 		);
 		repository.markActiveReturnRecovery(slotId);
@@ -276,34 +258,6 @@ public class BootSnapshotReconciliationService {
 				field + " must be a canonical UUID",
 				exception
 			);
-		}
-	}
-
-	private static String snapshotHash(BootSnapshotCommand command) {
-		List<SnapshotSlot> sortedSlots = new ArrayList<>(command.slots());
-		sortedSlots.sort(Comparator.comparing(SnapshotSlot::slotId));
-
-		StringBuilder canonical = new StringBuilder()
-			.append(command.stationId()).append('\n')
-			.append(command.bootId()).append('\n')
-			.append(command.deviceId()).append('\n')
-			.append(command.measuredAt().toInstant()).append('\n');
-		for (SnapshotSlot slot : sortedSlots) {
-			canonical
-				.append(slot.slotId()).append('|')
-				.append(slot.slotNumber()).append('|')
-				.append(slot.occupancyStatus()).append('|')
-				.append(slot.lockStatus()).append('|')
-				.append(slot.sensorHealth()).append('\n');
-		}
-
-		try {
-			MessageDigest digest = MessageDigest.getInstance("SHA-256");
-			return HexFormat.of().formatHex(
-				digest.digest(canonical.toString().getBytes(StandardCharsets.UTF_8))
-			);
-		} catch (NoSuchAlgorithmException exception) {
-			throw new IllegalStateException("SHA-256 is not available", exception);
 		}
 	}
 

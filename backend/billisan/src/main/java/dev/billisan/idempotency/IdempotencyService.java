@@ -49,10 +49,6 @@ public class IdempotencyService {
 		Outcome outcome = stored.returnAttemptId().equals(generatedId)
 			? Outcome.APPLIED
 			: Outcome.REPLAYED;
-		if (outcome == Outcome.APPLIED
-			&& repository.markSlotReturning(command.returnSlotId(), createdAt) != 1) {
-			throw new IllegalStateException("Return slot is not atomically available");
-		}
 
 		return new ReturnAttemptResult(
 			stored.returnAttemptId(),
@@ -66,6 +62,14 @@ public class IdempotencyService {
 	@Transactional
 	public DeviceCommandResult registerDeviceCommand(DeviceCommand command) {
 		validate(command);
+		if (!repository.isStationBootSynchronized(
+			command.stationId(),
+			command.issuedBootId()
+		)) {
+			throw new IllegalStateException(
+				"Station boot snapshot is not synchronized"
+			);
+		}
 
 		String generatedId = UUID.randomUUID().toString();
 		LocalDateTime requestedAt = now();
@@ -76,12 +80,13 @@ public class IdempotencyService {
 			command.rentalId(),
 			command.returnAttemptId(),
 			command.commandId(),
+			command.issuedBootId(),
 			command.operationType(),
 			requestedAt
 		);
 
 		DeviceOperationRow stored = repository
-			.findDeviceOperationByCommandId(command.commandId())
+			.lockDeviceOperationByCommandId(command.commandId())
 			.orElseThrow(() -> new IllegalStateException(
 				"Device command was not readable after upsert"
 			));
@@ -126,8 +131,11 @@ public class IdempotencyService {
 			if (repository.completeDeviceOperation(
 				operation.operationId(),
 				event.eventId(),
+				event.bootId(),
 				operationStatus,
 				event.resultCode(),
+				event.occupancyStatus(),
+				event.lockStatus(),
 				event.occurredAt()
 			) != 1) {
 				throw new IllegalStateException("Device event was not applied exactly once");
@@ -144,6 +152,7 @@ public class IdempotencyService {
 			event.slotId(),
 			event.occupancyStatus(),
 			event.lockStatus(),
+			operation.returnAttemptId() != null,
 			event.occurredAt()
 		) != 1) {
 			throw new IllegalStateException("Device event slot does not exist");
@@ -264,7 +273,7 @@ public class IdempotencyService {
 		ReturnAttemptCommand command
 	) {
 		if (!stored.rentalId().equals(command.rentalId())
-			|| !stored.returnSlotId().equals(command.returnSlotId())) {
+			|| !Objects.equals(stored.returnSlotId(), command.returnSlotId())) {
 			throw new IdempotencyConflictException("requestId", command.requestId());
 		}
 	}
@@ -277,6 +286,7 @@ public class IdempotencyService {
 			|| !stored.slotId().equals(command.slotId())
 			|| !Objects.equals(stored.rentalId(), command.rentalId())
 			|| !Objects.equals(stored.returnAttemptId(), command.returnAttemptId())
+			|| !stored.issuedBootId().equals(command.issuedBootId())
 			|| !stored.operationType().equals(command.operationType())) {
 			throw new IdempotencyConflictException("commandId", command.commandId());
 		}
@@ -287,7 +297,8 @@ public class IdempotencyService {
 		DeviceEvent event
 	) {
 		if (!operation.commandId().equals(event.commandId())
-			|| !operation.slotId().equals(event.slotId())) {
+			|| !operation.slotId().equals(event.slotId())
+			|| !operation.issuedBootId().equals(event.bootId())) {
 			throw new IdempotencyConflictException("eventId", event.eventId());
 		}
 	}
@@ -299,8 +310,14 @@ public class IdempotencyService {
 		String expectedStatus = event.success() ? "SUCCEEDED" : "FAILED";
 		if (!stored.commandId().equals(event.commandId())
 			|| !stored.slotId().equals(event.slotId())
+			|| !stored.issuedBootId().equals(event.bootId())
 			|| !stored.status().equals(expectedStatus)
 			|| !Objects.equals(stored.resultCode(), event.resultCode())
+			|| !Objects.equals(
+				stored.observedOccupancyStatus(),
+				event.occupancyStatus()
+			)
+			|| !Objects.equals(stored.observedLockStatus(), event.lockStatus())
 			|| !Objects.equals(stored.completedAt(), event.occurredAt())) {
 			throw new IdempotencyConflictException("eventId", event.eventId());
 		}
@@ -330,7 +347,9 @@ public class IdempotencyService {
 		Objects.requireNonNull(command, "command");
 		requireText(command.requestId(), "requestId");
 		requireText(command.rentalId(), "rentalId");
-		requireText(command.returnSlotId(), "returnSlotId");
+		if (command.returnSlotId() != null) {
+			requireText(command.returnSlotId(), "returnSlotId");
+		}
 	}
 
 	private void validate(DeviceCommand command) {
@@ -338,6 +357,7 @@ public class IdempotencyService {
 		requireText(command.commandId(), "commandId");
 		requireText(command.stationId(), "stationId");
 		requireText(command.slotId(), "slotId");
+		requireText(command.issuedBootId(), "issuedBootId");
 		requireText(command.operationType(), "operationType");
 	}
 
@@ -345,6 +365,7 @@ public class IdempotencyService {
 		Objects.requireNonNull(event, "event");
 		requireText(event.eventId(), "eventId");
 		requireText(event.commandId(), "commandId");
+		requireText(event.bootId(), "bootId");
 		requireText(event.slotId(), "slotId");
 		requireText(event.occupancyStatus(), "occupancyStatus");
 		requireText(event.lockStatus(), "lockStatus");
@@ -406,6 +427,7 @@ public class IdempotencyService {
 		String slotId,
 		String rentalId,
 		String returnAttemptId,
+		String issuedBootId,
 		String operationType
 	) {
 	}
@@ -422,6 +444,7 @@ public class IdempotencyService {
 	public record DeviceEvent(
 		String eventId,
 		String commandId,
+		String bootId,
 		String slotId,
 		String occupancyStatus,
 		String lockStatus,

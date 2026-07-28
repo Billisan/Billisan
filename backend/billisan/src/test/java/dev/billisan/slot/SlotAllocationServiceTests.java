@@ -83,13 +83,18 @@ class SlotAllocationServiceTests {
 		jdbcTemplate.update("DELETE FROM rental");
 		jdbcTemplate.update("DELETE FROM slot");
 		jdbcTemplate.update("DELETE FROM station");
+		jdbcTemplate.update("DELETE FROM face_profile_sync_operation");
 		jdbcTemplate.update("DELETE FROM user_account");
 
 		LocalDateTime baseline = LocalDateTime.of(2026, 7, 26, 9, 0);
 		jdbcTemplate.update("""
 			INSERT INTO user_account (
-				user_id, login_id, role, account_status, face_registered, created_at, updated_at
-			) VALUES (?, 'step09-user', 'USER', 'ACTIVE', FALSE, ?, ?)
+				user_id, login_id, password_hash, name, role,
+				face_registered, created_at, updated_at
+			) VALUES (
+				?, 'step09-user', '{noop}step09-password', 'STEP-09 User',
+				'USER', FALSE, ?, ?
+			)
 			""",
 			USER_ID,
 			baseline,
@@ -107,7 +112,7 @@ class SlotAllocationServiceTests {
 			INSERT INTO slot (
 				slot_id, station_id, slot_number, item_condition,
 				service_status, occupancy_status, lock_status, updated_at
-			) VALUES (?, ?, 99, NULL, 'MAINTENANCE', 'EMPTY', 'LOCKED', ?)
+			) VALUES (?, ?, 99, 'EMPTY', 'OUT_OF_SERVICE', 'EMPTY', 'LOCKED', ?)
 			""",
 			CHECKOUT_SLOT_ID,
 			STATION_ID,
@@ -158,7 +163,7 @@ class SlotAllocationServiceTests {
 		assertEquals(1, count("""
 			SELECT COUNT(*) FROM return_attempt WHERE status = 'PROCESSING'
 			"""));
-		assertEquals("RETURNING", text("""
+		assertEquals("AVAILABLE", text("""
 			SELECT service_status FROM slot WHERE slot_id = ?
 			""", slotId));
 		assertNoDuplicateActiveSlotOwners();
@@ -183,7 +188,9 @@ class SlotAllocationServiceTests {
 			SELECT COUNT(*) FROM rental WHERE status = 'REQUESTED'
 			"""));
 		assertEquals(slotCount, count("""
-			SELECT COUNT(*) FROM slot WHERE service_status = 'RENTING'
+			SELECT COUNT(DISTINCT checkout_slot_id)
+			FROM rental
+			WHERE status = 'REQUESTED'
 			"""));
 		assertNoDuplicateActiveSlotOwners();
 	}
@@ -215,8 +222,7 @@ class SlotAllocationServiceTests {
 		RentalAllocationCommand invalidOwner = new RentalAllocationCommand(
 			"rental-rollback-invalid-owner",
 			"10000000-0000-0000-0000-000000009999",
-			STATION_ID,
-			dueAt()
+			STATION_ID
 		);
 
 		assertThrows(
@@ -236,8 +242,7 @@ class SlotAllocationServiceTests {
 			new RentalAllocationCommand(
 				"rental-after-rollback",
 				USER_ID,
-				STATION_ID,
-				dueAt()
+				STATION_ID
 			)
 		);
 		assertEquals(slotId, retried.slotId());
@@ -258,17 +263,6 @@ class SlotAllocationServiceTests {
 			""",
 			failed.returnAttemptId()
 		);
-		jdbcTemplate.update("""
-			UPDATE slot
-			SET service_status = 'AVAILABLE',
-			    updated_at = ?
-			WHERE slot_id = ?
-			  AND service_status = 'RETURNING'
-			""",
-			LocalDateTime.now(BUSINESS_ZONE),
-			failed.slotId()
-		);
-
 		ReturnAllocationResult retried = service.allocateReturnSlot(
 			new ReturnAllocationCommand("return-retry-new", RENTAL_ID, STATION_ID)
 		);
@@ -324,8 +318,7 @@ class SlotAllocationServiceTests {
 				new RentalAllocationCommand(
 					"rental-concurrent-" + requestNumber,
 					USER_ID,
-					STATION_ID,
-					dueAt()
+					STATION_ID
 				)
 			)));
 		}
@@ -340,7 +333,7 @@ class SlotAllocationServiceTests {
 
 	private String insertReturnCandidate(int slotNumber) {
 		String slotId = "32000000-0000-0000-0000-%012d".formatted(slotNumber);
-		insertSlot(slotId, slotNumber, null, "EMPTY");
+		insertSlot(slotId, slotNumber, "EMPTY", "EMPTY");
 		return slotId;
 	}
 
@@ -424,10 +417,6 @@ class SlotAllocationServiceTests {
 		} catch (RuntimeException exception) {
 			return exception;
 		}
-	}
-
-	private LocalDateTime dueAt() {
-		return LocalDateTime.now(BUSINESS_ZONE).plusDays(1);
 	}
 
 	private int count(String sql, Object... arguments) {

@@ -28,14 +28,36 @@ public class InventoryQueryRepository {
 					 AND sl.occupancy_status = ?
 					 AND sl.lock_status = ?
 					 AND sl.item_condition = ?
+					 AND NOT EXISTS (
+					     SELECT 1
+					     FROM rental pending_rental
+					     WHERE pending_rental.checkout_slot_id = sl.slot_id
+					       AND pending_rental.status = 'REQUESTED'
+					 )
+					 AND NOT EXISTS (
+					     SELECT 1
+					     FROM device_operation pending_operation
+					     WHERE pending_operation.slot_id = sl.slot_id
+					       AND pending_operation.status IN ('REQUESTED', 'ACKED')
+					 )
 					THEN 1 ELSE 0
 				END), 0) AS rentable_slot_count,
-				COALESCE(SUM(CASE
-					WHEN sl.service_status = ? THEN 1 ELSE 0
-				END), 0) AS renting_slot_count,
-				COALESCE(SUM(CASE
-					WHEN sl.service_status = ? THEN 1 ELSE 0
-				END), 0) AS returning_slot_count,
+				(
+					SELECT COUNT(DISTINCT pending_rental.checkout_slot_id)
+					FROM rental pending_rental
+					JOIN slot pending_slot
+					  ON pending_slot.slot_id = pending_rental.checkout_slot_id
+					WHERE pending_slot.station_id = st.station_id
+					  AND pending_rental.status = 'REQUESTED'
+				) AS renting_slot_count,
+				(
+					SELECT COUNT(DISTINCT pending_return.return_slot_id)
+					FROM return_attempt pending_return
+					JOIN slot pending_slot
+					  ON pending_slot.slot_id = pending_return.return_slot_id
+					WHERE pending_slot.station_id = st.station_id
+					  AND pending_return.status IN ('PROCESSING', 'PHYSICAL_DONE')
+				) AS returning_slot_count,
 				COALESCE(SUM(CASE
 					WHEN sl.service_status = ? THEN 1 ELSE 0
 				END), 0) AS admin_review_slot_count
@@ -56,8 +78,6 @@ public class InventoryQueryRepository {
 			OccupancyStatus.OCCUPIED.name(),
 			LockStatus.LOCKED.name(),
 			ItemCondition.NORMAL.name(),
-			SlotServiceStatus.RENTING.name(),
-			SlotServiceStatus.RETURNING.name(),
 			SlotServiceStatus.ADMIN_REVIEW.name(),
 			stationId
 		);
@@ -73,7 +93,6 @@ public class InventoryQueryRepository {
 				service_status,
 				occupancy_status,
 				lock_status,
-				snapshot_recovery_reason,
 				updated_at
 			FROM slot
 			WHERE station_id = ?
@@ -86,7 +105,6 @@ public class InventoryQueryRepository {
 				rs.getString("service_status"),
 				rs.getString("occupancy_status"),
 				rs.getString("lock_status"),
-				rs.getString("snapshot_recovery_reason"),
 				rs.getObject("updated_at", LocalDateTime.class)
 			),
 			stationId
@@ -110,17 +128,31 @@ public class InventoryQueryRepository {
 				(
 					SELECT COUNT(*)
 					FROM return_attempt ra
-					JOIN slot return_slot
+					JOIN rental return_rental
+					  ON return_rental.rental_id = ra.rental_id
+					JOIN slot checkout_slot
+					  ON checkout_slot.slot_id = return_rental.checkout_slot_id
+					LEFT JOIN slot return_slot
 					  ON return_slot.slot_id = ra.return_slot_id
-					WHERE return_slot.station_id = st.station_id
+					WHERE COALESCE(
+					    return_slot.station_id,
+					    checkout_slot.station_id
+					) = st.station_id
 					  AND ra.status = ?
 				) AS failed_return_attempt_count,
 				(
 					SELECT COUNT(*)
 					FROM return_attempt ra
-					JOIN slot return_slot
+					JOIN rental return_rental
+					  ON return_rental.rental_id = ra.rental_id
+					JOIN slot checkout_slot
+					  ON checkout_slot.slot_id = return_rental.checkout_slot_id
+					LEFT JOIN slot return_slot
 					  ON return_slot.slot_id = ra.return_slot_id
-					WHERE return_slot.station_id = st.station_id
+					WHERE COALESCE(
+					    return_slot.station_id,
+					    checkout_slot.station_id
+					) = st.station_id
 					  AND ra.status = ?
 				) AS completed_return_attempt_count,
 				(
@@ -167,8 +199,16 @@ public class InventoryQueryRepository {
 				ra.created_at,
 				ra.completed_at
 			FROM return_attempt ra
-			JOIN slot sl ON sl.slot_id = ra.return_slot_id
-			WHERE sl.station_id = ?
+			JOIN rental return_rental
+			  ON return_rental.rental_id = ra.rental_id
+			JOIN slot checkout_slot
+			  ON checkout_slot.slot_id = return_rental.checkout_slot_id
+			LEFT JOIN slot return_slot
+			  ON return_slot.slot_id = ra.return_slot_id
+			WHERE COALESCE(
+			    return_slot.station_id,
+			    checkout_slot.station_id
+			) = ?
 			  AND ra.status IN (?, ?)
 			ORDER BY ra.created_at, ra.return_attempt_id
 			""",
@@ -221,8 +261,6 @@ public class InventoryQueryRepository {
 
 	private enum SlotServiceStatus {
 		AVAILABLE,
-		RENTING,
-		RETURNING,
 		ADMIN_REVIEW
 	}
 
@@ -264,7 +302,6 @@ public class InventoryQueryRepository {
 		String serviceStatus,
 		String occupancyStatus,
 		String lockStatus,
-		String recoveryReason,
 		LocalDateTime updatedAt
 	) {
 	}
