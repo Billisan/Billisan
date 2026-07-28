@@ -8,6 +8,7 @@ export type MainScreenVariant = 'DEFAULT' | 'RENT_DISABLED_NO_STOCK'
 
 interface MainScreenProps {
   variant: MainScreenVariant
+  onRent?: () => void
 }
 
 // 8번 단계(kioskMainStore 연동)까지 시각 확인용 임시 우산 개수 값
@@ -16,7 +17,7 @@ const MOCK_USABLE_SLOT_COUNT: Record<MainScreenVariant, number> = {
   RENT_DISABLED_NO_STOCK: 0,
 }
 
-export function MainScreen({ variant }: MainScreenProps) {
+export function MainScreen({ variant, onRent }: MainScreenProps) {
   const isRentDisabled = variant === 'RENT_DISABLED_NO_STOCK'
   const usableSlotCount = MOCK_USABLE_SLOT_COUNT[variant]
 
@@ -31,7 +32,11 @@ export function MainScreen({ variant }: MainScreenProps) {
 
       <div className="flex w-full flex-row items-start justify-center gap-16">
         <div className="flex min-w-0 max-w-75 flex-1 flex-col items-center gap-2">
-          <Button disabled={isRentDisabled} className="w-full">
+          <Button
+            disabled={isRentDisabled}
+            onClick={onRent}
+            className="w-full"
+          >
             <span className="flex flex-col items-center justify-center gap-4">
               <UmbrellaIcon className="h-[57.6px] w-[57.6px]" />
               대여

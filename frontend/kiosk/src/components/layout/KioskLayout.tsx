@@ -9,9 +9,14 @@ dayjs.locale('ko')
 interface KioskLayoutProps {
   children: ReactNode
   onBack?: () => void
+  fullBleed?: boolean
 }
 
-export function KioskLayout({ children, onBack }: KioskLayoutProps) {
+export function KioskLayout({
+  children,
+  onBack,
+  fullBleed = false,
+}: KioskLayoutProps) {
   const [now, setNow] = useState(() => dayjs())
 
   useEffect(() => {
@@ -44,7 +49,11 @@ export function KioskLayout({ children, onBack }: KioskLayoutProps) {
         </div>
       </header>
       <main className="flex min-h-0 flex-1 flex-col items-center justify-end">
-        <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center gap-14 overflow-hidden rounded-t-[120px] rounded-b-none bg-white p-20 shadow-[0_-8px_16px_rgba(120,120,120,0.12)]">
+        <div
+          className={`flex min-h-0 w-full flex-1 flex-col items-center overflow-hidden rounded-t-[120px] rounded-b-none bg-white shadow-[0_-8px_16px_rgba(120,120,120,0.12)] ${
+            fullBleed ? '' : 'justify-center gap-14 p-20'
+          }`}
+        >
           {children}
         </div>
       </main>
