@@ -22,7 +22,7 @@ export function KioskLayout({ children }: KioskLayoutProps) {
       <header className="flex w-full items-center justify-between px-14 py-4">
         <img src={logo} alt="Billisan" className="h-48 w-48" />
         <div className="flex flex-col items-end">
-          <span className="text-tertiary-text text-lg font-medium">
+          <span className="text-tertiary-text text-xl font-medium">
             {now.format('YYYY년 M월 D일 dddd')}
           </span>
           <span className="text-primary-text/70 text-3xl font-bold">

@@ -32,7 +32,7 @@ export function MainScreen({ variant }: MainScreenProps) {
         <div className="flex flex-col items-center gap-2">
           <Button disabled={isRentDisabled} className="w-100">
             <span className="flex flex-col items-center justify-center gap-4">
-              <UmbrellaIcon className="h-12 w-12" />
+              <UmbrellaIcon className="h-[57.6px] w-[57.6px]" />
               대여
             </span>
           </Button>
@@ -46,7 +46,7 @@ export function MainScreen({ variant }: MainScreenProps) {
         <div className="flex flex-col items-center gap-2">
           <Button variant="outline" className="w-100">
             <span className="flex flex-col items-center justify-center gap-6">
-              <ReturnIcon className="h-10 w-10" />
+              <ReturnIcon className="h-12 w-12" />
               반납
             </span>
           </Button>
