@@ -1,11 +1,7 @@
-import './App.css'
+import { MainScreen } from './screens/SCR-KSK-MAIN-001/MainScreen'
 
 function App() {
-  return (
-    <>
-      <h1>Hello</h1>
-    </>
-  )
+  return <MainScreen variant="DEFAULT" />
 }
 
 export default App
