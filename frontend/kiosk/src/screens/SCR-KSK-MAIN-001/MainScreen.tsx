@@ -30,7 +30,7 @@ export function MainScreen({ variant }: MainScreenProps) {
       </p>
 
       <div className="flex w-full flex-row items-start justify-center gap-16">
-        <div className="flex min-w-0 max-w-100 flex-1 flex-col items-center gap-2">
+        <div className="flex min-w-0 max-w-75 flex-1 flex-col items-center gap-2">
           <Button disabled={isRentDisabled} className="w-full">
             <span className="flex flex-col items-center justify-center gap-4">
               <UmbrellaIcon className="h-[57.6px] w-[57.6px]" />
@@ -40,7 +40,7 @@ export function MainScreen({ variant }: MainScreenProps) {
           {isRentDisabled && <Badge>우산 재고 없음</Badge>}
         </div>
 
-        <div className="flex min-w-0 max-w-100 flex-1 flex-col items-center gap-2">
+        <div className="flex min-w-0 max-w-75 flex-1 flex-col items-center gap-2">
           <Button variant="outline" className="w-full">
             <span className="flex flex-col items-center justify-center gap-6">
               <ReturnIcon className="h-12 w-12" />

@@ -1,15 +1,19 @@
 import type { ReactNode } from 'react'
 
-type IconBadgeVariant = 'error' | 'success'
+type IconBadgeVariant = 'error' | 'success' | 'neutral'
 
 interface IconBadgeProps {
   children: ReactNode
-  variant: IconBadgeVariant
+  variant?: IconBadgeVariant
 }
 
-export function IconBadge({ children, variant }: IconBadgeProps) {
+export function IconBadge({ children, variant = 'neutral' }: IconBadgeProps) {
   const variantClasses =
-    variant === 'error' ? 'bg-error-bg text-error-text' : 'bg-primary/20 text-black'
+    variant === 'error'
+      ? 'bg-error-bg text-error-text'
+      : variant === 'success'
+        ? 'bg-primary/20 text-black'
+        : 'bg-kiosk-bg text-black'
 
   return (
     <div
