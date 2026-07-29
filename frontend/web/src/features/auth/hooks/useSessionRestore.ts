@@ -26,11 +26,11 @@ let attempted = false;
 
 /** @returns 복원 시도가 끝났는지. false 인 동안에는 화면을 판단하지 않고 기다립니다. */
 export function useSessionRestore(): boolean {
-    const user = useAuthStore((s) => s.user);
+    const admin = useAuthStore((s) => s.admin);
     const setAuth = useAuthStore((s) => s.setAuth);
 
     // 목업·우회 모드이거나 이미 로그인돼 있으면 물어볼 필요가 없습니다.
-    const skip = env.mockAuth || env.authBypass || Boolean(user) || attempted;
+    const skip = env.mockAuth || env.authBypass || Boolean(admin) || attempted;
     const [settled, setSettled] = useState(skip);
 
     useEffect(() => {
@@ -44,9 +44,13 @@ export function useSessionRestore(): boolean {
 
         authApi
             .me()
-            .then(({ user: restored, session }) => {
+            .then(({ adminId, loginId, role, idleExpiresAt, absoluteExpiresAt }) => {
                 // 토큰은 못 받습니다. 이후 요청은 세션 쿠키로 인증됩니다.
-                if (!cancelled) setAuth({ user: restored, session });
+                if (cancelled) return;
+                setAuth({
+                    admin: { adminId, loginId, role },
+                    session: { idleExpiresAt, absoluteExpiresAt },
+                });
             })
             .catch(() => {
                 // 401 이면 그냥 비로그인 상태입니다. 오류로 취급하지 않습니다.

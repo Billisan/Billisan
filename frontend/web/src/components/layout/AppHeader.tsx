@@ -16,16 +16,20 @@ import { cn } from '@/lib/utils';
  * 아래 5px 띠(#0B1220 5%)는 대여소 상세 시안에 있는 값이며, 본문이 헤더 밑으로 스크롤되므로 z-10 이 필요합니다.
  */
 export function AppHeader() {
-    const { user, logout } = useAuth();
+    const { admin, logout } = useAuth();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 
     const [open, setOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
-    const displayName = user?.name ?? '관리자';
-    // 아바타 이니셜은 계정(loginId) 기준 — 한글 이름 첫 글자가 들어가면 시안과 달라집니다.
-    const initial = (user?.loginId ?? displayName).trim().slice(0, 1).toUpperCase();
+    /*
+     * 관리자 응답에 이름 필드가 없습니다 (12-R B-3). `adminId`·`loginId`·`role` 뿐이라
+     * 화면에 쓸 수 있는 표시값은 loginId 하나입니다. 시안의 '빌리대학교_관리자' 는
+     * 만들 수 없어서 계정 아이디를 그대로 보여줍니다.
+     */
+    const displayName = admin?.loginId ?? '관리자';
+    const initial = displayName.trim().slice(0, 1).toUpperCase();
 
     useEffect(() => {
         if (!open) return;
@@ -89,7 +93,7 @@ export function AppHeader() {
                     aria-expanded={open}
                     className="flex items-center gap-3 rounded-lg py-1 pl-2 pr-1 transition-colors hover:bg-brand-navy-hover"
                 >
-                    <span className="hidden text-[12.5px] font-semibold text-white xl:block">
+                    <span className="hidden max-w-[220px] truncate text-[12.5px] font-semibold text-white xl:block">
                         {displayName}
                     </span>
                     <span className="flex size-[30px] items-center justify-center rounded-full bg-brand-blue text-[11.5px] font-extrabold text-white">
@@ -126,9 +130,9 @@ export function AppHeader() {
                             <p className="truncate text-[12.5px] font-bold text-brand-ink">
                                 {displayName}
                             </p>
-                            {/* 표시하는 계정 정보는 loginId 까지입니다. 그 밖의 개인정보는 두지 않습니다 (§6.3). */}
+                            {/* 표시할 수 있는 건 역할까지입니다. 그 밖의 개인정보는 두지 않습니다. */}
                             <p className="mt-[3px] truncate text-[11.5px] font-medium text-brand-muted">
-                                {user?.loginId}
+                                {admin?.role === 'ADMIN' ? '관리자' : '-'}
                             </p>
                         </div>
 

@@ -34,7 +34,7 @@ const SESSION_CHECK_INTERVAL_MS = 60 * 1000;
 const ACTIVITY_EVENTS = ['mousedown', 'keydown', 'scroll', 'touchstart', 'wheel'] as const;
 
 export function useSessionWatch() {
-    const isAuthenticated = useAuthStore((s) => s.user !== null);
+    const isAuthenticated = useAuthStore((s) => s.admin !== null);
     const touch = useAuthStore((s) => s.touch);
     const clearAuth = useAuthStore((s) => s.clearAuth);
 

@@ -1,60 +1,56 @@
 /**
- * 관리자 인증 타입 — `ADMIN-AUTH-001/002/003` (API명세 B-2) · ERD `USER_ACCOUNT`.
+ * 관리자 인증 — `ADMIN-AUTH-001/002/003` (12-R PART B-3).
  *
- * ERD 의 컬럼은 이게 전부입니다:
- *   `user_id uuid PK` · `login_id varchar UK` · `password_hash` · `name` · `role` ·
- *   `face_registered` · `created_at`
+ * 세 API 의 `data` 는 **평평한 구조**입니다. `user` 나 `session` 으로 감싸지 않습니다.
  *
- * 그래서 화면이 들고 있을 수 있는 관리자 정보도 딱 이만큼입니다.
- * `password_hash` 는 어떤 DTO·화면·로그에도 오지 않습니다. `student_number` 는 쓰지 않습니다.
+ * 응답에 **이름(`name`) 필드가 없습니다.** 관리자를 화면에 표시할 때 쓸 수 있는 건
+ * `loginId` 뿐입니다. ERD `USER_ACCOUNT.name` 은 있지만 관리자 DTO 로 내려오지 않습니다.
+ *
+ * `password`, Bearer token, 이미지, 얼굴 정보는 로그·오류·응답 DTO 어디에도 담기지 않습니다 (B-2).
  */
 
-/** ERD `USER_ACCOUNT.role` 은 이 두 값뿐입니다. `SUPER_ADMIN` 같은 값은 없습니다. */
-export type UserRole = 'USER' | 'ADMIN';
+/** 관리자 API 응답의 `role` 은 항상 `ADMIN` 입니다. 다른 값이면 서버가 403 으로 막습니다. */
+export type AdminRole = 'ADMIN';
 
-export interface AdminUser {
-    /** ERD PK 는 UUID 입니다. 숫자 auto-increment 가 아닙니다. */
-    userId: string;
-    /** 대학 계정 형식 식별자. ERD 에 `email` 컬럼은 없습니다. */
+/** 인증된 관리자 신원. 세 API 가 같은 필드를 돌려줍니다. */
+export interface AdminIdentity {
+    /** `adminId` — UUID. ERD `USER_ACCOUNT.user_id` 에 대응합니다. */
+    adminId: string;
+    /** 대학 계정 형식 식별자. 화면에 보여줄 수 있는 유일한 관리자 표시값입니다. */
     loginId: string;
-    name: string;
-    /** `ADMIN` 이 아니면 관리자 API 가 `403 ADMIN_ROLE_REQUIRED` 로 막습니다. */
-    role: UserRole;
+    role: AdminRole;
 }
 
 /**
- * `ADMIN-AUTH-001` 요청 본문.
- * 필드명이 `loginId` 입니다 — `email` 이 아닙니다 (B-2 요청 예시).
+ * 서버가 소유하는 세션 만료 시각. 둘 다 필수(O)입니다.
+ *
+ * `idleExpiresAt` 은 서버가 요청을 받을 때마다 밀어 줍니다. 클라이언트는 그 값을 갱신할 수
+ * 없으므로, 화면 쪽 유휴 판정은 로컬 활동 시각으로 따로 셉니다 (`authStore`).
  */
+export interface SessionExpiry {
+    /** 마지막 활동 기준 30분 유휴 만료 예정 시각 */
+    idleExpiresAt: string;
+    /** 로그인 기준 최대 8시간 절대 만료 시각 */
+    absoluteExpiresAt: string;
+}
+
+/** `ADMIN-AUTH-001` 요청 본문. 필드명은 `loginId` 입니다 — `email` 이 아닙니다. */
 export interface LoginRequest {
     loginId: string;
     password: string;
 }
 
-/**
- * `ADMIN-AUTH-001` 응답.
- *
- * 계약에 로그인 **응답** DTO 는 적혀 있지 않습니다. 그래서 `user` 를 선택 필드로 둡니다.
- * 응답에 있으면 그대로 쓰고, 없으면 이어서 `ADMIN-AUTH-003 /auth/me` 를 한 번 부릅니다.
- */
-export interface LoginResponse {
+/** `ADMIN-AUTH-001` 응답 `data` */
+export interface LoginResponse extends AdminIdentity, SessionExpiry {
+    /** 응답 후 로그·브라우저 영속 저장 금지 */
     accessToken: string;
-    user?: AdminUser;
-    session?: SessionInfo;
+    tokenType: 'Bearer';
 }
 
-/**
- * `ADMIN-AUTH-003` 이 주는 "세션 만료 정보".
- *
- * 서버가 만료 시각을 주면 그걸 씁니다. 없으면 클라이언트가 발급 시각 기준으로
- * 유휴 30분·절대 8시간을 셉니다 (`DEC-SESSION-001`).
- */
-export interface SessionInfo {
-    /** 절대 만료 시각 (ISO 문자열) */
-    expiresAt?: string;
-    /** 유휴 만료 시각 (ISO 문자열) */
-    idleExpiresAt?: string;
-}
+/** `ADMIN-AUTH-003` 응답 `data` */
+export type MeResponse = AdminIdentity & SessionExpiry;
 
-/** `ADMIN-AUTH-003` 응답. user 를 그대로 주거나 `{user, session}` 으로 감싸 줄 수 있습니다. */
-export type MeResponse = AdminUser | { user: AdminUser; session?: SessionInfo };
+/** `ADMIN-AUTH-002` 응답 `data`. 같은 세션에 반복 요청해도 `true` 입니다 (멱등). */
+export interface LogoutResponse {
+    loggedOut: boolean;
+}
