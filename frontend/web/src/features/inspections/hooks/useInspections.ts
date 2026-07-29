@@ -5,7 +5,9 @@ import {
     type InspectionListParams,
 } from '@/features/inspections/api/inspectionsApi';
 import type { InspectionDecisionInput } from '@/features/inspections/types';
+import { errorCodeOf } from '@/lib/api-error';
 import { qk } from '@/shared/api/queryKeys';
+import { toast } from '@/shared/components/toast/toastStore';
 
 /**
  * 검수 조회·판정 훅.
@@ -55,10 +57,31 @@ export function useDecideInspection() {
             input: InspectionDecisionInput;
         }) => inspectionsApi.decide(inspectionId, input),
         retry: false,
-        onSuccess: () => {
+        onSuccess: (_result, { input }) => {
+            // 보류는 슬롯이 그대로라 화면이 거의 안 바뀝니다. 알림이 없으면 눌렸는지 모릅니다.
+            toast.success(
+                input.decision === 'KEEP_ADMIN_REVIEW'
+                    ? '판정을 보류했습니다'
+                    : '판정을 저장했습니다',
+                input.decision === 'DAMAGED' ? '파손 정산이 함께 생성됩니다.' : undefined,
+            );
             queryClient.invalidateQueries({ queryKey: qk.inspections.all });
             queryClient.invalidateQueries({ queryKey: qk.slots.all });
             queryClient.invalidateQueries({ queryKey: qk.stations.all });
+        },
+        onError: (error) => {
+            const code = errorCodeOf(error);
+            const known: Record<string, string> = {
+                CONCURRENT_MODIFICATION: '다른 관리자가 먼저 처리했습니다',
+                INSPECTION_ALREADY_DECIDED: '이미 판정이 끝난 검수입니다',
+                ADMIN_REASON_REQUIRED: '사유 코드가 필요합니다',
+                INVALID_INSPECTION_DECISION: '허용되지 않은 판정입니다',
+            };
+            toast.error(
+                (code && known[code]) || '판정을 저장하지 못했습니다',
+                `${error.message}${code ? ` (${code})` : ''}`,
+            );
+            queryClient.invalidateQueries({ queryKey: qk.inspections.all });
         },
     });
 }

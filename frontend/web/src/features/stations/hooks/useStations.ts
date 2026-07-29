@@ -3,7 +3,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { SlotStatusChange } from '@/features/stations/components/SlotStatusDialog';
 import { stationsApi } from '@/features/stations/api/stationsApi';
 import type { SlotSummary } from '@/features/stations/types';
+import { errorCodeOf } from '@/lib/api-error';
 import { qk } from '@/shared/api/queryKeys';
+import { toast } from '@/shared/components/toast/toastStore';
 
 /**
  * 재고·슬롯 조회 훅.
@@ -76,10 +78,28 @@ export function useChangeSlotStatus() {
             stationsApi.changeSlotStatus(slot, change),
         retry: false,
         onSuccess: () => {
+            toast.success('슬롯 상태를 변경했습니다');
             queryClient.invalidateQueries({ queryKey: qk.slots.all });
             queryClient.invalidateQueries({ queryKey: qk.stations.all });
             // 슬롯 상태가 바뀌면 검수 목록의 표시도 따라 바뀝니다.
             queryClient.invalidateQueries({ queryKey: qk.inspections.all });
+        },
+        /*
+         * 실패를 조용히 넘기면 관리자가 바뀐 줄 착각합니다. 409 는 특히 위험합니다 —
+         * 다른 관리자가 먼저 바꾼 상태라 자동 재적용하면 안 되고, 최신 상태를 다시 봐야 합니다.
+         */
+        onError: (error) => {
+            const code = errorCodeOf(error);
+            toast.error(
+                code === 'CONCURRENT_MODIFICATION'
+                    ? '다른 관리자가 먼저 상태를 변경했습니다'
+                    : '슬롯 상태를 변경하지 못했습니다',
+                code === 'CONCURRENT_MODIFICATION'
+                    ? '최신 상태를 다시 확인한 뒤 진행하세요.'
+                    : `${error.message}${code ? ` (${code})` : ''}`,
+            );
+            // 서버가 이미 바뀌었을 수 있으니 권위 상태를 다시 읽습니다.
+            queryClient.invalidateQueries({ queryKey: qk.slots.all });
         },
     });
 }

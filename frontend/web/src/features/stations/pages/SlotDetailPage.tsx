@@ -208,13 +208,16 @@ export function SlotDetailPage() {
                 open={dialogOpen}
                 slot={slot}
                 subtitle={`${slotLabel} · ${station.name}(${station.stationCode})`}
-                onClose={() => setDialogOpen(false)}
-                // TODO: ADMIN-SLOT-STATUS-001 `PATCH /api/v1/admin/slots/{slotId}/status` 연결.
-                //       지금은 목업 스토어에 결과만 얹습니다.
-                onSubmit={(change) => {
-                    changeStatus.mutate({ slot, change });
+                onClose={() => {
+                    changeStatus.reset();
                     setDialogOpen(false);
                 }}
+                pending={changeStatus.isPending}
+                error={changeStatus.error}
+                // 성공했을 때만 닫습니다. 실패하면 열어 둬야 오류를 읽고 다시 판단할 수 있습니다.
+                onSubmit={(change) =>
+                    changeStatus.mutate({ slot, change }, { onSuccess: () => setDialogOpen(false) })
+                }
             />
         </div>
     );

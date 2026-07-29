@@ -130,6 +130,15 @@ interface SlotStatusDialogProps {
     subtitle: string;
     onClose: () => void;
     onSubmit: (change: SlotStatusChange) => void;
+    /** 저장 중. 중복 제출을 막고 버튼 글자를 바꿉니다. */
+    pending?: boolean;
+    /**
+     * 저장 실패.
+     *
+     * 예전에는 제출과 동시에 모달을 닫아서 409·422 가 조용히 사라졌습니다.
+     * 관리자는 바뀐 줄 알고 넘어가는데 서버는 그대로였습니다.
+     */
+    error?: Error | null;
 }
 
 export function SlotStatusDialog({
@@ -138,6 +147,8 @@ export function SlotStatusDialog({
     subtitle,
     onClose,
     onSubmit,
+    pending = false,
+    error,
 }: SlotStatusDialogProps) {
     const current = deriveSlotDisplayStatus(slot);
 
@@ -159,11 +170,11 @@ export function SlotStatusDialog({
     useEffect(() => {
         if (!open) return;
         const onKey = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') onClose();
+            if (event.key === 'Escape' && !pending) onClose();
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
-    }, [open, onClose]);
+    }, [open, onClose, pending]);
 
     if (!open) return null;
 
@@ -173,7 +184,8 @@ export function SlotStatusDialog({
     const unchanged =
         choice.serviceStatus === slot.serviceStatus && choice.itemCondition === slot.itemCondition;
     // reasonCode 가 필수라 그것부터 봅니다. note 는 선택입니다 (12-R B-4).
-    const canSubmit = !unchanged && reasonCode.trim() !== '' && (hasItem || !choice.requiresItem);
+    const canSubmit =
+        !unchanged && !pending && reasonCode.trim() !== '' && (hasItem || !choice.requiresItem);
 
     const handleSubmit = () => {
         if (!canSubmit) return;
@@ -349,10 +361,20 @@ export function SlotStatusDialog({
                     )}
                 </div>
 
+                {error && (
+                    <p
+                        role="alert"
+                        className="mt-[14px] rounded-lg bg-tone-red-bg px-[14px] py-[11px] text-[12px] font-semibold leading-[1.5] text-tone-red-fg"
+                    >
+                        {error.message}
+                    </p>
+                )}
+
                 <div className="mt-[16px] flex gap-3">
                     <button
                         type="button"
                         onClick={onClose}
+                        disabled={pending}
                         className="h-11 flex-1 rounded-lg border border-brand-border-soft bg-white text-[13.5px] font-bold text-brand-body transition-colors hover:bg-brand-surface"
                     >
                         취소
@@ -363,7 +385,7 @@ export function SlotStatusDialog({
                         onClick={handleSubmit}
                         className="h-11 flex-1 rounded-lg bg-brand-blue text-[13.5px] font-bold text-white transition-colors hover:bg-brand-blue/90 disabled:cursor-not-allowed disabled:bg-brand-blue/40"
                     >
-                        변경
+                        {pending ? '변경 중…' : '변경'}
                     </button>
                 </div>
             </div>
