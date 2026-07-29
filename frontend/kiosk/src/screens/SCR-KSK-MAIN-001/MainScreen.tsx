@@ -13,7 +13,6 @@ import {
   useKioskMainStore,
 } from "../../store/kioskMainStore";
 import { MAIN_SCREEN_VARIANT } from "../../types/slot";
-import { LoadingScreen } from "../common/LoadingScreen";
 
 interface MainScreenProps {
   onRent?: () => void;
@@ -42,7 +41,6 @@ export function MainScreen({ onRent }: MainScreenProps) {
   const returnableSlotCount = useKioskMainStore(
     (state) => state.returnableSlotCount,
   );
-  const isLoading = useKioskMainStore((state) => state.isLoading);
   const variant = useKioskMainStore(selectMainScreenVariant);
   const fetchStationSummary = useKioskMainStore(
     (state) => state.fetchStationSummary,
@@ -57,10 +55,6 @@ export function MainScreen({ onRent }: MainScreenProps) {
   useEffect(() => {
     fetchStationSummary();
   }, [fetchStationSummary]);
-
-  if (isLoading) {
-    return <LoadingScreen message="재고를 확인하고 있어요" />;
-  }
 
   const isRentDisabled = variant === MAIN_SCREEN_VARIANT.RENT_DISABLED_NO_STOCK;
 

@@ -50,7 +50,13 @@ export function AuthScreen({ onBack, onAuthenticated }: AuthScreenProps) {
       )
 
     case AUTH_SCREEN_VARIANT.FACE_PROCESSING:
-      return <LoadingScreen message="얼굴을 인증하고 있어요" currentStep={2} />
+      return (
+        <LoadingScreen
+          title="환영합니다!"
+          subtitle="잠시만 기다려주세요"
+          currentStep={2}
+        />
+      )
 
     case AUTH_SCREEN_VARIANT.FACE_NOT_DETECTED:
       return (
