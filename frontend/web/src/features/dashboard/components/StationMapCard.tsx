@@ -102,7 +102,7 @@ export function StationMapCard({ className }: { className?: string }) {
                 <MapBackdrop />
                 <MapLegend />
                 {MOCK_STATIONS.map((station) => (
-                    <StationMarker key={station.id} station={station} />
+                    <StationMarker key={station.stationId} station={station} />
                 ))}
             </div>
         </Panel>

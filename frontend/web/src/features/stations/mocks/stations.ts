@@ -1,96 +1,152 @@
+import { MOCK_NS, mockUuid } from '@/features/stations/mocks/ids';
 import type { Station } from '@/features/stations/types';
 
 /**
  * 대여소 목업 데이터 (시안 값 그대로).
  *
  * 대시보드 분포도/재고 순위와 대여소 목록이 같은 값을 봐야 해서 한 곳에 둡니다.
- * TODO: GET /admin/stations 연동 후 이 파일을 지우고 TanStack Query 로 교체하세요.
+ * TODO: ADMIN-INVENTORY-001 연동 후 이 파일을 지우고 TanStack Query 로 교체하세요.
+ *
+ * 신원은 `stationId`(UUID)입니다. 'ST-003' 은 ERD `station_code` 로, 화면 표시용입니다.
  */
-export const MOCK_STATIONS: Station[] = [
+
+interface StationSeed {
+    /** `station_code` */
+    code: string;
+    name: string;
+    /** `location_text` — 좌표가 아니라 자유 텍스트입니다 */
+    locationText: string;
+    available: number;
+    capacity: number;
+    damaged: number;
+    adminReview: number;
+    deviceStatus: Station['deviceStatus'];
+    serviceStatus: Station['serviceStatus'];
+    position: { x: number; y: number };
+}
+
+const SEEDS: StationSeed[] = [
     {
-        id: 'ST-001',
+        code: 'ST-001',
         name: '정문 광장',
+        locationText: '정문 광장 버스정류장 옆',
         available: 28,
         capacity: 40,
         damaged: 0,
         adminReview: 0,
-        online: true,
+        deviceStatus: 'ONLINE',
+        serviceStatus: 'AVAILABLE',
         position: { x: 20.1, y: 86.0 },
     },
     {
-        id: 'ST-002',
+        code: 'ST-002',
         name: '중앙도서관',
+        locationText: '중앙도서관 1층 출입구',
         available: 41,
         capacity: 56,
         damaged: 1,
         adminReview: 2,
-        online: true,
+        deviceStatus: 'ONLINE',
+        serviceStatus: 'AVAILABLE',
         position: { x: 46.8, y: 30.2 },
     },
     {
-        id: 'ST-003',
+        code: 'ST-003',
         name: '제1공학관',
+        locationText: '제1공학관 로비',
         available: 12,
         capacity: 40,
         damaged: 1,
         adminReview: 2,
-        online: true,
+        deviceStatus: 'ONLINE',
+        serviceStatus: 'AVAILABLE',
         position: { x: 79.9, y: 38.6 },
     },
     {
-        id: 'ST-005',
+        code: 'ST-005',
         name: '경영관',
+        locationText: '경영관 후문',
         available: 22,
         capacity: 40,
         damaged: 2,
         adminReview: 1,
-        online: true,
+        deviceStatus: 'ONLINE',
+        serviceStatus: 'AVAILABLE',
         position: { x: 28.2, y: 51.6 },
     },
     {
-        id: 'ST-006',
+        code: 'ST-006',
         name: '자연과학관',
+        locationText: '자연과학관 중앙 계단',
         available: 26,
         capacity: 40,
         damaged: 0,
         adminReview: 0,
-        online: true,
+        deviceStatus: 'ONLINE',
+        serviceStatus: 'AVAILABLE',
         position: { x: 59.7, y: 56.2 },
     },
     {
-        id: 'ST-007',
+        code: 'ST-007',
         name: '생활관 A',
+        locationText: '생활관 A동 1층',
         available: 30,
         capacity: 44,
         damaged: 1,
         adminReview: 0,
-        online: true,
+        deviceStatus: 'ONLINE',
+        serviceStatus: 'AVAILABLE',
         position: { x: 82.3, y: 71.5 },
     },
     {
-        id: 'ST-008',
+        code: 'ST-008',
         name: '빌리대역 출구',
+        locationText: '빌리대역 2번 출구',
         available: 48,
         capacity: 60,
         damaged: 2,
         adminReview: 0,
-        online: true,
+        deviceStatus: 'ONLINE',
+        serviceStatus: 'AVAILABLE',
         position: { x: 16.8, y: 20.2 },
     },
     {
-        id: 'ST-011',
+        code: 'ST-011',
         name: '대운동장',
+        locationText: '대운동장 관중석 입구',
         available: 0,
         capacity: 36,
         damaged: 0,
         adminReview: 0,
-        online: false,
+        // 장치가 끊긴 대여소. `ERROR` 와 구분되는 상태입니다.
+        deviceStatus: 'OFFLINE',
+        serviceStatus: 'MAINTENANCE',
         position: { x: 50.0, y: 81.5 },
     },
 ];
 
-export function findStation(id: string | undefined): Station | undefined {
-    return MOCK_STATIONS.find((station) => station.id === id);
+export const MOCK_STATIONS: Station[] = SEEDS.map((seed, index) => ({
+    stationId: mockUuid(MOCK_NS.station, index + 1),
+    stationCode: seed.code,
+    name: seed.name,
+    locationText: seed.locationText,
+    serviceStatus: seed.serviceStatus,
+    deviceStatus: seed.deviceStatus,
+    available: seed.available,
+    capacity: seed.capacity,
+    damaged: seed.damaged,
+    adminReview: seed.adminReview,
+    position: seed.position,
+}));
+
+/** 라우트 파라미터(UUID)로 찾습니다. */
+export function findStation(stationId: string | undefined): Station | undefined {
+    return MOCK_STATIONS.find((station) => station.stationId === stationId);
+}
+
+/** 표시 코드('ST-003')로 찾습니다. 링크를 만들 때만 쓰세요. */
+export function findStationByCode(code: string): Station | undefined {
+    return MOCK_STATIONS.find((station) => station.stationCode === code);
 }
 
 /** 목록 화면 상단에 표시하는 집계 기준 시각 */

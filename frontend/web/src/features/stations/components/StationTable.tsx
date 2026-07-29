@@ -1,19 +1,22 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import { DetailLink } from '@/features/stations/components/DetailLink';
-import type { Station } from '@/features/stations/types';
-import { Badge } from '@/shared/components/Badge';
+import { DeviceBadge } from '@/features/stations/components/DeviceBadge';
+import { isDeviceOnline, type Station } from '@/features/stations/types';
 import { DataTable, TBody, Td, TableCard, Th, THead, Tr } from '@/shared/components/DataTable';
 
 export function StationTable({ stations }: { stations: Station[] }) {
+    const navigate = useNavigate();
+
     return (
         <TableCard>
             <DataTable>
                 {/* 열 너비는 시안(1280px)의 헤더 x 좌표에서 역산한 값입니다. */}
                 <THead>
                     <Th className="w-[14%]">대여소ID</Th>
-                    <Th className="w-[25.98%]">위치(건물)</Th>
-                    <Th align="center" className="w-[9.12%]">
+                    {/* 온라인 칸은 '장치 연결 끊김'이 들어가도록 시안(9.12%)보다 넓혔습니다. */}
+                    <Th className="w-[23.5%]">위치(건물)</Th>
+                    <Th align="center" className="w-[11.6%]">
                         온라인
                     </Th>
                     <Th align="center" className="w-[14.87%]">
@@ -32,20 +35,23 @@ export function StationTable({ stations }: { stations: Station[] }) {
 
                 <TBody>
                     {stations.map((station) => (
-                        <Tr key={station.id} accent={station.online ? undefined : 'red'}>
-                            <Td className="font-bold text-brand-ink">{station.id}</Td>
+                        <Tr
+                            key={station.stationId}
+                            accent={isDeviceOnline(station) ? undefined : 'red'}
+                            // 라우트에는 UUID 가 들어갑니다. 표시 코드('ST-003')는 화면 글자일 뿐입니다.
+                            onClick={() => navigate(`/stations/${station.stationId}`)}
+                        >
+                            <Td className="font-bold text-brand-ink">{station.stationCode}</Td>
                             <Td>
                                 <Link
-                                    to={`/stations/${station.id}`}
+                                    to={`/stations/${station.stationId}`}
                                     className="font-bold text-tone-blue-fg transition-opacity hover:opacity-70"
                                 >
                                     {station.name}
                                 </Link>
                             </Td>
                             <Td align="center">
-                                <Badge tone={station.online ? 'green' : 'red'}>
-                                    {station.online ? 'ON' : 'OFF'}
-                                </Badge>
+                                <DeviceBadge status={station.deviceStatus} />
                             </Td>
                             <Td align="center" className="tabular-nums">
                                 {station.available}
@@ -57,7 +63,7 @@ export function StationTable({ stations }: { stations: Station[] }) {
                                 {station.adminReview}
                             </Td>
                             <Td align="center">
-                                <DetailLink to={`/stations/${station.id}`} />
+                                <DetailLink to={`/stations/${station.stationId}`} />
                             </Td>
                         </Tr>
                     ))}

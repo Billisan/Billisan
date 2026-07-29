@@ -2,6 +2,7 @@ import { Panel, PanelHeader } from '@/features/dashboard/components/Panel';
 import { MOCK_STATIONS } from '@/features/stations/mocks/stations';
 import {
     getStationStatus,
+    isDeviceOnline,
     sortByStock,
     STATION_STATUS_META,
     type Station,
@@ -60,7 +61,7 @@ function StockRow({ station }: { station: Station }) {
 export function StationStockCard({ className }: { className?: string }) {
     const ranked = sortByStock(MOCK_STATIONS);
     const shortageCount = ranked.filter((s) => getStationStatus(s) === 'SHORTAGE').length;
-    const offlineCount = ranked.filter((s) => !s.online).length;
+    const offlineCount = ranked.filter((s) => !isDeviceOnline(s)).length;
 
     return (
         <Panel className={cn('p-5', className)}>
@@ -75,7 +76,7 @@ export function StationStockCard({ className }: { className?: string }) {
             {/* 카드가 시안(476px)보다 짧아지면 목록만 스크롤되게 해서 푸터가 밀려나지 않도록 */}
             <ul className="mt-[14px] flex min-h-0 flex-1 flex-col gap-[21px] overflow-y-auto">
                 {ranked.map((station) => (
-                    <StockRow key={station.id} station={station} />
+                    <StockRow key={station.stationId} station={station} />
                 ))}
             </ul>
 
