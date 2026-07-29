@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { authenticateFace as authenticateFaceApi } from '../api/faceAuthApi'
+import { requestFaceAuthStart } from '../api/piSocket'
 import {
   AUTH_SCREEN_VARIANT,
   FACE_AUTH_RESULT,
@@ -9,7 +10,7 @@ import {
 
 interface FaceAuthState {
   variant: AuthScreenVariant
-  startCapture: () => void
+  startCapture: () => Promise<void>
   authenticateFace: () => Promise<FaceAuthResult>
   retry: () => void
   reset: () => void
@@ -18,7 +19,16 @@ interface FaceAuthState {
 export const useFaceAuthStore = create<FaceAuthState>((set) => ({
   variant: AUTH_SCREEN_VARIANT.GUIDE,
 
-  startCapture: () => set({ variant: AUTH_SCREEN_VARIANT.FACE_CAPTURE }),
+  // DEC-032 — Pi에 얼굴 인증 시작을 요청하고, Pi 응답을 받은 뒤에야 FACE_CAPTURE로 전환한다.
+  // 실패 시 처리 방식은 아직 정해지지 않아 콘솔 로깅만 하고 GUIDE에 머무른다(6절 참고).
+  startCapture: async () => {
+    try {
+      await requestFaceAuthStart()
+      set({ variant: AUTH_SCREEN_VARIANT.FACE_CAPTURE })
+    } catch (error) {
+      console.error('Pi 얼굴 인증 시작 요청 실패', error)
+    }
+  },
 
   authenticateFace: async () => {
     set({ variant: AUTH_SCREEN_VARIANT.FACE_PROCESSING })

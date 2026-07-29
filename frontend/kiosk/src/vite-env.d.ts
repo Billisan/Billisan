@@ -2,6 +2,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_FACE_STREAM_TOKEN: string
+  readonly VITE_PI_WS_URL: string
 }
 
 interface ImportMeta {
