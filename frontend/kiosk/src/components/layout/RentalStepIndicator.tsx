@@ -5,7 +5,7 @@ interface RentalStepIndicatorProps {
 const STEPS: Array<{ step: 1 | 2 | 3; label: string }> = [
   { step: 1, label: '대여 시작' },
   { step: 2, label: '안면 인식' },
-  { step: 3, label: '대여 완료' },
+  { step: 3, label: '우산 받기' },
 ]
 
 export function RentalStepIndicator({ currentStep }: RentalStepIndicatorProps) {
