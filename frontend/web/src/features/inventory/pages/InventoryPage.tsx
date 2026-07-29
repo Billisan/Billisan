@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 're
 import { useSearchParams } from 'react-router-dom';
 
 import { DetailLink } from '@/features/stations/components/DetailLink';
-import { InspectLink } from '@/features/stations/components/InspectLink';
 import { useInventory, useStationSlots } from '@/features/stations/hooks/useStations';
 import { SLOT_PAGE_SIZE } from '@/features/stations/mocks/slots';
 import { MOCK_STATIONS, STATIONS_SYNCED_AT } from '@/features/stations/mocks/stations';
@@ -11,7 +10,6 @@ import {
     deriveSlotDisplayStatus,
     formatSlotLabel,
     formatUpdatedAt,
-    pendingInspectionId,
     SLOT_DISPLAY_TONE,
     slotStatusText,
     type SlotDisplayStatus,
@@ -40,8 +38,7 @@ import { cn } from '@/lib/utils';
  */
 
 type StatusFilter =
-    | 'ALL'
-    | Extract<SlotDisplayStatus, 'AVAILABLE' | 'RENTED' | 'EMPTY' | 'ADMIN_REVIEW' | 'DAMAGED'>;
+    'ALL' | Extract<SlotDisplayStatus, 'AVAILABLE' | 'EMPTY' | 'ADMIN_REVIEW' | 'DAMAGED'>;
 
 /**
  * §7.5 의 필터 목록에서 '건조 중'을 뺀 것입니다.
@@ -50,7 +47,6 @@ type StatusFilter =
 const STATUS_OPTIONS: readonly FilterOption<StatusFilter>[] = [
     { value: 'ALL', label: '우산 상태' },
     { value: 'AVAILABLE', label: '사용 가능' },
-    { value: 'RENTED', label: '대여 중' },
     { value: 'EMPTY', label: '빈 슬롯' },
     { value: 'ADMIN_REVIEW', label: '관리자 확인' },
     { value: 'DAMAGED', label: '파손' },
@@ -117,11 +113,17 @@ export function InventoryPage() {
         });
     }, [allSlots, keyword, status, station.stationCode]);
 
+    /*
+     * 집계는 `ADMIN-INVENTORY-001` 필드 그대로입니다.
+     * '대여 중' 집계는 없습니다 — 관리자 API 는 활성 대여를 노출하지 않습니다.
+     * 명세 주석: "집계 항목은 서로 겹칠 수 있으므로 모든 count를 단순 합산하지 않는다."
+     */
     const counts = {
-        available: summary?.available ?? 0,
-        rented: summary?.rented ?? 0,
-        review: summary?.adminReview ?? 0,
-        damaged: summary?.damaged ?? 0,
+        available: summary?.availableUmbrellaCount ?? 0,
+        empty: summary?.emptySlotCount ?? 0,
+        review: summary?.adminReviewSlotCount ?? 0,
+        damaged: summary?.damagedUmbrellaCount ?? 0,
+        total: summary?.totalSlotCount ?? 0,
     };
 
     const totalPages = Math.max(1, Math.ceil(slots.length / SLOT_PAGE_SIZE));
@@ -209,13 +211,19 @@ export function InventoryPage() {
                     icon={<Umbrella className="size-[17px]" strokeWidth={2.1} aria-hidden />}
                     label="대여 가능 재고"
                     value={counts.available}
-                    sub={`전체 ${allSlots.length}`}
+                    sub={`전체 ${counts.total}`}
                 />
+                {/*
+                 * '대여 중' 카드는 뺐습니다. `ADMIN-INVENTORY-001` 에 그런 집계가 없고,
+                 * 관리자 API 어디에도 활성 대여가 노출되지 않습니다. 우산이 나가 있는 슬롯은
+                 * 서버 기준으로도 빈 슬롯입니다.
+                 */}
                 <StatCard
                     tone="blue"
                     icon={<LogOut className="size-[17px]" strokeWidth={2.1} aria-hidden />}
-                    label="대여 중"
-                    value={counts.rented}
+                    label="빈 슬롯"
+                    value={counts.empty}
+                    sub="반납 가능"
                 />
                 <StatCard
                     tone="amber"
@@ -250,7 +258,6 @@ export function InventoryPage() {
                 {rows.length > 0 ? (
                     rows.map((slot, index) => {
                         const display = deriveSlotDisplayStatus(slot);
-                        const inspectionId = pendingInspectionId(slot);
                         // 주의가 필요한 행만 왼쪽에 색 막대를 답니다 (시안).
                         const accent =
                             display === 'DAMAGED'
@@ -298,13 +305,13 @@ export function InventoryPage() {
                                     {formatUpdatedAt(slot.updatedAt)}
                                 </span>
                                 <span className="flex justify-center">
-                                    {inspectionId ? (
-                                        <InspectLink to={`/inspections/${inspectionId}`} />
-                                    ) : (
-                                        <DetailLink
-                                            to={`/stations/${station.stationId}/slots/${slot.slotId}`}
-                                        />
-                                    )}
+                                    {/*
+                                     * 검수 여부는 `ADMIN-SLOT-001` 응답에 없어 목록에서 판단할 수
+                                     * 없습니다. 상세로 넘겨서 확인합니다.
+                                     */}
+                                    <DetailLink
+                                        to={`/stations/${station.stationId}/slots/${slot.slotId}`}
+                                    />
                                 </span>
                             </div>
                         );
