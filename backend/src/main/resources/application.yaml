@@ -2,6 +2,22 @@ spring:
   application:
     name: billisan
 
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/billisan?useSSL=false&serverTimezone=Asia/Seoul}
+    username: ${SPRING_DATASOURCE_USERNAME:billisan}
+    password: ${SPRING_DATASOURCE_PASSWORD:changeme}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    jpa:
+      hibernate:
+        ddl-auto: validate
+      show-sql: true
+      properties:
+        hibernate:
+          format_sql: true
+    sql:
+      init:
+        mode: always
+
 mqtt:
   broker-url: ${MQTT_BROKER_URL:tcp://localhost:1883}
   client-id: ${MQTT_CLIENT_ID:billisan-server}
