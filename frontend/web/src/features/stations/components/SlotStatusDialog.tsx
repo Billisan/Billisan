@@ -10,6 +10,7 @@ import {
     type SlotServiceStatus,
 } from '@/features/stations/types';
 import { Badge } from '@/shared/components/Badge';
+import { useModalA11y } from '@/shared/hooks/useModalA11y';
 import { cn } from '@/lib/utils';
 
 /**
@@ -176,6 +177,9 @@ export function SlotStatusDialog({
         return () => window.removeEventListener('keydown', onKey);
     }, [open, onClose, pending]);
 
+    // Tab 가둠 · 배경 스크롤 잠금 · 닫은 뒤 포커스 복원
+    const dialogRef = useModalA11y<HTMLDivElement>(open);
+
     if (!open) return null;
 
     const choice = CHOICES.find((item) => item.id === choiceId) ?? CHOICES[0];
@@ -208,6 +212,7 @@ export function SlotStatusDialog({
             }}
         >
             <div
+                ref={dialogRef}
                 role="dialog"
                 aria-modal
                 aria-labelledby="slot-status-dialog-title"

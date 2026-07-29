@@ -71,6 +71,7 @@ export function SettlementDetailPage() {
             <DetailHeader
                 tone={SETTLEMENT_STATUS_TONE[item.status]}
                 statusLabel={SETTLEMENT_STATUS_LABEL[item.status]}
+                documentTitle="정산 상세"
                 id={item.settlementId}
                 actions={
                     <>

@@ -7,6 +7,7 @@ import { useStations } from '@/features/stations/hooks/useStations';
 import { STATIONS_SYNCED_AT } from '@/features/stations/mocks/stations';
 import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
+import { PageTitle } from '@/shared/components/PageTitle';
 import { Pagination } from '@/shared/components/Pagination';
 
 const PAGE_SIZE = 8;
@@ -77,9 +78,7 @@ export function StationListPage() {
             <PageBar className="mb-6" meta={`${STATIONS_SYNCED_AT} 기준`} />
 
             {/* 대여소 상세와 같은 리듬(21px 제목 + 아래 29px)으로 맞춥니다. */}
-            <h2 className="mb-[29px] text-[21px] font-extrabold leading-none text-brand-ink">
-                대여소 관리
-            </h2>
+            <PageTitle className="mb-[29px]">대여소 관리</PageTitle>
 
             <form onSubmit={handleSubmit} className="mb-9 flex items-center gap-3">
                 <label className="relative block">

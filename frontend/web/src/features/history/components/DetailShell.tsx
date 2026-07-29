@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 
 import { Badge, type BadgeTone } from '@/shared/components/Badge';
 import { cn } from '@/lib/utils';
+import { PageTitle } from '@/shared/components/PageTitle';
 import { shortId } from '@/shared/lib/shortId';
 
 /**
@@ -17,20 +18,23 @@ export function DetailHeader({
     tone,
     statusLabel,
     id,
+    documentTitle,
     actions,
 }: {
     tone: BadgeTone;
     statusLabel: string;
     id: string;
+    /** 브라우저 탭에 쓸 화면 이름 (예: '대여 상세') */
+    documentTitle: string;
     actions?: ReactNode;
 }) {
     return (
         <div className="mb-[18px] flex h-[58px] items-center rounded-lg bg-white px-[18px]">
             <Badge tone={tone}>{statusLabel}</Badge>
-            <h2 className="ml-[14px] text-[17px] font-extrabold leading-none text-brand-ink">
-                {/* UUID 36자를 제목에 그대로 깔면 화면이 밀립니다. 전체 값은 아래 상세 행에 있습니다. */}
-                <span title={id}>{shortId(id)}</span>
-            </h2>
+            {/* UUID 36자를 제목에 그대로 깔면 화면이 밀립니다. 전체 값은 아래 상세 행에 있습니다. */}
+            <PageTitle className="ml-[14px] !text-[17px]" documentTitle={documentTitle}>
+                {shortId(id)}
+            </PageTitle>
             <div className="ml-auto flex items-center gap-2">{actions}</div>
         </div>
     );

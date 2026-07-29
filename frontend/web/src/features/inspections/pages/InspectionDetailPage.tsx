@@ -10,6 +10,7 @@ import {
 } from '@/features/inspections/components/InspectionParts';
 import { useDecideInspection, useInspection } from '@/features/inspections/hooks/useInspections';
 import { PageBar } from '@/shared/components/PageBar';
+import { PageTitle } from '@/shared/components/PageTitle';
 
 /**
  * 파손 검수 상세 — `SCR-WEB-INSPECTION-DETAIL-001` → `ADMIN-INSPECTION-002` · `003`.
@@ -70,9 +71,9 @@ export function InspectionDetailPage() {
             {/* 요약 줄 */}
             <div className="mb-[18px] flex h-[58px] items-center rounded-lg bg-white pl-5 pr-4">
                 <ReviewStatusBadge status={detail.reviewStatus} />
-                <h2 className="ml-[14px] text-[17px] font-extrabold leading-none text-brand-ink">
+                <PageTitle className="ml-[14px] !text-[17px]" documentTitle={`${slotLabel} 검수`}>
                     {slotLabel}
-                </h2>
+                </PageTitle>
                 <p className="ml-[8px] truncate text-[12px] font-medium text-brand-muted">
                     · {detail.stationName}
                 </p>

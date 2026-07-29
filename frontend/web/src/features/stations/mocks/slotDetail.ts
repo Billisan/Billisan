@@ -53,7 +53,6 @@ export function buildSlotHistory(slot: SlotDetail): SlotHistoryEntry[] {
     const now = slot.updatedAt;
     const inspection = slot.latestInspection;
 
-
     /** 이 슬롯에서 우산이 나간 줄. 어느 갈래든 체인의 시작입니다. */
     const rentOut = (minutes: number): SlotHistoryEntry => ({
         at: earlier(now, minutes),

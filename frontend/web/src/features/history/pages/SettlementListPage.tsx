@@ -22,6 +22,7 @@ import { Badge } from '@/shared/components/Badge';
 import { useSettlements } from '@/features/history/hooks/useHistory';
 import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
+import { PageTitle } from '@/shared/components/PageTitle';
 import { RefId } from '@/shared/components/RefId';
 import { Pagination } from '@/shared/components/Pagination';
 import type { FilterOption } from '@/shared/components/FilterSelect';
@@ -110,6 +111,8 @@ export function SettlementListPage() {
     return (
         <div>
             <PageBar className="mb-6" meta={`${HISTORY_SYNCED_AT} 기준`} />
+            {/* 탭이 제목 역할을 해서 화면에는 안 보이지만, 제목은 있어야 합니다. */}
+            <PageTitle visuallyHidden>정산 이력</PageTitle>
             <HistoryTabs />
 
             <HistoryFilters

@@ -23,6 +23,7 @@ import { InspectLink } from '@/features/stations/components/InspectLink';
 import { DataTable, TBody, TableCard, Td, Th, THead, Tr } from '@/shared/components/DataTable';
 import { FilterSelect, type FilterOption } from '@/shared/components/FilterSelect';
 import { PageBar } from '@/shared/components/PageBar';
+import { PageTitle } from '@/shared/components/PageTitle';
 
 /**
  * 파손 검수 목록 — `SCR-WEB-INSPECTION-LIST-001` → `ADMIN-INSPECTION-001`.
@@ -151,9 +152,7 @@ export function InspectionListPage() {
             <PageBar meta={`${INSPECTIONS_SYNCED_AT} 기준`} />
 
             <div className="mb-[22px] flex items-center justify-between gap-4">
-                <h2 className="text-[21px] font-extrabold leading-none text-brand-ink">
-                    파손 검수
-                </h2>
+                <PageTitle>파손 검수</PageTitle>
 
                 <div className="flex items-center gap-3">
                     <FilterSelect

@@ -2,7 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 
 import { authApi } from '@/features/auth/api/authApi';
-import { resetSessionRestore } from '@/features/auth/hooks/useSessionRestore';
+import { useResetSessionRestore } from '@/features/auth/hooks/useSessionRestore';
 import { useAuthStore } from '@/features/auth/stores/authStore';
 import type { LoginRequest } from '@/features/auth/types';
 
@@ -15,6 +15,8 @@ import type { LoginRequest } from '@/features/auth/types';
 export function useLogin() {
     const navigate = useNavigate();
     const setAuth = useAuthStore((s) => s.setAuth);
+    // 이전 사람의 /auth/me 응답이 캐시에 남아 있으면 안 됩니다.
+    const resetSessionRestore = useResetSessionRestore();
 
     return useMutation({
         mutationFn: (payload: LoginRequest) => authApi.login(payload),

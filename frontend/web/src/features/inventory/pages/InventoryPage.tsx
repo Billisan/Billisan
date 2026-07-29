@@ -20,6 +20,7 @@ import { Badge } from '@/shared/components/Badge';
 import { FilterSelect, type FilterOption } from '@/shared/components/FilterSelect';
 import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
+import { PageTitle } from '@/shared/components/PageTitle';
 import { SLOT_DISPLAY_LABEL } from '@/shared/constants/statusLabels';
 import { cn } from '@/lib/utils';
 
@@ -176,9 +177,7 @@ export function InventoryPage() {
              * 검색칸과 버튼을 붙여 두어야 그 둘이 한 벌이라는 게 보입니다.
              */}
             <form onSubmit={handleSubmit} className="mb-[22px] flex items-center gap-3">
-                <h2 className="mr-auto text-[21px] font-extrabold leading-none text-brand-ink">
-                    우산 재고
-                </h2>
+                <PageTitle className="mr-auto">우산 재고</PageTitle>
 
                 {/*
                  * P0 API 가 대여소 단위라 이 선택이 필수입니다. '전체'는 둘 수 없습니다.
