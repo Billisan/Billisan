@@ -1,8 +1,10 @@
 import { Link, useParams } from 'react-router-dom';
 
-import { HISTORY_SYNCED_AT, MOCK_USER } from '@/features/history/mocks/history';
+import { useUserHistory } from '@/features/history/hooks/useHistory';
+import { HISTORY_SYNCED_AT } from '@/features/history/mocks/history';
 import { formatWon } from '@/features/history/types';
 import { Badge } from '@/shared/components/Badge';
+import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
 import { cn } from '@/lib/utils';
 
@@ -27,7 +29,18 @@ const COLS = 'grid-cols-[162px_115px_153px_386px_1fr]';
 
 export function UserHistoryPage() {
     const { userId } = useParams();
-    const user = MOCK_USER;
+    const query = useUserHistory(userId);
+    const user = query.data;
+
+    if (query.isPending) return <LoadingState />;
+    if (query.isError) return <ErrorState error={query.error} onRetry={() => query.refetch()} />;
+    if (!user) {
+        return (
+            <div className="flex h-[200px] items-center justify-center rounded-lg bg-white text-[13px] font-medium text-brand-muted">
+                존재하지 않는 사용자입니다. ({userId})
+            </div>
+        );
+    }
 
     return (
         <div>

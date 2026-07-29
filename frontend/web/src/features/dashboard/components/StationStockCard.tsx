@@ -1,5 +1,5 @@
 import { Panel, PanelHeader } from '@/features/dashboard/components/Panel';
-import { MOCK_STATIONS } from '@/features/stations/mocks/stations';
+import { useStations } from '@/features/stations/hooks/useStations';
 import {
     getStationStatus,
     isDeviceOnline,
@@ -59,7 +59,9 @@ function StockRow({ station }: { station: Station }) {
 }
 
 export function StationStockCard({ className }: { className?: string }) {
-    const ranked = sortByStock(MOCK_STATIONS);
+    const { data, isPending, isError } = useStations();
+    const stations = data ?? [];
+    const ranked = sortByStock(stations);
     const shortageCount = ranked.filter((s) => getStationStatus(s) === 'SHORTAGE').length;
     const offlineCount = ranked.filter((s) => !isDeviceOnline(s)).length;
 
@@ -78,6 +80,11 @@ export function StationStockCard({ className }: { className?: string }) {
                 {ranked.map((station) => (
                     <StockRow key={station.stationId} station={station} />
                 ))}
+                {(isPending || isError) && (
+                    <li className="py-6 text-center text-[12px] font-medium text-brand-muted">
+                        {isPending ? '불러오는 중…' : '재고를 불러오지 못했습니다'}
+                    </li>
+                )}
             </ul>
 
             <div className="shrink-0 pt-[6px]">

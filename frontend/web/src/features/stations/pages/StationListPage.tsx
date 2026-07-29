@@ -3,7 +3,9 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import { StationTable } from '@/features/stations/components/StationTable';
-import { MOCK_STATIONS, STATIONS_SYNCED_AT } from '@/features/stations/mocks/stations';
+import { useStations } from '@/features/stations/hooks/useStations';
+import { STATIONS_SYNCED_AT } from '@/features/stations/mocks/stations';
+import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
 import { Pagination } from '@/shared/components/Pagination';
 
@@ -24,6 +26,9 @@ function parsePage(value: string | null): number {
 }
 
 export function StationListPage() {
+    const query = useStations();
+    const stations = useMemo(() => query.data ?? [], [query.data]);
+
     // 확정된 조회 조건은 URL Query 에만 둡니다. 새로고침·뒤로가기에도 유지돼야 합니다(§6.2).
     const [searchParams, setSearchParams] = useSearchParams();
     const keyword = searchParams.get('q')?.trim() ?? '';
@@ -39,15 +44,15 @@ export function StationListPage() {
 
     const filtered = useMemo(() => {
         const normalized = keyword.toLowerCase();
-        if (!normalized) return MOCK_STATIONS;
+        if (!normalized) return stations;
 
-        return MOCK_STATIONS.filter(
+        return stations.filter(
             (station) =>
                 station.name.toLowerCase().includes(normalized) ||
                 // 검색은 사람이 아는 표시 코드로 합니다. UUID 를 외워서 치는 사람은 없습니다.
                 station.stationCode.toLowerCase().includes(normalized),
         );
-    }, [keyword]);
+    }, [keyword, stations]);
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
     const currentPage = Math.min(page, totalPages);
@@ -99,7 +104,11 @@ export function StationListPage() {
                 </button>
             </form>
 
-            {rows.length > 0 ? (
+            {query.isPending ? (
+                <LoadingState />
+            ) : query.isError ? (
+                <ErrorState error={query.error} onRetry={() => query.refetch()} />
+            ) : rows.length > 0 ? (
                 <StationTable stations={rows} />
             ) : (
                 <div className="flex h-[200px] items-center justify-center rounded-lg bg-white text-[13px] font-medium text-brand-muted">

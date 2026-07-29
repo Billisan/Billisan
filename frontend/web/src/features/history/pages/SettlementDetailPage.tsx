@@ -9,7 +9,6 @@ import {
     Timeline,
     ValueLink,
 } from '@/features/history/components/DetailShell';
-import { findSettlement } from '@/features/history/mocks/history';
 import {
     formatWon,
     outstandingOf,
@@ -19,6 +18,8 @@ import {
     SETTLEMENT_STATUS_TONE,
 } from '@/features/history/types';
 import { Badge } from '@/shared/components/Badge';
+import { useSettlement } from '@/features/history/hooks/useHistory';
+import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
 
 /**
@@ -35,7 +36,11 @@ import { PageBar } from '@/shared/components/PageBar';
  */
 export function SettlementDetailPage() {
     const { settlementId } = useParams();
-    const item = findSettlement(settlementId);
+    const query = useSettlement(settlementId);
+    const item = query.data;
+
+    if (query.isPending) return <LoadingState />;
+    if (query.isError) return <ErrorState error={query.error} onRetry={() => query.refetch()} />;
 
     if (!item) {
         return (

@@ -1,5 +1,5 @@
 import { Panel, PanelHeader } from '@/features/dashboard/components/Panel';
-import { MOCK_STATIONS } from '@/features/stations/mocks/stations';
+import { useStations } from '@/features/stations/hooks/useStations';
 import {
     getStationStatus,
     LEGEND_STATUSES,
@@ -90,18 +90,19 @@ function StationMarker({ station }: { station: Station }) {
 }
 
 export function StationMapCard({ className }: { className?: string }) {
+    const stations = useStations().data ?? [];
     return (
         <Panel className={cn('p-[18px]', className)}>
             <PanelHeader
                 title="대여소 분포 · 실시간 현황"
-                meta={`${CAMPUS_NAME} 캠퍼스 · ${MOCK_STATIONS.length}개소`}
+                meta={`${CAMPUS_NAME} 캠퍼스 · ${stations.length}개소`}
                 className="px-0.5 pb-[12px]"
             />
 
             <div className="relative min-h-[420px] flex-1 overflow-hidden rounded-[7px] bg-map-base">
                 <MapBackdrop />
                 <MapLegend />
-                {MOCK_STATIONS.map((station) => (
+                {stations.map((station) => (
                     <StationMarker key={station.stationId} station={station} />
                 ))}
             </div>

@@ -9,10 +9,12 @@ import {
     Timeline,
     ValueLink,
 } from '@/features/history/components/DetailShell';
-import { findReturn, findSettlement } from '@/features/history/mocks/history';
+import { findSettlement } from '@/features/history/mocks/history';
 import { RETURN_STATUS_LABEL, RETURN_STATUS_TONE } from '@/features/history/types';
 import { AI_RESULT_TONE } from '@/features/stations/types';
 import { Badge } from '@/shared/components/Badge';
+import { useReturnAttempt } from '@/features/history/hooks/useHistory';
+import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
 
 /**
@@ -28,7 +30,11 @@ import { PageBar } from '@/shared/components/PageBar';
  */
 export function ReturnDetailPage() {
     const { returnAttemptId } = useParams();
-    const item = findReturn(returnAttemptId);
+    const query = useReturnAttempt(returnAttemptId);
+    const item = query.data;
+
+    if (query.isPending) return <LoadingState />;
+    if (query.isError) return <ErrorState error={query.error} onRetry={() => query.refetch()} />;
 
     if (!item) {
         return (

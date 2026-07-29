@@ -8,17 +8,15 @@ import {
     ListFooter,
     StatStrip,
 } from '@/features/history/components/HistoryShell';
-import {
-    HISTORY_SYNCED_AT,
-    MOCK_RENTALS,
-    RENTAL_LIST_NOTE,
-} from '@/features/history/mocks/history';
+import { HISTORY_SYNCED_AT, RENTAL_LIST_NOTE } from '@/features/history/mocks/history';
 import {
     RENTAL_STATUS_LABEL,
     RENTAL_STATUS_TONE,
     type RentalDisplayStatus,
 } from '@/features/history/types';
 import { Badge } from '@/shared/components/Badge';
+import { useRentals } from '@/features/history/hooks/useHistory';
+import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
 import { Pagination } from '@/shared/components/Pagination';
 import type { FilterOption } from '@/shared/components/FilterSelect';
@@ -52,6 +50,11 @@ const PAGE_SIZE = 7;
 const COLS = 'grid-cols-[143px_124px_153px_308px_146px_1fr]';
 
 export function RentalListPage() {
+    // 확정 API 가 없어 목업이 뒤에 있습니다. 화면은 그 사실을 모릅니다.
+    const query = useRentals();
+    // ?? [] 를 그대로 두면 매 렌더 새 배열이라 아래 useMemo 가 매번 다시 돕니다.
+    const rentals = useMemo(() => query.data ?? [], [query.data]);
+
     const [searchParams, setSearchParams] = useSearchParams();
     const period = searchParams.get('period') ?? '30D';
     const status = (searchParams.get('status') ?? 'ALL') as StatusFilter;
@@ -60,7 +63,7 @@ export function RentalListPage() {
 
     const rows = useMemo(() => {
         const normalized = keyword.toLowerCase();
-        return MOCK_RENTALS.filter((rental) => {
+        return rentals.filter((rental) => {
             const matchesStatus = status === 'ALL' || rental.status === status;
             const matchesKeyword =
                 !normalized ||
@@ -68,7 +71,7 @@ export function RentalListPage() {
                 rental.userRef.toLowerCase().includes(normalized);
             return matchesStatus && matchesKeyword;
         });
-    }, [status, keyword]);
+    }, [status, keyword, rentals]);
 
     const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
     const currentPage = Math.min(page, totalPages);
@@ -77,11 +80,11 @@ export function RentalListPage() {
 
     const counts = useMemo(
         () => ({
-            active: MOCK_RENTALS.filter((item) => item.status === 'ACTIVE').length,
-            overdue: MOCK_RENTALS.filter((item) => item.status === 'OVERDUE').length,
-            lost: MOCK_RENTALS.filter((item) => item.status === 'LOST').length,
+            active: rentals.filter((item) => item.status === 'ACTIVE').length,
+            overdue: rentals.filter((item) => item.status === 'OVERDUE').length,
+            lost: rentals.filter((item) => item.status === 'LOST').length,
         }),
-        [],
+        [rentals],
     );
 
     const patch = (next: Record<string, string>) => {
@@ -177,6 +180,10 @@ export function RentalListPage() {
                             </span>
                         </div>
                     ))
+                ) : query.isPending ? (
+                    <LoadingState />
+                ) : query.isError ? (
+                    <ErrorState error={query.error} onRetry={() => query.refetch()} />
                 ) : (
                     <div className="flex h-[200px] items-center justify-center text-[13px] font-medium text-brand-muted">
                         조건에 맞는 대여가 없습니다.

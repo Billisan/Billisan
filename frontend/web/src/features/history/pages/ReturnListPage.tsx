@@ -8,13 +8,15 @@ import {
     ListFooter,
     StatStrip,
 } from '@/features/history/components/HistoryShell';
-import { HISTORY_SYNCED_AT, MOCK_RETURNS } from '@/features/history/mocks/history';
+import { HISTORY_SYNCED_AT } from '@/features/history/mocks/history';
 import {
     RETURN_STATUS_LABEL,
     RETURN_STATUS_TONE,
     type ReturnDisplayStatus,
 } from '@/features/history/types';
 import { Badge } from '@/shared/components/Badge';
+import { useReturns } from '@/features/history/hooks/useHistory';
+import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
 import { Pagination } from '@/shared/components/Pagination';
 import type { FilterOption } from '@/shared/components/FilterSelect';
@@ -47,6 +49,11 @@ const PAGE_SIZE = 7;
 const COLS = 'grid-cols-[153px_124px_163px_298px_136px_1fr]';
 
 export function ReturnListPage() {
+    // 확정 API 가 없어 목업이 뒤에 있습니다. 화면은 그 사실을 모릅니다.
+    const query = useReturns();
+    // ?? [] 를 그대로 두면 매 렌더 새 배열이라 아래 useMemo 가 매번 다시 돕니다.
+    const returns = useMemo(() => query.data ?? [], [query.data]);
+
     const [searchParams, setSearchParams] = useSearchParams();
     const period = searchParams.get('period') ?? '30D';
     const status = (searchParams.get('status') ?? 'ALL') as StatusFilter;
@@ -55,7 +62,7 @@ export function ReturnListPage() {
 
     const rows = useMemo(() => {
         const normalized = keyword.toLowerCase();
-        return MOCK_RETURNS.filter((item) => {
+        return returns.filter((item) => {
             const matchesStatus = status === 'ALL' || item.status === status;
             const matchesKeyword =
                 !normalized ||
@@ -63,15 +70,15 @@ export function ReturnListPage() {
                 item.userRef.toLowerCase().includes(normalized);
             return matchesStatus && matchesKeyword;
         });
-    }, [status, keyword]);
+    }, [status, keyword, returns]);
 
     const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
     const currentPage = Math.min(page, totalPages);
     const start = (currentPage - 1) * PAGE_SIZE;
     const visible = rows.slice(start, start + PAGE_SIZE);
 
-    const pending = MOCK_RETURNS.filter((item) => item.status === 'REVIEW_PENDING').length;
-    const today = MOCK_RETURNS.filter((item) => item.attemptedAt.startsWith('2026-07-24')).length;
+    const pending = returns.filter((item) => item.status === 'REVIEW_PENDING').length;
+    const today = returns.filter((item) => item.attemptedAt.startsWith('2026-07-24')).length;
 
     const patch = (next: Record<string, string>) => {
         const params = new URLSearchParams(searchParams);
@@ -163,6 +170,10 @@ export function ReturnListPage() {
                             </span>
                         </div>
                     ))
+                ) : query.isPending ? (
+                    <LoadingState />
+                ) : query.isError ? (
+                    <ErrorState error={query.error} onRetry={() => query.refetch()} />
                 ) : (
                     <div className="flex h-[200px] items-center justify-center text-[13px] font-medium text-brand-muted">
                         조건에 맞는 반납이 없습니다.

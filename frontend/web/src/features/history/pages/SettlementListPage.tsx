@@ -8,7 +8,7 @@ import {
     ListFooter,
     StatStrip,
 } from '@/features/history/components/HistoryShell';
-import { HISTORY_SYNCED_AT, MOCK_SETTLEMENTS } from '@/features/history/mocks/history';
+import { HISTORY_SYNCED_AT } from '@/features/history/mocks/history';
 import {
     formatWon,
     outstandingOf,
@@ -19,6 +19,8 @@ import {
     type SettlementStatus,
 } from '@/features/history/types';
 import { Badge } from '@/shared/components/Badge';
+import { useSettlements } from '@/features/history/hooks/useHistory';
+import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
 import { Pagination } from '@/shared/components/Pagination';
 import type { FilterOption } from '@/shared/components/FilterSelect';
@@ -51,6 +53,11 @@ const PAGE_SIZE = 6;
 const COLS = 'grid-cols-[153px_124px_144px_279px_164px_1fr]';
 
 export function SettlementListPage() {
+    // 확정 API 가 없어 목업이 뒤에 있습니다. 화면은 그 사실을 모릅니다.
+    const query = useSettlements();
+    // ?? [] 를 그대로 두면 매 렌더 새 배열이라 아래 useMemo 가 매번 다시 돕니다.
+    const settlements = useMemo(() => query.data ?? [], [query.data]);
+
     const [searchParams, setSearchParams] = useSearchParams();
     const period = searchParams.get('period') ?? '30D';
     const status = (searchParams.get('status') ?? 'ALL') as StatusFilter;
@@ -59,7 +66,7 @@ export function SettlementListPage() {
 
     const rows = useMemo(() => {
         const normalized = keyword.toLowerCase();
-        return MOCK_SETTLEMENTS.filter((item) => {
+        return settlements.filter((item) => {
             const matchesStatus = status === 'ALL' || item.status === status;
             const matchesKeyword =
                 !normalized ||
@@ -67,7 +74,7 @@ export function SettlementListPage() {
                 item.userRef.toLowerCase().includes(normalized);
             return matchesStatus && matchesKeyword;
         });
-    }, [status, keyword]);
+    }, [status, keyword, settlements]);
 
     const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
     const currentPage = Math.min(page, totalPages);
@@ -75,15 +82,15 @@ export function SettlementListPage() {
     const visible = rows.slice(start, start + PAGE_SIZE);
 
     const summary = useMemo(() => {
-        const pending = MOCK_SETTLEMENTS.filter((item) => item.status === 'PENDING');
-        const paid = MOCK_SETTLEMENTS.filter((item) => item.status === 'PAID');
+        const pending = settlements.filter((item) => item.status === 'PENDING');
+        const paid = settlements.filter((item) => item.status === 'PAID');
         return {
             pendingCount: pending.length,
             pendingAmount: pending.reduce((sum, item) => sum + outstandingOf(item), 0),
             paidCount: paid.length,
             paidAmount: paid.reduce((sum, item) => sum + item.paidAmount, 0),
         };
-    }, []);
+    }, [settlements]);
 
     const patch = (next: Record<string, string>) => {
         const params = new URLSearchParams(searchParams);
@@ -185,6 +192,10 @@ export function SettlementListPage() {
                             </span>
                         </div>
                     ))
+                ) : query.isPending ? (
+                    <LoadingState />
+                ) : query.isError ? (
+                    <ErrorState error={query.error} onRetry={() => query.refetch()} />
                 ) : (
                     <div className="flex h-[200px] items-center justify-center text-[13px] font-medium text-brand-muted">
                         조건에 맞는 정산이 없습니다.

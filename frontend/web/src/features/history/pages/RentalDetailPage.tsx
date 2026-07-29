@@ -9,9 +9,11 @@ import {
     Timeline,
     ValueLink,
 } from '@/features/history/components/DetailShell';
-import { findRental, findReturn, findSettlement } from '@/features/history/mocks/history';
+import { findReturn, findSettlement } from '@/features/history/mocks/history';
 import { RENTAL_STATUS_LABEL, RENTAL_STATUS_TONE } from '@/features/history/types';
 import { Badge } from '@/shared/components/Badge';
+import { useRental } from '@/features/history/hooks/useHistory';
+import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
 
 /**
@@ -23,7 +25,11 @@ import { PageBar } from '@/shared/components/PageBar';
  */
 export function RentalDetailPage() {
     const { rentalId } = useParams();
-    const rental = findRental(rentalId);
+    const query = useRental(rentalId);
+    const rental = query.data;
+
+    if (query.isPending) return <LoadingState />;
+    if (query.isError) return <ErrorState error={query.error} onRetry={() => query.refetch()} />;
 
     if (!rental) {
         return (
