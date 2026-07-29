@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
 
@@ -85,9 +85,43 @@ export function TBody({ children }: { children: ReactNode }) {
     return <tbody className="[&>tr:last-child>td]:border-b-0">{children}</tbody>;
 }
 
-export function Tr({ children, accent }: { children: ReactNode; accent?: RowAccent }) {
+/**
+ * 행 높이는 화면마다 달라서(대여소 53px, 슬롯 47.75px) className 으로 덮어씁니다.
+ *
+ * onClick 을 주면 행 전체가 눌립니다. 다만 이건 마우스 편의일 뿐이라
+ * 키보드·스크린리더용 링크는 행 안에 그대로 두어야 합니다. tr 자체를 탭 대상으로
+ * 만들면 같은 목적지가 두 번 잡혀서 오히려 이동이 번거로워집니다.
+ */
+export function Tr({
+    children,
+    accent,
+    className,
+    onClick,
+}: {
+    children: ReactNode;
+    accent?: RowAccent;
+    className?: string;
+    onClick?: () => void;
+}) {
+    const handleClick = onClick
+        ? (event: MouseEvent<HTMLTableRowElement>) => {
+              // 행 안의 링크·버튼은 자기 동작을 그대로 합니다.
+              if ((event.target as HTMLElement).closest('a,button,input,select')) return;
+              // 텍스트를 드래그해 고른 것뿐이면 이동하지 않습니다.
+              if (window.getSelection()?.toString()) return;
+              onClick();
+          }
+        : undefined;
+
     return (
-        <tr className="h-[53px]">
+        <tr
+            className={cn(
+                'h-[53px]',
+                onClick && 'cursor-pointer transition-colors hover:bg-brand-surface',
+                className,
+            )}
+            onClick={handleClick}
+        >
             <SpacerCell accent={accent} />
             {children}
             <SpacerCell />
