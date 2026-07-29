@@ -7,7 +7,7 @@ import type {
 import { MOCK_NS, mockUuid } from '@/features/stations/mocks/ids';
 import { buildSlots, inspectionStateOf, slotSeq } from '@/features/stations/mocks/slots';
 import { decisionInputOf, isInspectionDecided } from '@/features/stations/mocks/slotOverrides';
-import { MOCK_STATIONS } from '@/features/stations/mocks/stations';
+import { listStations } from '@/features/stations/mocks/stations';
 import type { SlotSummary, Station } from '@/features/stations/types';
 
 /**
@@ -63,7 +63,7 @@ interface InspectionSeed {
 function buildInspectionSeeds(): InspectionSeed[] {
     const rows: InspectionSeed[] = [];
 
-    MOCK_STATIONS.forEach((station, stationIndex) => {
+    listStations().forEach((station, stationIndex) => {
         buildSlots(station).forEach((slot, slotIndex) => {
             const seeded = inspectionStateOf(station, slot.slotNumber);
             if (!seeded) return;

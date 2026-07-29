@@ -5,7 +5,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { DeviceBadge } from '@/features/stations/components/DeviceBadge';
 import { SlotTable } from '@/features/stations/components/SlotTable';
 import { useStation, useStationSlots } from '@/features/stations/hooks/useStations';
-import { SLOT_PAGE_SIZE, STATION_SYNCED_AT } from '@/features/stations/mocks/slots';
+import { STATION_SYNCED_AT } from '@/features/stations/mocks/slots';
 import {
     deriveSlotDisplayStatus,
     formatSlotLabel,
@@ -13,7 +13,6 @@ import {
 } from '@/features/stations/types';
 import { FilterSelect, type FilterOption } from '@/shared/components/FilterSelect';
 import { PageBar } from '@/shared/components/PageBar';
-import { Pagination } from '@/shared/components/Pagination';
 
 type StatusFilter =
     'ALL' | Extract<SlotDisplayStatus, 'AVAILABLE' | 'EMPTY' | 'ADMIN_REVIEW' | 'DAMAGED'>;
@@ -36,11 +35,6 @@ function parseStatus(value: string | null): StatusFilter {
         : 'ALL';
 }
 
-function parsePage(value: string | null): number {
-    const page = Number(value);
-    return Number.isInteger(page) && page > 0 ? page : 1;
-}
-
 export function StationDetailPage() {
     const { stationId } = useParams();
     // 라우트 파라미터는 UUID 입니다 ('ST-003' 같은 표시 코드가 아닙니다).
@@ -53,7 +47,6 @@ export function StationDetailPage() {
     const [searchParams, setSearchParams] = useSearchParams();
     const keyword = searchParams.get('q')?.trim() ?? '';
     const status = parseStatus(searchParams.get('status'));
-    const page = parsePage(searchParams.get('page'));
 
     const [keywordInput, setKeywordInput] = useState(keyword);
     const [statusInput, setStatusInput] = useState(status);
@@ -99,22 +92,22 @@ export function StationDetailPage() {
         );
     }
 
-    const totalPages = Math.max(1, Math.ceil(slots.length / SLOT_PAGE_SIZE));
-    const currentPage = Math.min(page, totalPages);
-    const start = (currentPage - 1) * SLOT_PAGE_SIZE;
-    const rows = slots.slice(start, start + SLOT_PAGE_SIZE);
+    /*
+     * 페이지를 나누지 않습니다. 대여소당 SLOT 은 제품 구조상 3~5개이고
+     * `ADMIN-SLOT-001` 도 "P0 목록은 소규모 고정 구성으로 cursor를 사용하지 않는다"고 합니다.
+     */
+    const rows = slots;
 
-    const applyQuery = (next: { keyword: string; status: StatusFilter; page: number }) => {
+    const applyQuery = (next: { keyword: string; status: StatusFilter }) => {
         const params = new URLSearchParams();
         if (next.keyword) params.set('q', next.keyword);
         if (next.status !== 'ALL') params.set('status', next.status);
-        if (next.page > 1) params.set('page', String(next.page));
         setSearchParams(params);
     };
 
     const handleSubmit = (event: FormEvent) => {
         event.preventDefault();
-        applyQuery({ keyword: keywordInput.trim(), status: statusInput, page: 1 });
+        applyQuery({ keyword: keywordInput.trim(), status: statusInput });
     };
 
     return (
@@ -178,16 +171,9 @@ export function StationDetailPage() {
                 </div>
             )}
 
-            <div className="mt-[22px] flex items-center justify-between pr-2">
-                <p className="text-xs font-semibold text-brand-body">
-                    전체 {slots.length}개 슬롯 · {start + 1}–{start + rows.length} 표시
-                </p>
-                <Pagination
-                    page={currentPage}
-                    totalPages={totalPages}
-                    onChange={(next) => applyQuery({ keyword, status, page: next })}
-                />
-            </div>
+            <p className="mt-[22px] text-xs font-semibold text-brand-body">
+                전체 {rows.length}개 슬롯
+            </p>
         </div>
     );
 }

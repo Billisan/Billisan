@@ -1,6 +1,5 @@
 import { MOCK_NS, mockUuid } from '@/features/stations/mocks/ids';
 import { applyOverride } from '@/features/stations/mocks/slotOverrides';
-import { MOCK_STATIONS } from '@/features/stations/mocks/stations';
 import type {
     LockStatus,
     SlotItemCondition,
@@ -15,6 +14,11 @@ import type {
  *
  * 응답에 있는 필드만 만듭니다: `slotId, slotNumber, occupancyStatus, itemCondition,
  * serviceStatus, lockStatus, updatedAt`. 활성 대여도 검수 요약도 목록에는 없습니다.
+ *
+ * **슬롯 개수는 대여소의 `slotCount` 하나로 정합니다.** ERD 가 "SLOT 행 수와 Station 설정으로
+ * 수량을 결정하고 애플리케이션·DDL에 1 또는 3~5를 상수로 고정하지 않는다"고 했습니다.
+ * 그래서 여기에는 개수를 박지 않고 대여소 설정을 그대로 따릅니다. 시연 구성이 바뀌면
+ * `mocks/stations.ts` 의 `slotCount` 만 고치면 됩니다.
  *
  * TODO: ADMIN-SLOT-001 연동 시 이 파일을 지우세요.
  */
@@ -104,38 +108,36 @@ const PRESET: Record<SlotPreset, PresetShape> = {
 };
 
 /**
- * 대여소 하나의 슬롯 구성.
+ * 상태를 돌려 가며 배치하는 순환 패턴.
  *
- * 상위 기획 §4.1: "제품·DB·API·화면은 대여소당 3~5 SLOT을 지원하고 실제 시연 장비는 물리 SLOT 1개".
- * 그래서 대여소마다 3~5개만 만듭니다. `ADMIN-SLOT-001` 도 "P0 목록은 소규모 고정 구성으로
- * cursor를 사용하지 않는다"고 못 박았습니다.
+ * 대여소마다 시작 위치가 달라서 같은 구성이 반복되지 않습니다. 개수가 3개든 5개든
+ * 20개든 이 패턴으로 채워지므로, 슬롯 수를 바꿔도 코드를 손댈 필요가 없습니다.
  */
-const LAYOUTS: SlotPreset[][] = [
-    ['AVAILABLE', 'LENT_OUT', 'AVAILABLE'],
-    ['AVAILABLE', 'ADMIN_REVIEW', 'AVAILABLE', 'EMPTY'],
-    ['AVAILABLE', 'ADMIN_REVIEW', 'DAMAGED', 'LENT_OUT', 'AVAILABLE'],
-    ['AVAILABLE', 'DAMAGED', 'REVIEWED_NORMAL', 'AVAILABLE'],
-    ['AVAILABLE', 'AVAILABLE', 'EMPTY'],
-    ['REVIEWED_NORMAL', 'AVAILABLE', 'DAMAGED', 'AVAILABLE'],
-    ['AVAILABLE', 'LENT_OUT', 'AVAILABLE', 'ADMIN_REVIEW', 'EMPTY'],
-    ['EMPTY', 'EMPTY', 'EMPTY'],
+const PATTERN: SlotPreset[] = [
+    'AVAILABLE',
+    'ADMIN_REVIEW',
+    'AVAILABLE',
+    'DAMAGED',
+    'LENT_OUT',
+    'AVAILABLE',
+    'REVIEWED_NORMAL',
+    'EMPTY',
 ];
 
 const UPDATED_DATE = '2026-07-24';
 
-/** 대여소 순번. 슬롯·검수 ID 가 전역에서 겹치지 않도록 자리를 가릅니다. */
-function stationIndexOf(station: Station): number {
-    return MOCK_STATIONS.findIndex((item) => item.stationId === station.stationId);
+/** 대여소 순번. UUID 꼬리에서 뽑습니다 — 대여소 목록을 import 하면 순환 참조가 됩니다. */
+function stationSeq(station: Station): number {
+    return Number(station.stationId.slice(-4)) || 1;
 }
 
-export function slotPresetsOf(station: Station): SlotPreset[] {
-    const index = stationIndexOf(station);
-    return LAYOUTS[index >= 0 ? index % LAYOUTS.length : 0];
+function presetOf(station: Station, slotNumber: number): SlotPreset {
+    return PATTERN[(stationSeq(station) + slotNumber - 1) % PATTERN.length];
 }
 
-/** 슬롯 번호 → 전역 목업 순번 */
+/** 슬롯 번호 → 전역 목업 순번. 슬롯·검수 ID 가 대여소끼리 겹치지 않게 자리를 가릅니다. */
 export function slotSeq(station: Station, slotNumber: number): number {
-    return (stationIndexOf(station) + 1) * 100 + slotNumber;
+    return stationSeq(station) * 100 + slotNumber;
 }
 
 /** 이 슬롯에 걸린 검수 상태. 목록 응답에는 없고 상세·검수 API 에서만 씁니다. */
@@ -143,13 +145,13 @@ export function inspectionStateOf(
     station: Station,
     slotNumber: number,
 ): 'PENDING' | 'DECIDED' | null {
-    return PRESET[slotPresetsOf(station)[slotNumber - 1]]?.inspection ?? null;
+    return PRESET[presetOf(station, slotNumber)].inspection;
 }
 
 export function buildSlots(station: Station): SlotSummary[] {
-    return slotPresetsOf(station).map((preset, index) => {
-        const shape = PRESET[preset];
+    return Array.from({ length: station.slotCount }, (_, index) => {
         const slotNumber = index + 1;
+        const shape = PRESET[presetOf(station, slotNumber)];
 
         // 관리자가 방금 바꾼 슬롯이면 그 결과로 덮어씁니다. 목업 전용이라 새로고침하면 사라집니다.
         return applyOverride({
@@ -167,11 +169,3 @@ export function buildSlots(station: Station): SlotSummary[] {
 
 /** 상세 화면 상단에 표시하는 최근 통신 시각 */
 export const STATION_SYNCED_AT = '2026-07-24 09:19';
-
-/**
- * 슬롯 목록 페이지당 행 수.
- *
- * 대여소당 3~5개뿐이라 실제로는 한 쪽에 다 들어옵니다. `ADMIN-SLOT-001` 은 cursor 도
- * 쓰지 않습니다. 값은 남겨 두되 화면에서 페이지네이션은 걷어냈습니다.
- */
-export const SLOT_PAGE_SIZE = 10;

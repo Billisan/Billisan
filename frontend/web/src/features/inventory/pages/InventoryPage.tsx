@@ -4,7 +4,6 @@ import { useSearchParams } from 'react-router-dom';
 
 import { DetailLink } from '@/features/stations/components/DetailLink';
 import { useInventory, useStationSlots } from '@/features/stations/hooks/useStations';
-import { SLOT_PAGE_SIZE } from '@/features/stations/mocks/slots';
 import { MOCK_STATIONS, STATIONS_SYNCED_AT } from '@/features/stations/mocks/stations';
 import {
     deriveSlotDisplayStatus,
@@ -17,8 +16,8 @@ import {
 } from '@/features/stations/types';
 import { Badge } from '@/shared/components/Badge';
 import { FilterSelect, type FilterOption } from '@/shared/components/FilterSelect';
+import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
-import { Pagination } from '@/shared/components/Pagination';
 import { cn } from '@/lib/utils';
 
 /**
@@ -70,18 +69,12 @@ function parseStation(value: string | null): string {
         : MOCK_STATIONS[0].stationId;
 }
 
-function parsePage(value: string | null): number {
-    const page = Number(value);
-    return Number.isInteger(page) && page > 0 ? page : 1;
-}
-
 export function InventoryPage() {
     // 확정된 조회 조건은 URL Query 에만 둡니다 (화면흐름 §6.2).
     const [searchParams, setSearchParams] = useSearchParams();
     const stationId = parseStation(searchParams.get('station'));
     const keyword = searchParams.get('q')?.trim() ?? '';
     const status = parseStatus(searchParams.get('status'));
-    const page = parsePage(searchParams.get('page'));
 
     const [stationInput, setStationInput] = useState(stationId);
     const [keywordInput, setKeywordInput] = useState(keyword);
@@ -97,8 +90,10 @@ export function InventoryPage() {
 
     // 집계 카드는 필터와 무관하게 그 대여소의 전체 재고를 셉니다 (ADMIN-INVENTORY-001).
     // 표와 다른 API 라 따로 조회합니다 — 서버가 세어 준 값을 클라이언트가 다시 세지 않습니다.
-    const { data: summary } = useInventory(stationId);
-    const { data: slotPage } = useStationSlots(stationId);
+    const inventoryQuery = useInventory(stationId);
+    const slotsQuery = useStationSlots(stationId);
+    const summary = inventoryQuery.data;
+    const slotPage = slotsQuery.data;
     const allSlots = useMemo(() => slotPage?.items ?? [], [slotPage]);
 
     const slots = useMemo(() => {
@@ -126,22 +121,14 @@ export function InventoryPage() {
         total: summary?.totalSlotCount ?? 0,
     };
 
-    const totalPages = Math.max(1, Math.ceil(slots.length / SLOT_PAGE_SIZE));
-    const currentPage = Math.min(page, totalPages);
-    const start = (currentPage - 1) * SLOT_PAGE_SIZE;
-    const rows = slots.slice(start, start + SLOT_PAGE_SIZE);
+    // 대여소당 SLOT 이 3~5개라 페이지를 나누지 않습니다 (ADMIN-SLOT-001 도 cursor 없음).
+    const rows = slots;
 
-    const applyQuery = (next: {
-        station: string;
-        keyword: string;
-        status: StatusFilter;
-        page: number;
-    }) => {
+    const applyQuery = (next: { station: string; keyword: string; status: StatusFilter }) => {
         const params = new URLSearchParams();
         if (next.station !== MOCK_STATIONS[0].stationId) params.set('station', next.station);
         if (next.keyword) params.set('q', next.keyword);
         if (next.status !== 'ALL') params.set('status', next.status);
-        if (next.page > 1) params.set('page', String(next.page));
         setSearchParams(params);
     };
 
@@ -151,7 +138,6 @@ export function InventoryPage() {
             station: stationInput,
             keyword: keywordInput.trim(),
             status: statusInput,
-            page: 1,
         });
     };
 
@@ -316,6 +302,10 @@ export function InventoryPage() {
                             </div>
                         );
                     })
+                ) : slotsQuery.isPending ? (
+                    <LoadingState />
+                ) : slotsQuery.isError ? (
+                    <ErrorState error={slotsQuery.error} onRetry={() => slotsQuery.refetch()} />
                 ) : (
                     <div className="flex h-[200px] items-center justify-center text-[13px] font-medium text-brand-muted">
                         조건에 맞는 슬롯이 없습니다.
@@ -323,18 +313,9 @@ export function InventoryPage() {
                 )}
             </div>
 
-            <div className="mt-[22px] flex items-center justify-between pr-2">
-                <p className="text-xs font-semibold text-brand-body">
-                    전체 {slots.length}개 슬롯 · {start + 1}–{start + rows.length} 표시
-                </p>
-                <Pagination
-                    page={currentPage}
-                    totalPages={totalPages}
-                    onChange={(next) =>
-                        applyQuery({ station: stationId, keyword, status, page: next })
-                    }
-                />
-            </div>
+            <p className="mt-[22px] text-xs font-semibold text-brand-body">
+                전체 {rows.length}개 슬롯
+            </p>
         </div>
     );
 }

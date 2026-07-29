@@ -37,6 +37,14 @@ export interface Station {
      */
     deviceStatus: DeviceStatus;
 
+    /**
+     * 이 대여소에 설치된 SLOT 행 수.
+     *
+     * ERD: "SLOT 행 수와 Station 설정으로 수량을 결정하고 애플리케이션·DDL에 1 또는 3~5를
+     * 상수로 고정하지 않는다." 그래서 개수를 코드에 박지 않고 대여소마다 들고 있습니다.
+     */
+    slotCount: number;
+
     /*
      * 아래 집계는 STATION 컬럼이 아니라 `ADMIN-INVENTORY-001` 이 SLOT 행을 세어 주는 값입니다
      * (ERD §6.1: "재고 수량은 별도 저장하지 않고 대여 가능한 슬롯 수를 조회 시 계산한다").

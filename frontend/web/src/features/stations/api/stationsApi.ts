@@ -5,7 +5,7 @@ import type { SlotStatusChange } from '@/features/stations/components/SlotStatus
 import { MOCK_NS, mockUuid } from '@/features/stations/mocks/ids';
 import { buildSlots, inspectionStateOf, slotSeq } from '@/features/stations/mocks/slots';
 import { applyOverride, isInspectionDecided } from '@/features/stations/mocks/slotOverrides';
-import { findStation, MOCK_STATIONS } from '@/features/stations/mocks/stations';
+import { findStation, listStations } from '@/features/stations/mocks/stations';
 import type { SlotDetail, SlotSummary, Station } from '@/features/stations/types';
 
 /**
@@ -99,7 +99,7 @@ export const stationsApi = {
      * 대시보드·대여소 관리 화면은 P1 이라 계약이 비구체화 상태입니다.
      * TODO: 대여소 목록 API 가 계약에 들어오면 여기서 http 를 호출하세요.
      */
-    list: async (): Promise<Station[]> => delay(MOCK_STATIONS),
+    list: async (): Promise<Station[]> => delay(listStations()),
 
     /** 대여소 하나. 위와 같은 이유로 목업입니다. */
     detail: async (stationId: string): Promise<Station | undefined> =>
@@ -171,7 +171,7 @@ export const stationsApi = {
             return data;
         }
 
-        for (const station of MOCK_STATIONS) {
+        for (const station of listStations()) {
             const found = buildSlots(station).find((slot) => slot.slotId === slotId);
             if (found) return delay(applyOverride(toDetail(station, found)));
         }
