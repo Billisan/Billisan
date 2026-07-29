@@ -23,6 +23,7 @@ import { InspectLink } from '@/features/stations/components/InspectLink';
 import { DataTable, TBody, TableCard, Td, Th, THead, Tr } from '@/shared/components/DataTable';
 import { FilterSelect, type FilterOption } from '@/shared/components/FilterSelect';
 import { PageBar } from '@/shared/components/PageBar';
+import { RefId } from '@/shared/components/RefId';
 import { PageTitle } from '@/shared/components/PageTitle';
 
 /**
@@ -252,8 +253,13 @@ export function InspectionListPage() {
                                                 {item.slotNumber}번 슬롯
                                             </span>
                                         </Td>
-                                        <Td className="font-bold tabular-nums text-brand-ink">
-                                            {item.returnAttemptId}
+                                        {/*
+                                         * 36자 UUID 를 그대로 깔면 열 하나를 통째로 잡아먹고
+                                         * 옆 값들이 밀립니다. 다른 화면과 같이 축약해서 보여 주고,
+                                         * 전체 값은 마우스오버·복사로 꺼냅니다 (화면흐름 §12).
+                                         */}
+                                        <Td>
+                                            <RefId id={item.returnAttemptId} label="반납 시도 ID" />
                                         </Td>
                                         <Td align="center">
                                             <AiResultBadge result={item.aiResult} />

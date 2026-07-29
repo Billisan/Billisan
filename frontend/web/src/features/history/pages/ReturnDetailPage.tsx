@@ -43,7 +43,8 @@ export function ReturnDetailPage() {
             <div>
                 <PageBar breadcrumb={[{ label: '이력', to: '/history/returns' }]} />
                 <div className="flex h-[200px] items-center justify-center rounded-lg bg-white text-[13px] font-medium text-brand-muted">
-                    존재하지 않는 반납 시도입니다. ({returnAttemptId})
+                    존재하지 않는 반납 시도입니다. (
+                    {returnAttemptId ? shortId(returnAttemptId) : '-'})
                 </div>
             </div>
         );
@@ -55,7 +56,7 @@ export function ReturnDetailPage() {
     return (
         <div>
             <PageBar
-                className="mb-6"
+                className="mb-[18px]"
                 breadcrumb={[
                     { label: '이력', to: '/history/returns' },
                     { label: '반납 이력', to: '/history/returns' },
@@ -101,7 +102,9 @@ export function ReturnDetailPage() {
                         )}
                     </InfoRow>
                     <InfoRow label="반납 사용자">
-                        <ValueLink to={`/users/${item.userRef}/history`}>{item.userRef}</ValueLink>
+                        <ValueLink to={`/users/${item.userId}/history`}>
+                            {shortId(item.userId)}
+                        </ValueLink>
                     </InfoRow>
                     <InfoRow label="연결 대여">
                         <ValueLink to={`/history/rentals/${item.rentalId}`}>

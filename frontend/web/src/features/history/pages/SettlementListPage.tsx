@@ -1,3 +1,4 @@
+import { shortId } from '@/shared/lib/shortId';
 import { useMemo, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
@@ -24,6 +25,7 @@ import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
 import { PageTitle } from '@/shared/components/PageTitle';
 import { RefId } from '@/shared/components/RefId';
+import { ROW_CLICKABLE, useRowNavigate } from '@/shared/hooks/useRowNavigate';
 import { Pagination } from '@/shared/components/Pagination';
 import type { FilterOption } from '@/shared/components/FilterSelect';
 import { cn } from '@/lib/utils';
@@ -61,6 +63,8 @@ export function SettlementListPage() {
     const settlements = useMemo(() => query.data ?? [], [query.data]);
 
     const [searchParams, setSearchParams] = useSearchParams();
+    // 행 아무 데나 눌러도 상세로 (재고·대여소 표와 같은 규칙)
+    const rowNavigate = useRowNavigate();
     const period = searchParams.get('period') ?? '30D';
     const status = (searchParams.get('status') ?? 'ALL') as StatusFilter;
     const keyword = searchParams.get('q')?.trim() ?? '';
@@ -73,7 +77,7 @@ export function SettlementListPage() {
             const matchesKeyword =
                 !normalized ||
                 item.settlementId.toLowerCase().includes(normalized) ||
-                item.userRef.toLowerCase().includes(normalized);
+                item.userId.toLowerCase().includes(normalized);
             return matchesStatus && matchesKeyword;
         });
     }, [status, keyword, settlements]);
@@ -110,7 +114,7 @@ export function SettlementListPage() {
 
     return (
         <div>
-            <PageBar className="mb-6" meta={`${HISTORY_SYNCED_AT} 기준`} />
+            <PageBar className="mb-[18px]" meta={`${HISTORY_SYNCED_AT} 기준`} />
             {/* 탭이 제목 역할을 해서 화면에는 안 보이지만, 제목은 있어야 합니다. */}
             <PageTitle visuallyHidden>정산 이력</PageTitle>
             <HistoryTabs />
@@ -162,8 +166,10 @@ export function SettlementListPage() {
                     visible.map((item, index) => (
                         <div
                             key={item.settlementId}
+                            onClick={rowNavigate(`/history/settlements/${item.settlementId}`)}
                             className={cn(
                                 'relative grid h-[51px] items-center px-[14px] text-[12.5px]',
+                                ROW_CLICKABLE,
                                 COLS,
                             )}
                         >
@@ -176,7 +182,9 @@ export function SettlementListPage() {
                             <span className="font-medium tabular-nums text-brand-ink-soft">
                                 {item.createdAt.slice(5)}
                             </span>
-                            <span className="font-medium text-brand-ink-soft">{item.userRef}</span>
+                            <span className="font-medium text-brand-ink-soft">
+                                {shortId(item.userId)}
+                            </span>
                             <RefId id={item.settlementId} label="정산 ID" />
                             <span className="flex items-center gap-[10px]">
                                 <Badge tone={SETTLEMENT_REASON_TONE[item.reason]}>

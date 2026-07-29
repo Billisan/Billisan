@@ -83,3 +83,24 @@ export function slotLabelOf(code: string): string {
 
     return formatSlotLabel(station.stationCode, slots[index].slotNumber);
 }
+
+/**
+ * `'u_8f3a'` → 사용자 UUID.
+ *
+ * 목업이 쓰던 `u_8f3a` 형식은 **어느 계약 문서에도 없습니다** — 12-R·ERD·화면흐름 셋 다
+ * 검색해서 한 번도 안 나옵니다. 제가 지어낸 표기였습니다. 실제 값은 ERD 7장의
+ * `USER_ACCOUNT.user_id CHAR(36)` UUID 이고, 학번·`login_id` 에서 파생되지 않는
+ * "가명 식별용 불투명 참조"입니다.
+ *
+ * 이름도 `userRef` 가 아니라 `userId` 입니다. 12-R 에서 `userRef` 는 딱 두 번 나오는데
+ * 둘 다 "Kiosk 응답에 포함·표시하지 않는다"는 **금지 문장**이고, ERD 의 `user_ref` 는
+ * PostgreSQL `FACE_PROFILE` 쪽 컬럼입니다. 관리자 화면 문서(화면흐름 §8.2·§9.2·§12)는
+ * 일관되게 `userId` 라고 씁니다.
+ *
+ * 화면에 그대로 다 깔지는 않습니다. 화면흐름 §12 가 "내부 userId 의 **축약 표시**" 라고
+ * 정해서, 다른 ID 와 같은 `RefId`(앞 8자 + `…`)로 보여 줍니다.
+ */
+export function userUuid(code: string): string {
+    // 'u_8f3a' 뒤 16진 4자리를 seq 로 씁니다. 같은 사람이 늘 같은 UUID 를 갖습니다.
+    return mockUuid(MOCK_NS.user, parseInt(code.replace(/^u_/, ''), 16) || 0);
+}

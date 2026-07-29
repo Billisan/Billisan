@@ -126,9 +126,20 @@ const PATTERN: SlotPreset[] = [
 
 const UPDATED_DATE = '2026-07-24';
 
-/** 대여소 순번. UUID 꼬리에서 뽑습니다 — 대여소 목록을 import 하면 순환 참조가 됩니다. */
+/**
+ * 대여소 순번.
+ *
+ * 표시 코드(`ST-003`)에서 뽑습니다. 대여소 목록을 import 하면 순환 참조라 못 쓰고,
+ * **UUID 에서 뽑아서도 안 됩니다.** 예전에 `stationId.slice(-4)` 로 꼬리 숫자를 읽었는데,
+ * 목업 UUID 가 `…-000000000003` 모양일 때만 통하는 방식이었습니다. 실제 UUID 는 전 구간이
+ * 무작위라 꼬리가 `61f3` 같은 16진값이고, `Number()` 가 `NaN` 을 내면서 모든 대여소가
+ * 순번 1 로 뭉갰습니다. 그러면 대여소가 달라도 `1번 슬롯` 의 슬롯·검수 ID 가 전부 같아집니다.
+ *
+ * UUID 는 불투명한 식별자입니다. 값에서 의미를 뽑아내면 안 됩니다.
+ * `formatSlotLabel` 도 같은 이유로 `stationCode` 를 씁니다.
+ */
 function stationSeq(station: Station): number {
-    return Number(station.stationId.slice(-4)) || 1;
+    return Number(station.stationCode.replace(/\D/g, '')) || 1;
 }
 
 function presetOf(station: Station, slotNumber: number): SlotPreset {

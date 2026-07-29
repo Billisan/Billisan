@@ -67,13 +67,13 @@ export const inspectionsApi = {
     },
 
     /** ADMIN-INSPECTION-002 — `GET /inspections/{inspectionId}` */
-    detail: async (inspectionId: string): Promise<InspectionDetail | undefined> => {
+    detail: async (inspectionId: string): Promise<InspectionDetail | null> => {
         if (!env.useMockData) {
             const { data } = await http.get<InspectionDetail>(`/inspections/${inspectionId}`);
             return data;
         }
 
-        return delay(findInspection(inspectionId));
+        return delay(findInspection(inspectionId) ?? null);
     },
 
     /**

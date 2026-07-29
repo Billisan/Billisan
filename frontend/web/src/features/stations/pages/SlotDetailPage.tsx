@@ -358,17 +358,26 @@ function SlotHistoryTable({ entries }: { entries: SlotHistoryEntry[] }) {
                             <Td className="tabular-nums">{formatUpdatedAt(entry.at)}</Td>
                             <Td className="font-bold text-brand-ink">{entry.kind}</Td>
                             <Td align="center">
-                                <span className="flex items-center justify-center gap-[12px]">
+                                {/*
+                                 * 화살표를 열 한가운데 **고정**합니다.
+                                 *
+                                 * flex 로 나란히 두면 배지 글자 수에 따라('빈 슬롯' vs
+                                 * '관리자 확인') 화살표 위치가 행마다 달라져서 지그재그로
+                                 * 보입니다. 양옆을 `1fr` 로 잡고 가운데를 `auto` 로 두면
+                                 * 화살표 x 좌표가 어느 행이든 같습니다.
+                                 * 왼쪽은 오른쪽 끝에, 오른쪽은 왼쪽 끝에 붙여 화살표를 향하게 합니다.
+                                 */}
+                                <span className="grid grid-cols-[1fr_auto_1fr] items-center gap-[12px]">
                                     <Badge
                                         tone={SLOT_DISPLAY_TONE[entry.from]}
-                                        className="whitespace-nowrap"
+                                        className="justify-self-end whitespace-nowrap"
                                     >
                                         {slotStatusText(entry.from)}
                                     </Badge>
                                     <ArrowRight />
                                     <Badge
                                         tone={SLOT_DISPLAY_TONE[entry.to]}
-                                        className="whitespace-nowrap"
+                                        className="justify-self-start whitespace-nowrap"
                                     >
                                         {slotStatusText(entry.to)}
                                     </Badge>

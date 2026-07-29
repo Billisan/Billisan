@@ -60,7 +60,7 @@ export function SettlementDetailPage() {
     return (
         <div>
             <PageBar
-                className="mb-6"
+                className="mb-[18px]"
                 breadcrumb={[
                     { label: '이력', to: '/history/settlements' },
                     { label: '정산 이력', to: '/history/settlements' },
@@ -113,7 +113,9 @@ export function SettlementDetailPage() {
 
                 <InfoCard title="대상 · 근거">
                     <InfoRow label="사용자">
-                        <ValueLink to={`/users/${item.userRef}/history`}>{item.userRef}</ValueLink>
+                        <ValueLink to={`/users/${item.userId}/history`}>
+                            {shortId(item.userId)}
+                        </ValueLink>
                     </InfoRow>
                     <InfoRow label="최종 판정">
                         {item.reason === 'DAMAGE' ? (

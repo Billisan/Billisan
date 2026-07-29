@@ -1,3 +1,4 @@
+import { shortId } from '@/shared/lib/shortId';
 import { useParams } from 'react-router-dom';
 
 import { useUserHistory } from '@/features/history/hooks/useHistory';
@@ -8,6 +9,7 @@ import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
 import { PageTitle } from '@/shared/components/PageTitle';
 import { RefId } from '@/shared/components/RefId';
+import { ROW_CLICKABLE, useRowNavigate } from '@/shared/hooks/useRowNavigate';
 import { cn } from '@/lib/utils';
 
 /**
@@ -32,6 +34,8 @@ const COLS = 'grid-cols-[162px_115px_153px_386px_1fr]';
 export function UserHistoryPage() {
     const { userId } = useParams();
     const query = useUserHistory(userId);
+    // 행 아무 데나 눌러도 연결된 상세로
+    const rowNavigate = useRowNavigate();
     const user = query.data;
 
     if (query.isPending) return <LoadingState />;
@@ -47,8 +51,13 @@ export function UserHistoryPage() {
     return (
         <div>
             <PageBar
-                className="mb-6"
-                breadcrumb={[{ label: '사용자 이력' }, { label: userId ?? user.userRef }]}
+                className="mb-[18px]"
+                breadcrumb={[{ label: '사용자 이력' }, { label: shortId(userId ?? user.userId) }]}
+                /*
+                 * 사용자 목록 화면이 없어서 빵부스러기에 걸 링크가 없습니다. 이 화면은
+                 * 대여·반납 상세에서만 들어오므로, 링크로 바로 들어온 사람은 이력 쪽으로 보냅니다.
+                 */
+                backTo="/history/rentals"
                 meta={`${HISTORY_SYNCED_AT} 기준`}
             />
 
@@ -60,7 +69,7 @@ export function UserHistoryPage() {
                     u
                 </span>
                 <PageTitle className="ml-[14px] !text-[17px]" documentTitle="사용자 이력">
-                    {userId ?? user.userRef}
+                    {shortId(userId ?? user.userId)}
                 </PageTitle>
                 <span className="ml-[10px] text-[11.5px] font-medium text-brand-muted">
                     내부 식별자 축약 표시
@@ -103,8 +112,10 @@ export function UserHistoryPage() {
                 {user.timeline.map((entry, index) => (
                     <div
                         key={`${entry.kind}-${entry.linkId}`}
+                        onClick={rowNavigate(entry.to)}
                         className={cn(
                             'relative grid h-[57px] items-center px-[14px] text-[12.5px]',
+                            ROW_CLICKABLE,
                             COLS,
                         )}
                     >

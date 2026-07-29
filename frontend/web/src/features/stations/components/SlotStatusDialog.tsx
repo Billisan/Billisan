@@ -4,12 +4,15 @@ import { useEffect, useState } from 'react';
 import {
     deriveSlotDisplayStatus,
     SLOT_DISPLAY_TONE,
+    slotStatusHint,
+    slotStatusText,
     type SlotSummary,
     type SlotDisplayStatus,
     type SlotTargetItemCondition,
     type SlotServiceStatus,
 } from '@/features/stations/types';
 import { Badge } from '@/shared/components/Badge';
+import { SLOT_DISPLAY_LABEL } from '@/shared/constants/statusLabels';
 import { useModalA11y } from '@/shared/hooks/useModalA11y';
 import { cn } from '@/lib/utils';
 
@@ -39,13 +42,19 @@ interface Choice {
     display: SlotDisplayStatus;
     desc: string;
     /**
-     * 슬롯에 우산이 들어 있어야만 고를 수 있는 선택지인지.
+     * 이 목표 상태가 전제하는 실물 — 우산이 있어야(`present`) / 없어야(`absent`) 말이 되는지.
+     * 어느 쪽이든 성립하면 `either` 입니다.
      *
-     * `occupancyStatus = EMPTY` 면 `itemCondition = null` 이어야 합니다(API명세 §3.1).
-     * 대여 중·빈 슬롯은 우산이 없으므로 우산 품질을 지정하는 선택지를 막습니다.
-     * 화면흐름 §7.7 도 invalid option 은 UI 에서 비활성화하라고 합니다.
+     * **선택지를 막는 값이 아닙니다.** 계약이 정한 제약은 목표 두 축의 조합뿐이고
+     * (`AVAILABLE+(EMPTY|NORMAL)` …), 현재 상태에서 어디로 갈 수 있는지에 대한 전이표는
+     * 12-R 어디에도 없습니다. `occupancyStatus` 는 아예 "요청에서 받지 않는다" 이고,
+     * 이 API 의 기능 정의는 **"현장 확인을 근거로"** 바꾸는 것입니다. 센서 값으로 관리자를
+     * 막으면 취지와 반대가 됩니다 — 센서가 고장 나면 되돌릴 방법이 사라집니다.
+     *
+     * 그래서 막는 대신, 센서가 보는 것과 목표가 어긋날 때 `physicalStateConfirmed`
+     * ("확정 변경은 `true`") 를 요구합니다.
      */
-    requiresItem: boolean;
+    expects: 'present' | 'absent' | 'either';
 }
 
 /**
@@ -65,39 +74,40 @@ interface Choice {
 const CHOICES: Choice[] = [
     {
         id: 'available-normal',
-        label: 'AVAILABLE (사용 가능)',
+        label: SLOT_DISPLAY_LABEL.AVAILABLE,
         serviceStatus: 'AVAILABLE',
         itemCondition: 'NORMAL',
         display: 'AVAILABLE',
         desc: '정상 우산이 들어 있고 바로 대여할 수 있는 상태로 되돌립니다.',
-        requiresItem: true,
+        expects: 'present',
     },
     {
         id: 'oos-damaged',
-        label: 'DAMAGED (파손)',
+        label: SLOT_DISPLAY_LABEL.DAMAGED,
         serviceStatus: 'OUT_OF_SERVICE',
         itemCondition: 'DAMAGED',
         display: 'DAMAGED',
         desc: '파손으로 확정하고 운영에서 내립니다. 검수에서 DAMAGED 판정을 냈을 때와 같은 결과입니다.',
-        requiresItem: true,
+        expects: 'present',
     },
     {
         id: 'available-empty',
-        label: 'EMPTY (빈 슬롯)',
+        label: SLOT_DISPLAY_LABEL.EMPTY,
         serviceStatus: 'AVAILABLE',
         itemCondition: 'EMPTY',
         display: 'EMPTY',
         desc: '우산을 빼낸 상태입니다. 대여는 안 되고 반납은 받을 수 있습니다.',
-        requiresItem: false,
+        expects: 'absent',
     },
     {
         id: 'review-unknown',
-        label: 'ADMIN_REVIEW (관리자 확인)',
+        label: SLOT_DISPLAY_LABEL.ADMIN_REVIEW,
         serviceStatus: 'ADMIN_REVIEW',
         itemCondition: 'UNKNOWN',
         display: 'ADMIN_REVIEW',
         desc: '판정을 보류합니다. 검수 목록에 미처리로 남습니다.',
-        requiresItem: true,
+        // 보류는 실물이 있든 없든 성립합니다. 우산이 사라진 슬롯도 사람이 봐야 합니다.
+        expects: 'either',
     },
 ];
 
@@ -183,13 +193,23 @@ export function SlotStatusDialog({
     if (!open) return null;
 
     const choice = CHOICES.find((item) => item.id === choiceId) ?? CHOICES[0];
-    // 우산이 슬롯에 없으면 우산 품질을 지정하는 선택지는 고를 수 없습니다.
-    const hasItem = slot.occupancyStatus === 'OCCUPIED';
     const unchanged =
         choice.serviceStatus === slot.serviceStatus && choice.itemCondition === slot.itemCondition;
+
+    /*
+     * 센서가 보는 점유 상태와 고른 목표가 어긋나는지.
+     *
+     * 어긋난다고 틀린 건 아닙니다. 우산을 방금 채워 넣었는데 센서가 아직 못 읽었을 수도,
+     * 센서 자체가 고장 났을 수도 있습니다. 그래서 막지 않고 **현장 확인을 요구**합니다.
+     * 이게 `physicalStateConfirmed` 가 있는 이유이기도 합니다("확정 변경은 `true`").
+     */
+    const mismatch =
+        (choice.expects === 'present' && slot.occupancyStatus !== 'OCCUPIED') ||
+        (choice.expects === 'absent' && slot.occupancyStatus === 'OCCUPIED');
+    const needsConfirm = mismatch && !confirmed;
+
     // reasonCode 가 필수라 그것부터 봅니다. note 는 선택입니다 (12-R B-4).
-    const canSubmit =
-        !unchanged && !pending && reasonCode.trim() !== '' && (hasItem || !choice.requiresItem);
+    const canSubmit = !unchanged && !pending && reasonCode.trim() !== '' && !needsConfirm;
 
     const handleSubmit = () => {
         if (!canSubmit) return;
@@ -241,7 +261,9 @@ export function SlotStatusDialog({
 
                 <div className="flex h-[22px] items-center gap-4">
                     <span className="text-[12.5px] font-medium text-brand-body">현재 상태</span>
-                    <Badge tone={SLOT_DISPLAY_TONE[current]}>{current}</Badge>
+                    <Badge tone={SLOT_DISPLAY_TONE[current]} title={slotStatusHint(current)}>
+                        {slotStatusText(current)}
+                    </Badge>
                 </div>
 
                 <fieldset className="mt-[22px]">
@@ -252,24 +274,17 @@ export function SlotStatusDialog({
                     <div className="space-y-[12px]">
                         {CHOICES.map((item) => {
                             const active = item.id === choiceId;
-                            const blocked = item.requiresItem && !hasItem;
 
                             return (
                                 <label
                                     key={item.id}
-                                    className={cn(
-                                        'flex h-[22px] items-center gap-[12px]',
-                                        blocked
-                                            ? 'cursor-not-allowed opacity-40'
-                                            : 'cursor-pointer',
-                                    )}
+                                    className="flex h-[22px] cursor-pointer items-center gap-[12px]"
                                 >
                                     <input
                                         type="radio"
                                         name="slot-status"
                                         value={item.id}
                                         checked={active}
-                                        disabled={blocked}
                                         onChange={() => setChoiceId(item.id)}
                                         className="peer sr-only"
                                     />
@@ -287,16 +302,21 @@ export function SlotStatusDialog({
                                             <span className="size-2 rounded-full bg-brand-blue" />
                                         )}
                                     </span>
-                                    <span
+                                    {/*
+                                     * 글자만 두면 네 줄이 다 비슷해 보여서 뭘 고르는지 한눈에
+                                     * 안 들어옵니다. 표·목록에서 쓰는 것과 **같은 색 배지**를
+                                     * 그대로 씁니다 — 관리자가 표에서 보던 색과 이어집니다.
+                                     */}
+                                    <Badge
+                                        tone={SLOT_DISPLAY_TONE[item.display]}
+                                        title={slotStatusHint(item.display)}
                                         className={cn(
-                                            'text-[13px]',
-                                            active
-                                                ? 'font-bold text-brand-ink'
-                                                : 'font-medium text-brand-body',
+                                            'transition-opacity',
+                                            !active && 'opacity-70',
                                         )}
                                     >
                                         {item.label}
-                                    </span>
+                                    </Badge>
                                 </label>
                             );
                         })}
@@ -305,12 +325,21 @@ export function SlotStatusDialog({
 
                 <p className="mt-[18px] rounded-lg bg-brand-surface px-5 py-[16px] text-[12.5px] font-medium leading-[20px] text-brand-muted">
                     {choice.desc}
-                    {!hasItem && (
-                        <span className="mt-[6px] block text-brand-body">
-                            이 슬롯은 지금 비어 있어 우산 상태를 지정하는 선택지는 고를 수 없습니다.
-                        </span>
-                    )}
                 </p>
+
+                {/*
+                 * 센서와 목표가 어긋날 때만 나옵니다. 경고가 늘 떠 있으면 아무도 안 읽습니다.
+                 * 문구는 어긋난 방향에 따라 다릅니다 — 관리자가 방금 무엇을 했는지가 다르니까요.
+                 */}
+                {mismatch && (
+                    <p className="mt-[12px] rounded-lg bg-tone-amber-bg px-5 py-[14px] text-[12.5px] font-medium leading-[20px] text-tone-amber-fg">
+                        {choice.expects === 'present'
+                            ? slot.occupancyStatus === 'EMPTY'
+                                ? '센서는 이 슬롯이 비어 있다고 봅니다. 우산을 채워 넣으셨다면 아래 현장 확인을 체크해 주세요.'
+                                : '센서가 점유 상태를 읽지 못했습니다. 실물을 확인하셨다면 아래 현장 확인을 체크해 주세요.'
+                            : '센서는 이 슬롯에 우산이 있다고 봅니다. 우산을 빼내셨다면 아래 현장 확인을 체크해 주세요.'}
+                    </p>
+                )}
 
                 {/*
                  * 명세가 요구하는 두 칸입니다 — `reasonCode`(필수) · `note`(선택).
@@ -346,19 +375,32 @@ export function SlotStatusDialog({
                         type="checkbox"
                         checked={confirmed}
                         onChange={(event) => setConfirmed(event.target.checked)}
-                        className="size-4 accent-brand-blue"
+                        // 센서와 어긋난 변경은 이 체크가 근거입니다. 그때만 필수로 표시합니다.
+                        aria-required={mismatch}
+                        className={cn(
+                            'size-4 accent-brand-blue',
+                            needsConfirm && 'ring-2 ring-tone-amber-fg/50',
+                        )}
                     />
                     <span className="text-[12.5px] font-medium text-brand-body">
                         현장에서 실물을 확인했습니다
+                        {mismatch && <span className="ml-1 text-tone-red-fg">*</span>}
                     </span>
                 </label>
 
                 <div className="mt-[20px] flex h-[22px] items-center gap-[12px]">
-                    <Badge tone={SLOT_DISPLAY_TONE[current]}>{current}</Badge>
+                    <Badge tone={SLOT_DISPLAY_TONE[current]} title={slotStatusHint(current)}>
+                        {slotStatusText(current)}
+                    </Badge>
                     <span className="text-brand-muted" aria-hidden>
                         →
                     </span>
-                    <Badge tone={SLOT_DISPLAY_TONE[choice.display]}>{choice.display}</Badge>
+                    <Badge
+                        tone={SLOT_DISPLAY_TONE[choice.display]}
+                        title={slotStatusHint(choice.display)}
+                    >
+                        {slotStatusText(choice.display)}
+                    </Badge>
                     {unchanged && (
                         <span className="ml-auto text-[12px] font-medium text-brand-muted">
                             바뀌는 값이 없습니다

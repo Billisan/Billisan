@@ -75,7 +75,7 @@ export function StationListPage() {
 
     return (
         <div>
-            <PageBar className="mb-6" meta={`${STATIONS_SYNCED_AT} 기준`} />
+            <PageBar className="mb-[18px]" meta={`${STATIONS_SYNCED_AT} 기준`} />
 
             {/* 대여소 상세와 같은 리듬(21px 제목 + 아래 29px)으로 맞춥니다. */}
             <PageTitle className="mb-[29px]">대여소 관리</PageTitle>
