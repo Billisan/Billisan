@@ -40,17 +40,17 @@ export function ActionCard({
       type="button"
       disabled={disabled}
       aria-disabled={disabled}
-      className={`relative flex min-h-56 w-full items-center gap-6 overflow-hidden rounded-3xl px-10 py-8 text-left transition-colors ${containerClasses} ${disabled ? 'cursor-not-allowed opacity-60' : 'active:brightness-95'} ${className}`}
+      className={`relative flex min-h-[16.8rem] w-full items-center gap-6 overflow-hidden rounded-3xl px-10 py-8 text-left transition-colors ${containerClasses} ${disabled ? 'cursor-not-allowed opacity-60' : 'active:brightness-95'} ${className}`}
       {...rest}
     >
       <Icon
-        className={`pointer-events-none absolute -right-4 top-1/2 h-32 w-32 -translate-y-1/2 opacity-15 ${isPrimary ? 'text-white' : 'text-tertiary-text'}`}
+        className={`pointer-events-none absolute -right-6 top-1/2 h-44 w-44 -translate-y-1/2 opacity-15 ${isPrimary ? 'text-white' : 'text-tertiary-text'}`}
       />
 
       <span
-        className={`relative z-10 flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-full ${iconCircleClasses}`}
+        className={`relative z-10 flex h-24 w-24 flex-shrink-0 items-center justify-center rounded-full ${iconCircleClasses}`}
       >
-        <Icon className="h-10 w-10" />
+        <Icon className="h-14 w-14" />
       </span>
 
       <span className="relative z-10 flex flex-1 flex-col gap-1">
@@ -63,7 +63,7 @@ export function ActionCard({
       </span>
 
       <span
-        className={`relative z-10 flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full ${arrowCircleClasses}`}
+        className={`absolute right-6 bottom-6 z-10 flex h-14 w-14 shrink-0 items-center justify-center rounded-full ${arrowCircleClasses}`}
       >
         <ArrowRightIcon className="h-6 w-6" />
       </span>
