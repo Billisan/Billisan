@@ -9,9 +9,7 @@ function App() {
   const [showCameraPreview, setShowCameraPreview] = useState(false)
 
   if (!showCameraPreview) {
-    return (
-      <MainScreen variant="DEFAULT" onRent={() => setShowCameraPreview(true)} />
-    )
+    return <MainScreen onRent={() => setShowCameraPreview(true)} />
   }
 
   return (

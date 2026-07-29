@@ -1,7 +1,7 @@
 import dayjs from 'dayjs'
 import 'dayjs/locale/ko'
 import { useEffect, useState, type ReactNode } from 'react'
-import logo from '../../assets/logo/logo-umbrella.svg'
+import logo from '../../assets/logo/logo.svg'
 import { ChevronLeftIcon } from '../icons/ChevronLeftIcon'
 
 dayjs.locale('ko')
@@ -25,7 +25,7 @@ export function KioskLayout({
   }, [])
 
   return (
-    <div className="bg-kiosk-bg flex h-screen flex-col overflow-hidden">
+    <div className="flex h-screen flex-col">
       <header className="flex min-h-[20vh] w-full items-center justify-between px-14 py-6">
         {onBack ? (
           <button
@@ -37,7 +37,7 @@ export function KioskLayout({
             이전
           </button>
         ) : (
-          <img src={logo} alt="Billisan" className="h-26" />
+          <img src={logo} alt="빌리산 로고" className="h-14" />
         )}
         <div className="flex flex-col items-end">
           <span className="text-tertiary-text text-xl font-medium">
@@ -50,7 +50,7 @@ export function KioskLayout({
       </header>
       <main className="flex min-h-0 flex-1 flex-col items-center justify-end">
         <div
-          className={`flex min-h-0 w-full flex-1 flex-col items-center overflow-hidden rounded-t-[120px] rounded-b-none bg-white shadow-[0_-8px_16px_rgba(120,120,120,0.12)] ${
+          className={`flex min-h-0 w-full flex-1 flex-col items-center rounded-t-[60px] rounded-b-none bg-kiosk-bg shadow-[0_-8px_16px_rgba(120,120,120,0.12)] ${
             fullBleed ? '' : 'justify-center gap-14 p-20'
           }`}
         >
