@@ -1,6 +1,6 @@
-import { LogOut, Search, ShieldCheck, TriangleAlert, Umbrella } from 'lucide-react';
+import { Search, ShieldCheck, SquareDashed, TriangleAlert, Umbrella } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import { usePendingInspectionBySlot } from '@/features/inspections/hooks/useInspections';
 import { DetailLink } from '@/features/stations/components/DetailLink';
@@ -21,6 +21,7 @@ import { FilterSelect, type FilterOption } from '@/shared/components/FilterSelec
 import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
 import { PageTitle } from '@/shared/components/PageTitle';
+import { ROW_CLICKABLE, useRowNavigate } from '@/shared/hooks/useRowNavigate';
 import { SLOT_DISPLAY_LABEL } from '@/shared/constants/statusLabels';
 import { cn } from '@/lib/utils';
 
@@ -79,7 +80,8 @@ function parseStation(value: string | null): string {
 }
 
 export function InventoryPage() {
-    const navigate = useNavigate();
+    // 행 아무 데나 눌러도 슬롯 상세로 (이력·대여소 표와 같은 규칙)
+    const rowNavigate = useRowNavigate();
     // 확정된 조회 조건은 URL Query 에만 둡니다 (화면흐름 §6.2).
     const [searchParams, setSearchParams] = useSearchParams();
     const stationId = parseStation(searchParams.get('station'));
@@ -169,7 +171,7 @@ export function InventoryPage() {
 
     return (
         <div>
-            <PageBar className="mb-6" meta={`${STATIONS_SYNCED_AT} 기준`} />
+            <PageBar className="mb-[18px]" meta={`${STATIONS_SYNCED_AT} 기준`} />
 
             {/*
              * 조회 줄은 **왼쪽에 즉시 반영되는 것, 오른쪽에 눌러야 하는 것** 순서입니다.
@@ -245,9 +247,18 @@ export function InventoryPage() {
                  * 관리자 API 어디에도 활성 대여가 노출되지 않습니다. 우산이 나가 있는 슬롯은
                  * 서버 기준으로도 빈 슬롯입니다.
                  */}
+                {/*
+                 * 빈 슬롯은 **회색**입니다. 표·배지·상태 변경 모달의 '빈 슬롯' 이 전부
+                 * `SLOT_DISPLAY_TONE.EMPTY = 'slate'` 인데 이 카드만 파랑이면 같은 상태가
+                 * 화면마다 다른 색으로 보입니다. 게다가 파랑은 조회 버튼·링크에 쓰는
+                 * 동작 색이라, 아무 일도 없는 상태에 쓰면 눌러야 할 것처럼 보입니다.
+                 *
+                 * 아이콘도 바꿨습니다. 예전 `LogOut` 은 헤더의 **로그아웃**과 같은 그림이라
+                 * 뜻이 겹쳤습니다. 점선 사각형이 '우산이 빠진 빈 칸'에 그대로 맞습니다.
+                 */}
                 <StatCard
-                    tone="blue"
-                    icon={<LogOut className="size-[17px]" strokeWidth={2.1} aria-hidden />}
+                    tone="slate"
+                    icon={<SquareDashed className="size-[17px]" strokeWidth={2.1} aria-hidden />}
                     label="빈 슬롯"
                     value={counts.empty}
                     sub="반납 가능"
@@ -306,17 +317,11 @@ export function InventoryPage() {
                              */
                             <div
                                 key={slot.slotId}
-                                onClick={(event) => {
-                                    if (
-                                        (event.target as HTMLElement).closest(
-                                            'a,button,input,select',
-                                        )
-                                    )
-                                        return;
-                                    if (window.getSelection()?.toString()) return;
-                                    navigate(`/slots/${slot.slotId}`);
-                                }}
-                                className="relative grid h-[42.9px] cursor-pointer grid-cols-[172px_220px_183px_216px_112px] items-center pl-[14px] pr-[39px] text-[12.5px] transition-colors hover:bg-brand-surface"
+                                onClick={rowNavigate(`/slots/${slot.slotId}`)}
+                                className={cn(
+                                    'relative grid h-[42.9px] grid-cols-[172px_220px_183px_216px_112px] items-center pl-[14px] pr-[39px] text-[12.5px]',
+                                    ROW_CLICKABLE,
+                                )}
                             >
                                 {/* 구분선은 카드 폭 전체가 아니라 좌우 14px 안쪽까지만 긋습니다. */}
                                 {index > 0 && (
@@ -399,9 +404,13 @@ export function InventoryPage() {
     );
 }
 
+/**
+ * 카드 톤. **배지에 쓰는 톤 이름과 같은 것을 씁니다** — 같은 상태가 카드와 표에서 다른
+ * 색으로 보이면 안 되니까요 (`SLOT_DISPLAY_TONE` 참고).
+ */
 const CARD_TONE = {
     green: { chip: 'bg-tone-green-bg text-tone-green-fg', value: 'text-tone-green-fg' },
-    blue: { chip: 'bg-tone-blue-bg text-tone-blue-fg', value: 'text-tone-blue-fg' },
+    slate: { chip: 'bg-tone-slate-bg text-tone-slate-fg', value: 'text-tone-slate-fg' },
     amber: { chip: 'bg-tone-amber-bg text-tone-amber-fg', value: 'text-tone-amber-fg' },
     red: { chip: 'bg-tone-red-bg text-tone-red-fg', value: 'text-tone-red-fg' },
 } as const;

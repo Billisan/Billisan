@@ -122,7 +122,7 @@ export function StationDetailPage() {
     return (
         <div>
             <PageBar
-                className="mb-6"
+                className="mb-[18px]"
                 breadcrumb={[
                     { label: '대여소 관리', to: '/stations' },
                     { label: `${station.stationCode} ${station.name}` },

@@ -102,8 +102,8 @@ export const stationsApi = {
     list: async (): Promise<Station[]> => delay(listStations()),
 
     /** 대여소 하나. 위와 같은 이유로 목업입니다. */
-    detail: async (stationId: string): Promise<Station | undefined> =>
-        delay(findStation(stationId)),
+    detail: async (stationId: string): Promise<Station | null> =>
+        delay(findStation(stationId) ?? null),
 
     /** ADMIN-INVENTORY-001 — `GET /stations/{stationId}/inventory` */
     inventory: async (stationId: string): Promise<InventorySummary> => {
@@ -165,7 +165,7 @@ export const stationsApi = {
     },
 
     /** ADMIN-SLOT-DETAIL-001 — `GET /slots/{slotId}` */
-    slotDetail: async (slotId: string): Promise<SlotDetail | undefined> => {
+    slotDetail: async (slotId: string): Promise<SlotDetail | null> => {
         if (!env.useMockData) {
             const { data } = await http.get<SlotDetail>(`/slots/${slotId}`);
             return data;
@@ -175,7 +175,7 @@ export const stationsApi = {
             const found = buildSlots(station).find((slot) => slot.slotId === slotId);
             if (found) return delay(applyOverride(toDetail(station, found)));
         }
-        return delay(undefined);
+        return delay(null);
     },
 
     /**

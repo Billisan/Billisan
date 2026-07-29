@@ -9,8 +9,12 @@ import {
     Timeline,
     ValueLink,
 } from '@/features/history/components/DetailShell';
-import { findReturn, findSettlement } from '@/features/history/mocks/history';
-import { RENTAL_STATUS_LABEL, RENTAL_STATUS_TONE } from '@/features/history/types';
+import { findReturn, findSettlement, HISTORY_SYNCED_AT } from '@/features/history/mocks/history';
+import {
+    RENTAL_STATUS_LABEL,
+    RENTAL_STATUS_TONE,
+    rentalDisplayStatus,
+} from '@/features/history/types';
 import { Badge } from '@/shared/components/Badge';
 import { useRental } from '@/features/history/hooks/useHistory';
 import { ErrorState, LoadingState } from '@/shared/components/PageState';
@@ -44,13 +48,15 @@ export function RentalDetailPage() {
         );
     }
 
+    // 배지에 찍을 상태. 대여 중인데 기한이 지났으면 '연체'입니다 (화면흐름 §8.1).
+    const display = rentalDisplayStatus(rental, HISTORY_SYNCED_AT);
     const linkedReturn = rental.returnAttemptId ? findReturn(rental.returnAttemptId) : undefined;
     const linkedSettlement = rental.settlementId ? findSettlement(rental.settlementId) : undefined;
 
     return (
         <div>
             <PageBar
-                className="mb-6"
+                className="mb-[18px]"
                 breadcrumb={[
                     { label: '이력', to: '/history/rentals' },
                     { label: '대여 이력', to: '/history/rentals' },
@@ -59,13 +65,13 @@ export function RentalDetailPage() {
             />
 
             <DetailHeader
-                tone={RENTAL_STATUS_TONE[rental.status]}
-                statusLabel={RENTAL_STATUS_LABEL[rental.status]}
+                tone={RENTAL_STATUS_TONE[display]}
+                statusLabel={RENTAL_STATUS_LABEL[display]}
                 documentTitle="대여 상세"
                 id={rental.rentalId}
                 actions={
                     <>
-                        <DetailLinkButton to={`/users/${rental.userRef}/history`}>
+                        <DetailLinkButton to={`/users/${rental.userId}/history`}>
                             사용자 이력
                         </DetailLinkButton>
                         {rental.returnAttemptId && (
@@ -86,8 +92,8 @@ export function RentalDetailPage() {
                         <RefId id={rental.rentalId} label="대여 ID" />
                     </InfoRow>
                     <InfoRow label="사용자">
-                        <ValueLink to={`/users/${rental.userRef}/history`}>
-                            {rental.userRef}
+                        <ValueLink to={`/users/${rental.userId}/history`}>
+                            {shortId(rental.userId)}
                         </ValueLink>
                     </InfoRow>
                     <InfoRow label="대여 대여소">
@@ -101,8 +107,8 @@ export function RentalDetailPage() {
                     <InfoRow label="대여 시각">{rental.rentedAt}</InfoRow>
                     <InfoRow label="반납 기한">{rental.dueAt}</InfoRow>
                     <InfoRow label="대여 상태">
-                        <Badge tone={RENTAL_STATUS_TONE[rental.status]}>
-                            {RENTAL_STATUS_LABEL[rental.status]}
+                        <Badge tone={RENTAL_STATUS_TONE[display]}>
+                            {RENTAL_STATUS_LABEL[display]}
                         </Badge>
                     </InfoRow>
                 </InfoCard>

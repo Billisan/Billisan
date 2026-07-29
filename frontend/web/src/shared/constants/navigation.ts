@@ -7,7 +7,6 @@ import {
     UmbrellaIcon,
     type NavIcon,
 } from '@/components/layout/NavIcons';
-import { OPERATION_SUMMARY } from '@/shared/constants/operationSummary';
 
 export interface NavItem {
     label: string;
@@ -32,12 +31,20 @@ export const NAV_ITEMS: NavItem[] = [
     { label: '대여소 관리', to: '/stations', icon: GridIcon },
     { label: '우산 재고', to: '/umbrellas', icon: UmbrellaIcon },
     { label: '이력', to: '/history/rentals', match: '/history', icon: ListIcon },
-    {
-        label: '파손 검수',
-        to: '/inspections',
-        icon: ShieldCheckIcon,
-        badge: OPERATION_SUMMARY.pendingInspections,
-    },
+    /*
+     * 배지(대기 건수)를 뗐습니다.
+     *
+     * 값이 상수 `5` 로 박혀 있어서 실제 목록과 어긋났습니다 — 검수를 판정해도 5 그대로였고,
+     * 관리자는 사이드바 숫자를 보고 "아직 5건 남았다"고 읽습니다. 틀린 숫자는 없는 숫자보다
+     * 나쁩니다.
+     *
+     * 진짜로 살리려면 서버 집계가 필요한데, 관리자 10개에 그런 API 가 없습니다
+     * (운영 대시보드는 `WEB-API-CAND-001 · P1` 미계약). 목록을 통째로 받아 세는 건
+     * cursor 페이지네이션이라 첫 쪽밖에 못 셉니다.
+     *
+     * TODO: 집계 API 가 확정되면 그 값으로 되살리세요. 상수로는 되살리지 마세요.
+     */
+    { label: '파손 검수', to: '/inspections', icon: ShieldCheckIcon },
     { label: '지도·분포도', to: '/map', icon: MapPinIcon },
     /*
      * `조치 이력` 은 뺐습니다. P0 관리자 API 10개 어디에도 없고, 12번 PART C 에서

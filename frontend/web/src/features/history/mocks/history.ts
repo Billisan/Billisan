@@ -5,6 +5,7 @@ import {
     slotLabelOf,
     slotUuidOf,
     stationUuid,
+    userUuid,
 } from '@/features/history/mocks/refs';
 import type {
     Rental,
@@ -17,8 +18,13 @@ import type {
  * 이력 화면 목업.
  *
  * TODO: 대여·반납·정산·사용자 이력 API 가 확정되면(WEB-API-CAND-002~008) 이 파일을 지우세요.
- * 사용자는 내부 userId 축약(`u_xxxx`)만 담습니다. 이름·연락처·대학 계정 식별자·`password_hash`
- * 는 어떤 형태로도 넣지 않습니다 (화면흐름 §6.3 · §12).
+ *
+ * 사용자는 `userId`(ERD `USER_ACCOUNT.user_id` · UUID)만 담고 화면에는 축약해서 보여 줍니다
+ * (화면흐름 §12 "내부 userId 의 축약 표시"). 아래 `u_8f3a` 는 목업을 손으로 읽기 쉬우라고
+ * 둔 씨앗값이고, `refs.ts` 의 `userUuid()` 가 내보낼 때 UUID 로 바꿉니다 — 화면·링크에
+ * 나가는 값은 전부 UUID 입니다.
+ *
+ * 이름·연락처·대학 계정 식별자·`password_hash` 는 어떤 형태로도 넣지 않습니다 (화면흐름 §6.3).
  */
 
 export const HISTORY_SYNCED_AT = '2026-07-24 09:20';
@@ -28,9 +34,38 @@ export const RENTAL_LIST_NOTE =
     '대여 상태: 대여중 · 연체(기한 초과 미반납) · 반납완료 · 분실(장기 미반납) · 개별 우산 ID 없이 대여 ID로 추적합니다';
 
 const RAW_RENTALS: Omit<Rental, 'slotLabel'>[] = [
+    /*
+     * 아래 두 건은 사용자 통합 이력 타임라인이 가리키는 대여입니다.
+     * 목록에 없으면 타임라인에서 눌렀을 때 "존재하지 않는 대여"로 떨어집니다 —
+     * 실제로 그런 상태였고, 링크 대상을 목록에 맞춰 넣었습니다.
+     */
+    {
+        rentalId: 'R-87699',
+        userId: 'u_8f3a',
+        stationName: '정문 광장',
+        stationId: 'ST-001',
+        slotId: 'SL-01-05',
+        rentedAt: '2026-07-20 08:15',
+        dueAt: '2026-07-21 08:15',
+        status: 'COMPLETED',
+        returnAttemptId: 'RT-87720',
+        settlementId: null,
+    },
+    {
+        rentalId: 'R-87488',
+        userId: 'u_8f3a',
+        stationName: '경영관',
+        stationId: 'ST-005',
+        slotId: 'SL-05-02',
+        rentedAt: '2026-07-18 17:02',
+        dueAt: '2026-07-19 17:02',
+        status: 'COMPLETED',
+        returnAttemptId: 'RT-87510',
+        settlementId: null,
+    },
     {
         rentalId: 'R-88102',
-        userRef: 'u_2210',
+        userId: 'u_2210',
         stationName: '제1공학관',
         stationId: 'ST-003',
         slotId: 'SL-03-03',
@@ -42,7 +77,7 @@ const RAW_RENTALS: Omit<Rental, 'slotLabel'>[] = [
     },
     {
         rentalId: 'R-88098',
-        userRef: 'u_2b71',
+        userId: 'u_2b71',
         stationName: '중앙도서관',
         stationId: 'ST-002',
         slotId: 'SL-02-05',
@@ -54,31 +89,31 @@ const RAW_RENTALS: Omit<Rental, 'slotLabel'>[] = [
     },
     {
         rentalId: 'R-88021',
-        userRef: 'u_8f3a',
+        userId: 'u_8f3a',
         stationName: '제1공학관',
         stationId: 'ST-003',
         slotId: 'SL-03-07',
         rentedAt: '2026-07-23 14:05',
         dueAt: '2026-07-24 14:05',
-        status: 'RETURNED',
+        status: 'COMPLETED',
         returnAttemptId: 'RT-88213',
         settlementId: 'S-1043',
     },
     {
         rentalId: 'R-87940',
-        userRef: 'u_9c02',
+        userId: 'u_9c02',
         stationName: '경영관',
         stationId: 'ST-005',
         slotId: 'SL-05-03',
         rentedAt: '2026-07-22 11:20',
         dueAt: '2026-07-23 11:20',
-        status: 'OVERDUE',
+        status: 'ACTIVE',
         returnAttemptId: null,
         settlementId: 'S-1039',
     },
     {
         rentalId: 'R-87731',
-        userRef: 'u_4d10',
+        userId: 'u_4d10',
         stationName: '정문 광장',
         stationId: 'ST-001',
         slotId: 'SL-01-02',
@@ -90,35 +125,68 @@ const RAW_RENTALS: Omit<Rental, 'slotLabel'>[] = [
     },
     {
         rentalId: 'R-88010',
-        userRef: 'u_77a0',
+        userId: 'u_77a0',
         stationName: '자연과학관',
         stationId: 'ST-006',
         slotId: 'SL-06-01',
         rentedAt: '2026-07-23 19:33',
         dueAt: '2026-07-24 19:33',
-        status: 'RETURNED',
+        status: 'COMPLETED',
         returnAttemptId: 'RT-88055',
         settlementId: null,
     },
     {
         rentalId: 'R-87995',
-        userRef: 'u_0b3c',
+        userId: 'u_0b3c',
         stationName: '생활관 A',
         stationId: 'ST-007',
         slotId: 'SL-07-02',
         rentedAt: '2026-07-23 18:02',
         dueAt: '2026-07-24 18:02',
-        status: 'RETURNED',
+        status: 'COMPLETED',
         returnAttemptId: 'RT-88055',
         settlementId: null,
     },
 ];
 
 const RAW_RETURNS: Omit<ReturnAttempt, 'slotLabel'>[] = [
+    /* 타임라인이 가리키는 반납 두 건. 위 대여 두 건과 짝입니다. */
+    {
+        returnAttemptId: 'RT-87720',
+        rentalId: 'R-87699',
+        userId: 'u_8f3a',
+        stationName: '정문 광장',
+        stationId: 'ST-001',
+        slotId: 'SL-01-05',
+        attemptedAt: '2026-07-20 10:30',
+        status: 'COMPLETED',
+        aiResult: 'NORMAL',
+        aiScore: 0.06,
+        modelVersion: 'v0.4',
+        latencyMs: 288,
+        inspectionId: null,
+        settlementId: null,
+    },
+    {
+        returnAttemptId: 'RT-87510',
+        rentalId: 'R-87488',
+        userId: 'u_8f3a',
+        stationName: '경영관',
+        stationId: 'ST-005',
+        slotId: 'SL-05-02',
+        attemptedAt: '2026-07-18 19:40',
+        status: 'COMPLETED',
+        aiResult: 'NORMAL',
+        aiScore: 0.04,
+        modelVersion: 'v0.4',
+        latencyMs: 301,
+        inspectionId: null,
+        settlementId: null,
+    },
     {
         returnAttemptId: 'RT-88213',
         rentalId: 'R-88021',
-        userRef: 'u_8f3a',
+        userId: 'u_8f3a',
         stationName: '제1공학관',
         stationId: 'ST-003',
         slotId: 'SL-03-07',
@@ -134,7 +202,7 @@ const RAW_RETURNS: Omit<ReturnAttempt, 'slotLabel'>[] = [
     {
         returnAttemptId: 'RT-88205',
         rentalId: 'R-88099',
-        userRef: 'u_3a90',
+        userId: 'u_3a90',
         stationName: '중앙도서관',
         stationId: 'ST-002',
         slotId: 'SL-02-11',
@@ -150,7 +218,7 @@ const RAW_RETURNS: Omit<ReturnAttempt, 'slotLabel'>[] = [
     {
         returnAttemptId: 'RT-88208',
         rentalId: 'R-88015',
-        userRef: 'u_1f55',
+        userId: 'u_1f55',
         stationName: '제1공학관',
         stationId: 'ST-003',
         slotId: 'SL-03-06',
@@ -166,7 +234,7 @@ const RAW_RETURNS: Omit<ReturnAttempt, 'slotLabel'>[] = [
     {
         returnAttemptId: 'RT-87980',
         rentalId: 'R-87940',
-        userRef: 'u_9c02',
+        userId: 'u_9c02',
         stationName: '경영관',
         stationId: 'ST-005',
         slotId: 'SL-05-07',
@@ -182,7 +250,7 @@ const RAW_RETURNS: Omit<ReturnAttempt, 'slotLabel'>[] = [
     {
         returnAttemptId: 'RT-88190',
         rentalId: 'R-88001',
-        userRef: 'u_2b71',
+        userId: 'u_2b71',
         stationName: '정문 광장',
         stationId: 'ST-001',
         slotId: 'SL-01-08',
@@ -198,7 +266,7 @@ const RAW_RETURNS: Omit<ReturnAttempt, 'slotLabel'>[] = [
     {
         returnAttemptId: 'RT-88180',
         rentalId: 'R-87988',
-        userRef: 'u_4d10',
+        userId: 'u_4d10',
         stationName: '제1공학관',
         stationId: 'ST-003',
         slotId: 'SL-03-19',
@@ -214,7 +282,7 @@ const RAW_RETURNS: Omit<ReturnAttempt, 'slotLabel'>[] = [
     {
         returnAttemptId: 'RT-88055',
         rentalId: 'R-88010',
-        userRef: 'u_0b3c',
+        userId: 'u_0b3c',
         stationName: '생활관 A',
         stationId: 'ST-007',
         slotId: 'SL-07-02',
@@ -232,7 +300,7 @@ const RAW_RETURNS: Omit<ReturnAttempt, 'slotLabel'>[] = [
 const RAW_SETTLEMENTS: Omit<Settlement, 'slotLabel'>[] = [
     {
         settlementId: 'S-1043',
-        userRef: 'u_8f3a',
+        userId: 'u_8f3a',
         reason: 'DAMAGE',
         amount: 7000,
         paidAmount: 0,
@@ -246,7 +314,7 @@ const RAW_SETTLEMENTS: Omit<Settlement, 'slotLabel'>[] = [
     },
     {
         settlementId: 'S-1039',
-        userRef: 'u_9c02',
+        userId: 'u_9c02',
         reason: 'OVERDUE',
         amount: 1000,
         paidAmount: 0,
@@ -260,7 +328,7 @@ const RAW_SETTLEMENTS: Omit<Settlement, 'slotLabel'>[] = [
     },
     {
         settlementId: 'S-1031',
-        userRef: 'u_4d10',
+        userId: 'u_4d10',
         reason: 'LOSS',
         amount: 7000,
         paidAmount: 0,
@@ -274,7 +342,7 @@ const RAW_SETTLEMENTS: Omit<Settlement, 'slotLabel'>[] = [
     },
     {
         settlementId: 'S-1024',
-        userRef: 'u_3a90',
+        userId: 'u_3a90',
         reason: 'OVERDUE',
         amount: 1000,
         paidAmount: 1000,
@@ -288,7 +356,7 @@ const RAW_SETTLEMENTS: Omit<Settlement, 'slotLabel'>[] = [
     },
     {
         settlementId: 'S-1018',
-        userRef: 'u_77a0',
+        userId: 'u_77a0',
         reason: 'DAMAGE',
         amount: 7000,
         paidAmount: 7000,
@@ -302,7 +370,7 @@ const RAW_SETTLEMENTS: Omit<Settlement, 'slotLabel'>[] = [
     },
     {
         settlementId: 'S-1009',
-        userRef: 'u_0b3c',
+        userId: 'u_0b3c',
         reason: 'LOSS',
         amount: 7000,
         paidAmount: 7000,
@@ -331,6 +399,7 @@ const RAW_SETTLEMENTS: Omit<Settlement, 'slotLabel'>[] = [
  */
 export const MOCK_RENTALS: Rental[] = RAW_RENTALS.map((item) => ({
     ...item,
+    userId: userUuid(item.userId),
     rentalId: rentalUuid(item.rentalId),
     stationId: stationUuid(item.stationId),
     slotLabel: slotLabelOf(item.slotId),
@@ -341,6 +410,7 @@ export const MOCK_RENTALS: Rental[] = RAW_RENTALS.map((item) => ({
 
 export const MOCK_RETURNS: ReturnAttempt[] = RAW_RETURNS.map((item) => ({
     ...item,
+    userId: userUuid(item.userId),
     returnAttemptId: returnUuid(item.returnAttemptId),
     rentalId: rentalUuid(item.rentalId),
     stationId: stationUuid(item.stationId),
@@ -351,6 +421,7 @@ export const MOCK_RETURNS: ReturnAttempt[] = RAW_RETURNS.map((item) => ({
 
 export const MOCK_SETTLEMENTS: Settlement[] = RAW_SETTLEMENTS.map((item) => ({
     ...item,
+    userId: userUuid(item.userId),
     settlementId: settlementUuid(item.settlementId),
     rentalId: rentalUuid(item.rentalId),
     returnAttemptId: item.returnAttemptId && returnUuid(item.returnAttemptId),
@@ -373,7 +444,7 @@ export function findSettlement(id: string | undefined) {
 /* ------------------------------------------- 사용자 통합 이력 (§12) */
 
 export interface UserSummary {
-    userRef: string;
+    userId: string;
     /** 각 집계의 기간을 함께 밝힙니다 (§12). */
     period: string;
     totalRentals: number;
@@ -384,7 +455,7 @@ export interface UserSummary {
 }
 
 const RAW_USER: UserSummary = {
-    userRef: 'u_8f3a',
+    userId: 'u_8f3a',
     period: '최근 30일',
     totalRentals: 8,
     normalReturns: 6,
@@ -460,6 +531,7 @@ const RAW_USER: UserSummary = {
 /** 타임라인의 링크도 같은 규칙으로 바꿉니다. 안 바꾸면 눌러도 없는 화면으로 갑니다. */
 export const MOCK_USER: UserSummary = {
     ...RAW_USER,
+    userId: userUuid(RAW_USER.userId),
     timeline: RAW_USER.timeline.map((entry) => {
         const id =
             entry.kind === '대여'

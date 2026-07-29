@@ -16,28 +16,84 @@ import type { BadgeTone } from '@/shared/components/Badge';
 
 /* ------------------------------------------------------------------ 대여 */
 
-/** 화면흐름 §8.1: 연체는 `dueAt`·현재 시각·정산에서 파생하며 신규 RentalStatus 를 만들지 않습니다. */
-export type RentalDisplayStatus = 'ACTIVE' | 'OVERDUE' | 'RETURNED' | 'LOST';
+/**
+ * 서버가 주는 대여 상태. ERD §8.0 「업무 DB Enum」 그대로입니다.
+ *
+ * ```
+ * RentalStatus: REQUESTED | ACTIVE | RETURNING | COMPLETED | LOST | CANCELLED | FAILED
+ * ```
+ *
+ * **`RETURNED` 는 없는 값입니다.** 반납 완료는 `COMPLETED` 입니다 — 12-R 전체에 `RETURNED`
+ * 가 한 번도 안 나오고, 확정 계약인 `RENTAL-002` 의 조회 필터도 `ALL|ACTIVE|COMPLETED|
+ * LOST|FAILED` 입니다. 화면흐름 §8.2 의 `Variant: ACTIVE, RETURNED, LOST` 한 줄만 다르게
+ * 적혀 있는데, 그건 화면 변형 표기이지 DB Enum 정의가 아닙니다.
+ */
+export type RentalStatus =
+    'REQUESTED' | 'ACTIVE' | 'RETURNING' | 'COMPLETED' | 'LOST' | 'CANCELLED' | 'FAILED';
+
+/**
+ * 화면에 찍는 상태. 서버 상태에 **연체 하나를 얹은** 값입니다.
+ *
+ * 연체는 상태가 아닙니다. ERD 에서 `OVERDUE` 는 `SettlementReason`(정산 사유)이고,
+ * 화면흐름 §8.1 이 못 박았습니다 — "연체는 `dueAt`과 현재 시각·정산 상태에서 파생될 수
+ * 있으며 **신규 RentalStatus 를 추가하지 않는다**".
+ *
+ * 그래서 서버로 보내거나 서버에서 받는 값에는 절대 `OVERDUE` 를 쓰지 않고, 배지 글자를
+ * 고를 때만 씁니다.
+ */
+export type RentalDisplayStatus = RentalStatus | 'OVERDUE';
 
 export const RENTAL_STATUS_LABEL: Record<RentalDisplayStatus, string> = {
+    REQUESTED: '요청됨',
     ACTIVE: '대여중',
-    OVERDUE: '연체',
-    RETURNED: '반납완료',
+    RETURNING: '반납중',
+    COMPLETED: '반납완료',
     LOST: '분실',
+    CANCELLED: '취소',
+    FAILED: '실패',
+    OVERDUE: '연체',
 };
 
 export const RENTAL_STATUS_TONE: Record<RentalDisplayStatus, BadgeTone> = {
+    REQUESTED: 'slate',
     ACTIVE: 'blue',
-    OVERDUE: 'amber',
-    RETURNED: 'green',
+    RETURNING: 'blue',
+    COMPLETED: 'green',
     LOST: 'red',
+    CANCELLED: 'slate',
+    FAILED: 'red',
+    OVERDUE: 'amber',
 };
+
+/**
+ * 배지에 찍을 상태 하나를 고릅니다.
+ *
+ * 대여 중인데 기한이 지났으면 `연체` 로 덮습니다. 관리자에게는 "대여중"보다 "연체"가
+ * 먼저 보여야 할 정보라서요. 그 외에는 서버 값을 그대로 씁니다.
+ *
+ * 기준 시각을 인자로 받습니다. `new Date()` 를 안에서 부르면 목업 데이터(2026-07-24 기준)와
+ * 실제 시각이 어긋나 전부 연체로 보입니다. 서버가 붙으면 응답의 `asOf` 를 넘기세요 —
+ * 화면흐름 §17 이 "서버 `dueAt,asOf`" 를 쓰라고 했습니다.
+ */
+export function rentalDisplayStatus(rental: Rental, asOf: string): RentalDisplayStatus {
+    if (rental.status === 'ACTIVE' && rental.dueAt && rental.dueAt < asOf) return 'OVERDUE';
+    return rental.status;
+}
 
 export interface Rental {
     /** 개별 우산 ID 는 쓰지 않습니다. 대여 ID 로만 추적합니다 (§3.1 · DEC-028). */
     rentalId: string;
-    /** 내부 userId 의 축약 표시. 이름·연락처는 담지 않습니다 (§6.3 · §12). */
-    userRef: string;
+    /**
+     * `USER_ACCOUNT.user_id` (ERD 7장) — `CHAR(36)` UUID.
+     *
+     * 필드명이 `userRef` 가 아닙니다. 12-R 에서 `userRef` 는 "Kiosk 응답에 포함·표시하지
+     * 않는다"는 금지 문장에만 나오고, ERD 의 `user_ref` 는 PostgreSQL `FACE_PROFILE` 쪽
+     * 컬럼입니다. 관리자 화면 문서는 `userId` 로 씁니다 (화면흐름 §8.2 · §9.2 · §12).
+     *
+     * 화면에는 축약해서 보여 줍니다 — §12 "내부 userId 의 축약 표시".
+     * 이름·연락처·학번은 담지 않습니다 (§6.3).
+     */
+    userId: string;
     stationName: string;
     stationId: string;
     /** 대여가 나간 슬롯 (`checkoutSlotId`) — UUID */
@@ -46,7 +102,8 @@ export interface Rental {
     slotLabel: string;
     rentedAt: string;
     dueAt: string;
-    status: RentalDisplayStatus;
+    /** 서버 값 그대로입니다. 연체는 여기 없고 `rentalDisplayStatus()` 가 파생합니다. */
+    status: RentalStatus;
     /** 이 대여에 연결된 완료 반납. 없으면 null (§8.2 의 1:N 주의) */
     returnAttemptId: string | null;
     settlementId: string | null;
@@ -73,7 +130,7 @@ export const RETURN_STATUS_TONE: Record<ReturnDisplayStatus, BadgeTone> = {
 export interface ReturnAttempt {
     returnAttemptId: string;
     rentalId: string;
-    userRef: string;
+    userId: string;
     stationName: string;
     stationId: string;
     /** `returnSlotId` — UUID. 슬롯 미선정이면 null 입니다. */
@@ -127,7 +184,7 @@ export const SETTLEMENT_STATUS_TONE: Record<SettlementStatus, BadgeTone> = {
 
 export interface Settlement {
     settlementId: string;
-    userRef: string;
+    userId: string;
     reason: SettlementReason;
     /** 서버가 계산한 금액입니다. 클라이언트가 다시 계산하지 않습니다 (§17). */
     amount: number;

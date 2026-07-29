@@ -126,14 +126,39 @@ export function applyInspectionDecision(slot: SlotSummary, input: InspectionDeci
     });
 }
 
-/** `ADMIN-SLOT-STATUS-001` 의 결과를 흉내 냅니다. 정산은 만들지 않습니다. */
+/**
+ * `ADMIN-SLOT-STATUS-001` 의 결과를 흉내 냅니다. 정산은 만들지 않습니다.
+ *
+ * **점유 상태(`occupancyStatus`)는 요청에 없습니다.** 계약상 "센서·서버가 확정한" 값이고
+ * 응답으로 돌려받습니다. 그러니 여기서 정하는 건 서버 흉내일 뿐이고, 실제 연동 뒤에는
+ * 서버가 준 값을 그대로 써야 합니다.
+ *
+ * 그래도 아무 값이나 두면 안 됩니다. 조회 응답의 불변식이 "점유가 `EMPTY` 이면
+ * `itemCondition` 은 `null`" 이므로, 뒤집으면 **품질이 정해졌다는 건 우산이 들어 있다는 뜻**
+ * 입니다. 그래서 목표 품질에서 점유를 되짚습니다.
+ *
+ * 이걸 안 하면 우산을 채워 넣어도 슬롯이 영영 '빈 슬롯' 으로 남습니다.
+ */
 export function applySlotStatusChange(slot: SlotSummary, change: SlotStatusChange) {
+    const occupancyStatus =
+        change.targetItemCondition === 'EMPTY'
+            ? 'EMPTY'
+            : // UNKNOWN 은 '품질을 모른다' 일 뿐이라 실물 유무를 단정하지 않습니다. 그대로 둡니다.
+              change.targetItemCondition === 'UNKNOWN'
+              ? slot.occupancyStatus
+              : 'OCCUPIED';
+
     record(slot.slotId, {
         patch: {
             serviceStatus: change.targetServiceStatus,
-            // 점유가 EMPTY 면 itemCondition 은 null 입니다 (12-R B-4).
+            occupancyStatus,
+            /*
+             * 빈 슬롯에는 품질이 없습니다 (12-R B-4).
+             * 빈 슬롯에 '관리자 확인' 을 걸면 여기로 옵니다 — 품질은 `null` 이고 서비스 상태만
+             * `ADMIN_REVIEW` 입니다. 우산이 사라진 슬롯을 사람이 봐야 하는, 실제로 있는 상황입니다.
+             */
             itemCondition:
-                slot.occupancyStatus === 'EMPTY' || change.targetItemCondition === 'EMPTY'
+                change.targetItemCondition === 'EMPTY' || occupancyStatus === 'EMPTY'
                     ? null
                     : change.targetItemCondition,
             updatedAt: nowStamp(),

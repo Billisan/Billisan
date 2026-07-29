@@ -31,13 +31,14 @@ function delay<T>(value: T, ms = 180): Promise<T> {
 
 export const historyApi = {
     rentals: async (): Promise<Rental[]> => delay(MOCK_RENTALS),
-    rental: async (id: string): Promise<Rental | undefined> => delay(findRental(id)),
+    rental: async (id: string): Promise<Rental | null> => delay(findRental(id) ?? null),
 
     returns: async (): Promise<ReturnAttempt[]> => delay(MOCK_RETURNS),
-    returnAttempt: async (id: string): Promise<ReturnAttempt | undefined> => delay(findReturn(id)),
+    returnAttempt: async (id: string): Promise<ReturnAttempt | null> =>
+        delay(findReturn(id) ?? null),
 
     settlements: async (): Promise<Settlement[]> => delay(MOCK_SETTLEMENTS),
-    settlement: async (id: string): Promise<Settlement | undefined> => delay(findSettlement(id)),
+    settlement: async (id: string): Promise<Settlement | null> => delay(findSettlement(id) ?? null),
 
     /** 사용자 통합 이력 — `SCR-WEB-USER-HISTORY-001`. 최소 식별 정보만 다룹니다 (§6.3). */
     user: async (_userId: string): Promise<UserSummary> => delay(MOCK_USER),
