@@ -66,6 +66,7 @@ export function ReturnDetailPage() {
             <DetailHeader
                 tone={RETURN_STATUS_TONE[item.status]}
                 statusLabel={RETURN_STATUS_LABEL[item.status]}
+                documentTitle="반납 상세"
                 id={item.returnAttemptId}
                 actions={
                     <>

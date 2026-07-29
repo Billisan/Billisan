@@ -6,6 +6,7 @@ import { formatWon } from '@/features/history/types';
 import { Badge } from '@/shared/components/Badge';
 import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
+import { PageTitle } from '@/shared/components/PageTitle';
 import { RefId } from '@/shared/components/RefId';
 import { cn } from '@/lib/utils';
 
@@ -58,9 +59,9 @@ export function UserHistoryPage() {
                 >
                     u
                 </span>
-                <h2 className="ml-[14px] text-[17px] font-extrabold leading-none text-brand-ink">
+                <PageTitle className="ml-[14px] !text-[17px]" documentTitle="사용자 이력">
                     {userId ?? user.userRef}
-                </h2>
+                </PageTitle>
                 <span className="ml-[10px] text-[11.5px] font-medium text-brand-muted">
                     내부 식별자 축약 표시
                 </span>

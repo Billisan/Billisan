@@ -33,6 +33,7 @@ import { Badge } from '@/shared/components/Badge';
 import { CopyButton } from '@/shared/components/CopyButton';
 import { DataTable, TBody, Td, TableCard, Th, THead, Tr } from '@/shared/components/DataTable';
 import { PageBar } from '@/shared/components/PageBar';
+import { PageTitle } from '@/shared/components/PageTitle';
 import { LOCK_STATUS_LABEL } from '@/shared/constants/statusLabels';
 
 export function SlotDetailPage() {
@@ -103,9 +104,12 @@ export function SlotDetailPage() {
                 <Badge tone={SLOT_DISPLAY_TONE[display]} title={slotStatusHint(display)}>
                     {slotStatusText(display)}
                 </Badge>
-                <h2 className="ml-[17px] text-[16px] font-bold text-brand-ink">
-                    {slotLabel} · {station.name}({station.stationCode})
-                </h2>
+                <PageTitle
+                    className="ml-[17px] !text-[16px] !font-bold"
+                    documentTitle={`${slotLabel} 슬롯`}
+                >
+                    {`${slotLabel} · ${station.name}(${station.stationCode})`}
+                </PageTitle>
 
                 <div className="ml-auto flex items-center gap-2">
                     {/*

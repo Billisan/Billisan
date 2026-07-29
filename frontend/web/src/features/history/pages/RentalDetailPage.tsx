@@ -61,6 +61,7 @@ export function RentalDetailPage() {
             <DetailHeader
                 tone={RENTAL_STATUS_TONE[rental.status]}
                 statusLabel={RENTAL_STATUS_LABEL[rental.status]}
+                documentTitle="대여 상세"
                 id={rental.rentalId}
                 actions={
                     <>

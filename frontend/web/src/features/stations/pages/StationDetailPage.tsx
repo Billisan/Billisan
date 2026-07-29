@@ -13,6 +13,7 @@ import {
 } from '@/features/stations/types';
 import { FilterSelect, type FilterOption } from '@/shared/components/FilterSelect';
 import { PageBar } from '@/shared/components/PageBar';
+import { PageTitle } from '@/shared/components/PageTitle';
 import { SLOT_DISPLAY_LABEL } from '@/shared/constants/statusLabels';
 
 type StatusFilter =
@@ -130,9 +131,9 @@ export function StationDetailPage() {
             />
 
             <div className="mb-[29px] flex items-center gap-3">
-                <h2 className="mr-[11px] text-[21px] font-extrabold leading-none text-brand-ink">
+                <PageTitle className="mr-[11px]" documentTitle={`${station.name} 대여소`}>
                     {station.name}
-                </h2>
+                </PageTitle>
                 <span className="text-[13px] font-bold text-brand-muted">
                     {station.stationCode}
                 </span>

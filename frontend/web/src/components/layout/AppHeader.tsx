@@ -5,7 +5,6 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import { authApi } from '@/features/auth/api/authApi';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { resetSessionRestore } from '@/features/auth/hooks/useSessionRestore';
 import { cn } from '@/lib/utils';
 
 /**
@@ -60,9 +59,8 @@ export function AppHeader() {
             await authApi.logout();
         } finally {
             logout();
+            // `clear()` 가 `/auth/me` 캐시까지 지웁니다 — 다음 로그인 전까지 복원이 다시 됩니다.
             queryClient.clear();
-            // 다음 로그인 전까지 /auth/me 복원을 다시 시도할 수 있게 풀어 줍니다.
-            resetSessionRestore();
             navigate('/login', { replace: true });
         }
     };
