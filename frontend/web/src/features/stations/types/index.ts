@@ -3,7 +3,7 @@ import {
     AI_RESULT_LABEL,
     DECISION_LABEL,
     SLOT_DISPLAY_LABEL,
-    withCode,
+    codeHint,
 } from '@/shared/constants/statusLabels';
 
 /* ------------------------------------------------------------------ 대여소 */
@@ -238,9 +238,14 @@ export function deriveSlotDisplayStatus(slot: SlotSummary): SlotDisplayStatus {
     return 'UNKNOWN';
 }
 
-/** 파생 상태 → `이용 가능(AVAILABLE)` 형태의 표시 문자열 (ERD §2.4.1) */
+/** 파생 상태 → 배지에 찍을 한글 (ERD §2.4.1 "관리자 웹의 배지·표는 한글 명칭 우선") */
 export function slotStatusText(status: SlotDisplayStatus): string {
-    return withCode(SLOT_DISPLAY_LABEL, status);
+    return SLOT_DISPLAY_LABEL[status];
+}
+
+/** 같은 상태의 마우스오버용 `한글 · CODE`. 로그·백엔드와 대조할 때 씁니다. */
+export function slotStatusHint(status: SlotDisplayStatus): string {
+    return codeHint(SLOT_DISPLAY_LABEL, status);
 }
 
 /**
@@ -259,9 +264,14 @@ export const AI_RESULT_TONE: Record<AiInspectionResult, BadgeTone> = {
     FAILED: 'slate',
 };
 
-/** AI 결과 → `파손 의심(DAMAGED)` */
+/** AI 결과 → 한글 */
 export function aiResultText(result: AiInspectionResult): string {
-    return withCode(AI_RESULT_LABEL, result);
+    return AI_RESULT_LABEL[result];
+}
+
+/** AI 결과 마우스오버용 `한글 · CODE` */
+export function aiResultHint(result: AiInspectionResult): string {
+    return codeHint(AI_RESULT_LABEL, result);
 }
 
 /**
@@ -284,9 +294,14 @@ export const DECISION_TONE: Record<InspectionDecision, BadgeTone> = {
     KEEP_ADMIN_REVIEW: 'amber',
 };
 
-/** 관리자 판정 → `관리자 파손 판정(DAMAGED)` */
+/** 관리자 판정 → 한글 */
 export function decisionText(decision: InspectionDecision): string {
-    return withCode(DECISION_LABEL, decision);
+    return DECISION_LABEL[decision];
+}
+
+/** 관리자 판정 마우스오버용 `한글 · CODE` */
+export function decisionHint(decision: InspectionDecision): string {
+    return codeHint(DECISION_LABEL, decision);
 }
 
 export const SLOT_DISPLAY_TONE: Record<SlotDisplayStatus, BadgeTone> = {

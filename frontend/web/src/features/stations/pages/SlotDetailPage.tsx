@@ -19,26 +19,37 @@ import {
     AI_RESULT_TONE,
     aiResultText,
     DECISION_TONE,
+    decisionHint,
     decisionText,
     deriveSlotDisplayStatus,
     formatSlotLabel,
     formatUpdatedAt,
     pendingInspectionId,
     SLOT_DISPLAY_TONE,
+    slotStatusHint,
     slotStatusText,
 } from '@/features/stations/types';
 import { Badge } from '@/shared/components/Badge';
+import { CopyButton } from '@/shared/components/CopyButton';
 import { DataTable, TBody, Td, TableCard, Th, THead, Tr } from '@/shared/components/DataTable';
 import { PageBar } from '@/shared/components/PageBar';
+import { LOCK_STATUS_LABEL } from '@/shared/constants/statusLabels';
 
 export function SlotDetailPage() {
-    const { stationId, slotId } = useParams();
+    const { slotId } = useParams();
     const [dialogOpen, setDialogOpen] = useState(false);
 
-    // 라우트 파라미터는 둘 다 UUID 입니다.
-    const { data: station } = useStation(stationId);
-    // ADMIN-SLOT-DETAIL-001
+    // ADMIN-SLOT-DETAIL-001 — 라우트 파라미터는 슬롯 UUID 하나뿐입니다.
     const { data: slot } = useSlotDetail(slotId);
+    /*
+     * 대여소는 **슬롯 응답의 `stationId`** 로 찾습니다. 주소에서 받지 않습니다.
+     *
+     * 예전에는 `/stations/:stationId/slots/:slotId` 라 대여소를 주소에서 가져왔는데,
+     * 둘이 어긋나면(주소를 손대거나 링크를 잘못 복사하면) 슬롯은 그대로인데 대여소 이름·코드가
+     * 다른 곳으로 표시됐습니다. `SL-01-01` 이 `SL-03-01` 로 보이는 식입니다.
+     * 서버가 준 소속을 쓰면 그 어긋남 자체가 불가능합니다.
+     */
+    const { data: station } = useStation(slot?.stationId);
     // ADMIN-SLOT-STATUS-001 — 성공하면 훅이 캐시를 무효화해 이 조회가 다시 돕니다.
     const changeStatus = useChangeSlotStatus();
 
@@ -59,7 +70,7 @@ export function SlotDetailPage() {
                     ]}
                 />
                 <div className="flex h-[200px] items-center justify-center rounded-lg bg-white text-[13px] font-medium text-brand-muted">
-                    존재하지 않는 슬롯입니다. ({stationId} / {slotId})
+                    존재하지 않는 슬롯입니다. ({slotId})
                 </div>
             </div>
         );
@@ -89,7 +100,9 @@ export function SlotDetailPage() {
 
             {/* 요약 줄 */}
             <div className="mb-[18px] flex h-[58px] items-center rounded-lg bg-white pl-5 pr-4">
-                <Badge tone={SLOT_DISPLAY_TONE[display]}>{slotStatusText(display)}</Badge>
+                <Badge tone={SLOT_DISPLAY_TONE[display]} title={slotStatusHint(display)}>
+                    {slotStatusText(display)}
+                </Badge>
                 <h2 className="ml-[17px] text-[16px] font-bold text-brand-ink">
                     {slotLabel} · {station.name}({station.stationCode})
                 </h2>
@@ -127,12 +140,22 @@ export function SlotDetailPage() {
 
             {/* 2단 카드 */}
             <div className="mb-[46px] grid grid-cols-2 gap-[18px]">
+                {/*
+                 * 우산 상태 줄은 없습니다. 바로 위 요약 줄의 배지와 같은 값(`display`)이라
+                 * 한 화면에 두 번 그릴 이유가 없습니다.
+                 */}
                 <InfoCard title="슬롯 상태">
-                    <InfoRow label="우산 상태">
-                        <Badge tone={SLOT_DISPLAY_TONE[display]}>{slotStatusText(display)}</Badge>
-                    </InfoRow>
                     <InfoRow label="잠금 여부">
-                        <SlotLockIcon locked={slot.lockStatus === 'LOCKED'} />
+                        {/*
+                         * 표와 달리 상세는 자리가 넉넉합니다. 아이콘만 두면 `잠금 확인 불가`와
+                         * `잠금 오류`를 색으로만 구분해야 해서 글자를 같이 답니다.
+                         */}
+                        <span className="flex items-center gap-[7px]">
+                            <SlotLockIcon status={slot.lockStatus} />
+                            <span className="text-[13px] font-semibold text-brand-ink">
+                                {LOCK_STATUS_LABEL[slot.lockStatus]}
+                            </span>
+                        </span>
                     </InfoRow>
                     <InfoRow label="온라인">
                         <DeviceBadge status={station.deviceStatus} />
@@ -163,34 +186,38 @@ export function SlotDetailPage() {
                             <InfoRow label="관리자 최종 판정 (확정)">
                                 {/* 미처리(PENDING)면 아직 판정이 없습니다. AI 결과로 대신 채우지 않습니다. */}
                                 {inspection.decision ? (
-                                    <Badge tone={DECISION_TONE[inspection.decision]}>
+                                    <Badge
+                                        tone={DECISION_TONE[inspection.decision]}
+                                        title={decisionHint(inspection.decision)}
+                                    >
                                         {decisionText(inspection.decision)}
                                     </Badge>
                                 ) : (
                                     <Badge tone="amber">판정 대기</Badge>
                                 )}
                             </InfoRow>
-                            <InfoRow label="모델 버전 / 처리 시각">
-                                <span className="text-[13px] font-semibold tabular-nums text-brand-ink">
-                                    {inspection.modelVersion} ·{' '}
-                                    {formatUpdatedAt(inspection.processedAt)}
-                                </span>
-                            </InfoRow>
                             {/*
-                             * 판정 사유는 슬롯 상세 응답에 없습니다. `latestInspection` 에는
-                             * 사유 코드·메모가 들어 있지 않아 검수 상세로 넘겨서 봅니다.
+                             * 모델 버전·처리 시각은 여기 두지 않습니다.
+                             * §7.6 슬롯 상세 표시 필드는 `AI 결과·신뢰도` 까지이고, 모델 버전은
+                             * `WF-WEB-CHANGE-001` 이 검수 상세(`SCR-WEB-INSPECTION-DETAIL-001`)
+                             * 의 항목으로 정했습니다 — "AI 결과, 신뢰도, 모델 버전, 추론 시각·지연".
+                             * 아래 '검수 상세' 링크 한 번이면 거기서 봅니다.
+                             */}
+                            {/*
+                             * `최근 returnAttemptId` 는 §7.6 표시 필드에 명시된 항목이라 남깁니다.
+                             * 이 슬롯을 지금 상태로 만든 반납 건이고, 백엔드에 문의할 때 지목하는
+                             * 값입니다. 반납 상세(P1)는 목업 식별자 체계가 달라 아직 링크하지 않고
+                             * 마우스오버·복사로 전체 값을 꺼낼 수 있게 둡니다.
                              */}
                             <InfoRow label="연결 반납 시도">
-                                <LinkText>
-                                    {shortRef(slot.latestReturnAttempt?.returnAttemptId) ?? '—'}
-                                </LinkText>
+                                <RefId id={slot.latestReturnAttempt?.returnAttemptId} />
                             </InfoRow>
                             <InfoRow label="판정 사유">
                                 <Link
                                     to={`/inspections/${inspection.inspectionId}`}
                                     className="text-[13px] font-bold text-brand-blue-ink transition-opacity hover:opacity-70"
                                 >
-                                    검수 상세에서 보기
+                                    검수 상세
                                 </Link>
                             </InfoRow>
                         </>
@@ -247,9 +274,52 @@ function InfoRow({ label, children }: { label: string; children: ReactNode }) {
 }
 
 /** 다른 도메인(대여·반납 시도)으로 이어질 값. 라우트가 생기면 Link 로 바꾸세요. */
-function LinkText({ children }: { children: ReactNode }) {
+/**
+ * 거래 식별자 표시.
+ *
+ * ERD 의 `rental_id`·`return_attempt_id`·`inspection_id` 는 UUID 뿐이라 표에 36자를 깔 수
+ * 없습니다. 앞 8자만 보여주되 **전체 값에 닿을 방법을 반드시 남깁니다.**
+ *   - `title` — 마우스를 올리면 36자 전체
+ *   - `select-all` — 한 번 클릭으로 전체 선택돼 복사됨
+ * 관리자가 백엔드 로그·문의와 대조하려면 전체 값이 필요합니다.
+ *
+ * 이동할 화면이 있으면(`to`) 진짜 링크로 만듭니다. 없으면 파란 글자로 만들지 않습니다 —
+ * 링크처럼 보이는데 눌리지 않는 게 제일 나쁩니다.
+ */
+function RefId({ id, to }: { id: string | null | undefined; to?: string | null }) {
+    if (!id) {
+        return (
+            <span className="text-brand-muted" aria-label="연결 없음">
+                —
+            </span>
+        );
+    }
+
+    const short = shortRef(id);
+
+    if (to) {
+        return (
+            <Link
+                to={to}
+                title={id}
+                className="text-[13px] font-bold tabular-nums text-brand-blue-ink underline-offset-2 transition-opacity hover:underline hover:opacity-70"
+            >
+                {short}
+            </Link>
+        );
+    }
+
     return (
-        <span className="text-[13px] font-bold tabular-nums text-brand-blue-ink">{children}</span>
+        <span className="flex items-center justify-end gap-[6px]">
+            <span
+                title={id}
+                className="cursor-text select-all text-[13px] font-bold tabular-nums text-brand-ink-soft"
+            >
+                {short}
+            </span>
+            {/* 화면에는 8자만 보이므로 전체 값을 꺼낼 손잡이를 답니다. */}
+            <CopyButton value={id} label="반납 시도 ID" />
+        </span>
     );
 }
 
@@ -257,13 +327,25 @@ function SlotHistoryTable({ entries }: { entries: SlotHistoryEntry[] }) {
     return (
         <TableCard>
             <DataTable>
-                {/* 열 너비는 시안(1280px)의 열 왼쪽 좌표에서 역산한 값입니다. */}
+                {/*
+                 * 이 표는 '언제 · 무엇이 · 어떻게 바뀌었나' 세 가지만 보여줍니다.
+                 * 위 카드에 이미 있는 것은 여기서 반복하지 않습니다.
+                 *
+                 * 연결ID — 표시 필드의 `최근 returnAttemptId` 는 '슬롯 상태' 카드에 있습니다.
+                 *   표에 36자 UUID 를 깔면 자리만 잡아먹습니다.
+                 * 사유 — 되돌려받는 API 가 없습니다. `ADMIN-SLOT-STATUS-001` 과
+                 *   `ADMIN-INSPECTION-003` 은 `reasonCode`·`note` 를 **받기만** 하고 조회
+                 *   응답에는 그 필드가 없습니다.
+                 * 검수 링크 — §7.6 `ACT-WEB-SLOT-DETAIL-004 연결 검수 이동` 은 '최근 검수'
+                 *   카드의 '검수 상세에서 보기'(검수가 있으면 항상 표시)와 미처리일 때 뜨는
+                 *   상단 '검수하기' 버튼이 충족합니다. 같은 목적지를 세 번 둘 이유가 없습니다.
+                 */}
                 <THead>
-                    <Th className="w-[15.06%]">시각</Th>
-                    <Th className="w-[12.97%]">구분</Th>
-                    <Th className="w-[13.96%]">연결ID</Th>
-                    <Th className="w-[40%]">상태 변화</Th>
-                    <Th className="w-[15.07%]">사유·비고</Th>
+                    <Th className="w-[28%]">시각</Th>
+                    <Th className="w-[24%]">구분</Th>
+                    <Th align="center" className="w-[48%]">
+                        상태 변화
+                    </Th>
                 </THead>
 
                 <TBody>
@@ -271,17 +353,8 @@ function SlotHistoryTable({ entries }: { entries: SlotHistoryEntry[] }) {
                         <Tr key={`${entry.at}-${entry.kind}`} className="h-[56px]">
                             <Td className="tabular-nums">{formatUpdatedAt(entry.at)}</Td>
                             <Td className="font-bold text-brand-ink">{entry.kind}</Td>
-                            <Td>
-                                {entry.linkId ? (
-                                    <LinkText>{entry.linkId}</LinkText>
-                                ) : (
-                                    <span className="text-brand-muted" aria-label="연결 없음">
-                                        —
-                                    </span>
-                                )}
-                            </Td>
-                            <Td>
-                                <span className="flex items-center gap-[12px]">
+                            <Td align="center">
+                                <span className="flex items-center justify-center gap-[12px]">
                                     <Badge
                                         tone={SLOT_DISPLAY_TONE[entry.from]}
                                         className="whitespace-nowrap"
@@ -296,16 +369,6 @@ function SlotHistoryTable({ entries }: { entries: SlotHistoryEntry[] }) {
                                         {slotStatusText(entry.to)}
                                     </Badge>
                                 </span>
-                            </Td>
-                            <Td>
-                                <span className="block leading-[1.45] text-brand-ink">
-                                    {entry.note}
-                                </span>
-                                {entry.noteSub && (
-                                    <span className="block text-[11.5px] font-medium leading-[1.45] text-brand-muted">
-                                        {entry.noteSub}
-                                    </span>
-                                )}
                             </Td>
                         </Tr>
                     ))}

@@ -18,6 +18,7 @@ import { Badge } from '@/shared/components/Badge';
 import { useRentals } from '@/features/history/hooks/useHistory';
 import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
+import { RefId } from '@/shared/components/RefId';
 import { Pagination } from '@/shared/components/Pagination';
 import type { FilterOption } from '@/shared/components/FilterSelect';
 import { cn } from '@/lib/utils';
@@ -115,7 +116,7 @@ export function RentalListPage() {
                 statusOptions={STATUS_OPTIONS}
                 keyword={keyword}
                 onKeywordChange={(value) => patch({ q: value })}
-                keywordPlaceholder="사용자 · 대여ID(R-) 검색"
+                keywordPlaceholder="사용자 · 대여 ID 검색"
                 onSubmit={handleSubmit}
             />
 
@@ -163,11 +164,11 @@ export function RentalListPage() {
                             <span className="font-medium text-brand-ink-soft">
                                 {rental.userRef}
                             </span>
-                            <span className="font-bold text-brand-ink">{rental.rentalId}</span>
+                            <RefId id={rental.rentalId} label="대여 ID" />
                             <span className="truncate font-medium text-brand-ink-soft">
                                 {rental.stationName}
                                 <span className="ml-[6px] text-[11.5px] text-brand-muted">
-                                    {rental.slotId}
+                                    {rental.slotLabel}
                                 </span>
                             </span>
                             <span>

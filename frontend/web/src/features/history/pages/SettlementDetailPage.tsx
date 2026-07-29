@@ -21,6 +21,8 @@ import { Badge } from '@/shared/components/Badge';
 import { useSettlement } from '@/features/history/hooks/useHistory';
 import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
+import { RefId } from '@/shared/components/RefId';
+import { shortId } from '@/shared/lib/shortId';
 
 /**
  * 정산 상세 — `SCR-WEB-SETTLEMENT-DETAIL-001` (**P1**, `WEB-API-CAND-007`).
@@ -62,7 +64,7 @@ export function SettlementDetailPage() {
                 breadcrumb={[
                     { label: '이력', to: '/history/settlements' },
                     { label: '정산 이력', to: '/history/settlements' },
-                    { label: item.settlementId },
+                    { label: shortId(item.settlementId) },
                 ]}
             />
 
@@ -86,7 +88,9 @@ export function SettlementDetailPage() {
 
             <div className="grid grid-cols-2 gap-4">
                 <InfoCard title="정산 정보">
-                    <InfoRow label="정산 ID">{item.settlementId}</InfoRow>
+                    <InfoRow label="정산 ID">
+                        <RefId id={item.settlementId} label="정산 ID" />
+                    </InfoRow>
                     <InfoRow label="정산 유형">
                         <Badge tone={SETTLEMENT_REASON_TONE[item.reason]}>
                             {SETTLEMENT_REASON_LABEL[item.reason]}
@@ -123,7 +127,7 @@ export function SettlementDetailPage() {
                     <InfoRow label="연결 반납">
                         {item.returnAttemptId ? (
                             <ValueLink to={`/history/returns/${item.returnAttemptId}`}>
-                                {item.returnAttemptId}
+                                {shortId(item.returnAttemptId)}
                             </ValueLink>
                         ) : (
                             <span className="text-brand-muted">없음</span>
@@ -131,11 +135,11 @@ export function SettlementDetailPage() {
                     </InfoRow>
                     <InfoRow label="연결 대여">
                         <ValueLink to={`/history/rentals/${item.rentalId}`}>
-                            {item.rentalId}
+                            {shortId(item.rentalId)}
                         </ValueLink>
                     </InfoRow>
                     <InfoRow label="대상 슬롯">
-                        {item.slotId ?? <span className="text-brand-muted">—</span>}
+                        {item.slotLabel ?? <span className="text-brand-muted">—</span>}
                     </InfoRow>
                 </InfoCard>
             </div>

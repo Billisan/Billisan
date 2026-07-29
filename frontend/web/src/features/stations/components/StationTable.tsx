@@ -14,9 +14,10 @@ export function StationTable({ stations }: { stations: Station[] }) {
                 {/* 열 너비는 시안(1280px)의 헤더 x 좌표에서 역산한 값입니다. */}
                 <THead>
                     <Th className="w-[14%]">대여소ID</Th>
-                    {/* 온라인 칸은 '장치 연결 끊김'이 들어가도록 시안(9.12%)보다 넓혔습니다. */}
-                    <Th className="w-[23.5%]">위치(건물)</Th>
-                    <Th align="center" className="w-[11.6%]">
+                    {/* 온라인 배지가 ON/OFF/ERR 로 짧아져서 시안 폭(9.12%)으로 되돌리고,
+                        남은 자리는 이름이 긴 대여소가 있는 위치 칸에 넘겼습니다. */}
+                    <Th className="w-[25.98%]">위치(건물)</Th>
+                    <Th align="center" className="w-[9.12%]">
                         온라인
                     </Th>
                     <Th align="center" className="w-[14.87%]">

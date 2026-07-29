@@ -5,7 +5,12 @@ import {
     type InspectionDecisionInput,
     type InspectionDetail,
 } from '@/features/inspections/types';
-import { DECISION_TONE, decisionText, type InspectionDecision } from '@/features/stations/types';
+import {
+    DECISION_TONE,
+    decisionHint,
+    decisionText,
+    type InspectionDecision,
+} from '@/features/stations/types';
 import { Badge } from '@/shared/components/Badge';
 import { cn } from '@/lib/utils';
 
@@ -55,7 +60,10 @@ export function DecisionForm({
 
                 <div className="mt-[18px] flex items-center gap-[10px]">
                     {detail.decision ? (
-                        <Badge tone={DECISION_TONE[detail.decision]}>
+                        <Badge
+                            tone={DECISION_TONE[detail.decision]}
+                            title={decisionHint(detail.decision)}
+                        >
                             {decisionText(detail.decision)}
                         </Badge>
                     ) : (

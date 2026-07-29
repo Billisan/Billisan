@@ -15,6 +15,8 @@ import { Badge } from '@/shared/components/Badge';
 import { useRental } from '@/features/history/hooks/useHistory';
 import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
+import { RefId } from '@/shared/components/RefId';
+import { shortId } from '@/shared/lib/shortId';
 
 /**
  * 대여 상세 — `SCR-WEB-RENTAL-DETAIL-001` (**P1**, `WEB-API-CAND-003`).
@@ -52,7 +54,7 @@ export function RentalDetailPage() {
                 breadcrumb={[
                     { label: '이력', to: '/history/rentals' },
                     { label: '대여 이력', to: '/history/rentals' },
-                    { label: rental.rentalId },
+                    { label: shortId(rental.rentalId) },
                 ]}
             />
 
@@ -79,7 +81,9 @@ export function RentalDetailPage() {
 
             <div className="grid grid-cols-2 gap-4">
                 <InfoCard title="대여 정보">
-                    <InfoRow label="대여 ID">{rental.rentalId}</InfoRow>
+                    <InfoRow label="대여 ID">
+                        <RefId id={rental.rentalId} label="대여 ID" />
+                    </InfoRow>
                     <InfoRow label="사용자">
                         <ValueLink to={`/users/${rental.userRef}/history`}>
                             {rental.userRef}
@@ -91,9 +95,7 @@ export function RentalDetailPage() {
                         </ValueLink>
                     </InfoRow>
                     <InfoRow label="슬롯">
-                        <ValueLink to={`/stations/${rental.stationId}/slots/${rental.slotId}`}>
-                            {rental.slotId}
-                        </ValueLink>
+                        <ValueLink to={`/slots/${rental.slotId}`}>{rental.slotLabel}</ValueLink>
                     </InfoRow>
                     <InfoRow label="대여 시각">{rental.rentedAt}</InfoRow>
                     <InfoRow label="반납 기한">{rental.dueAt}</InfoRow>
@@ -114,11 +116,11 @@ export function RentalDetailPage() {
                                 </ValueLink>
                             </InfoRow>
                             <InfoRow label="반납 슬롯">
-                                {linkedReturn.slotId ?? '슬롯 미선정'}
+                                {linkedReturn.slotLabel ?? '슬롯 미선정'}
                             </InfoRow>
                             <InfoRow label="반납 처리">
                                 <ValueLink to={`/history/returns/${linkedReturn.returnAttemptId}`}>
-                                    {linkedReturn.returnAttemptId}
+                                    {shortId(linkedReturn.returnAttemptId)}
                                 </ValueLink>
                             </InfoRow>
                             <InfoRow label="연결 정산">
@@ -126,7 +128,7 @@ export function RentalDetailPage() {
                                     <ValueLink
                                         to={`/history/settlements/${linkedSettlement.settlementId}`}
                                     >
-                                        {linkedSettlement.settlementId}
+                                        {shortId(linkedSettlement.settlementId)}
                                     </ValueLink>
                                 ) : (
                                     <span className="text-brand-muted">없음</span>

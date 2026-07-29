@@ -40,8 +40,10 @@ export interface Rental {
     userRef: string;
     stationName: string;
     stationId: string;
-    /** 대여가 나간 슬롯 (`checkoutSlotId`) */
+    /** 대여가 나간 슬롯 (`checkoutSlotId`) — UUID */
     slotId: string;
+    /** 그 슬롯의 사람이 읽는 라벨('SL-03-03'). UUID 만 깔면 어느 슬롯인지 알 수 없습니다. */
+    slotLabel: string;
     rentedAt: string;
     dueAt: string;
     status: RentalDisplayStatus;
@@ -74,8 +76,10 @@ export interface ReturnAttempt {
     userRef: string;
     stationName: string;
     stationId: string;
-    /** `returnSlotId`. 슬롯 미선정이면 null 입니다. */
+    /** `returnSlotId` — UUID. 슬롯 미선정이면 null 입니다. */
     slotId: string | null;
+    /** 그 슬롯의 표시 라벨. 슬롯 미선정이면 null 입니다. */
+    slotLabel: string | null;
     attemptedAt: string;
     status: ReturnDisplayStatus;
     /**
@@ -134,6 +138,8 @@ export interface Settlement {
     rentalId: string;
     returnAttemptId: string | null;
     slotId: string | null;
+    /** 그 슬롯의 표시 라벨. 슬롯이 없으면 null 입니다. */
+    slotLabel: string | null;
     /** 파손 판정 사유. 파손 정산이 아니면 null 입니다. */
     decisionReason: string | null;
 }

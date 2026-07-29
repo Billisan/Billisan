@@ -13,6 +13,7 @@ import {
 } from '@/features/stations/types';
 import { FilterSelect, type FilterOption } from '@/shared/components/FilterSelect';
 import { PageBar } from '@/shared/components/PageBar';
+import { SLOT_DISPLAY_LABEL } from '@/shared/constants/statusLabels';
 
 type StatusFilter =
     'ALL' | Extract<SlotDisplayStatus, 'AVAILABLE' | 'EMPTY' | 'ADMIN_REVIEW' | 'DAMAGED'>;
@@ -23,10 +24,11 @@ type StatusFilter =
  */
 const STATUS_OPTIONS: readonly FilterOption<StatusFilter>[] = [
     { value: 'ALL', label: '우산 상태' },
-    { value: 'AVAILABLE', label: '사용 가능' },
-    { value: 'EMPTY', label: '빈 슬롯' },
-    { value: 'ADMIN_REVIEW', label: '관리자 확인' },
-    { value: 'DAMAGED', label: '파손' },
+    // 라벨은 손으로 적지 않고 공용 매핑에서 가져옵니다. 표의 배지와 어긋나면 안 됩니다.
+    { value: 'AVAILABLE', label: SLOT_DISPLAY_LABEL.AVAILABLE },
+    { value: 'EMPTY', label: SLOT_DISPLAY_LABEL.EMPTY },
+    { value: 'ADMIN_REVIEW', label: SLOT_DISPLAY_LABEL.ADMIN_REVIEW },
+    { value: 'DAMAGED', label: SLOT_DISPLAY_LABEL.DAMAGED },
 ];
 
 function parseStatus(value: string | null): StatusFilter {
@@ -60,10 +62,16 @@ export function StationDetailPage() {
         if (!station) return [];
 
         const normalized = keyword.toLowerCase();
+        /*
+         * 검색 대상은 사람이 칠 수 있는 값뿐입니다 — 슬롯 표시 라벨('SL-03-01')과
+         * 대여소 이름·코드. `slotId` 는 UUID 라 넣지 않습니다.
+         */
+        const stationText = `${station.name} ${station.stationCode}`.toLowerCase();
+
         return (slotPage?.items ?? []).filter((slot) => {
-            // 검색은 표시 라벨('SL-03-01')로 합니다. slotId 는 UUID 라 사람이 칠 수 없습니다.
             const label = formatSlotLabel(station.stationCode, slot.slotNumber).toLowerCase();
-            const matchesKeyword = !normalized || label.includes(normalized);
+            const matchesKeyword =
+                !normalized || label.includes(normalized) || stationText.includes(normalized);
             const matchesStatus = status === 'ALL' || deriveSlotDisplayStatus(slot) === status;
 
             return matchesKeyword && matchesStatus;
@@ -132,9 +140,24 @@ export function StationDetailPage() {
                 <DeviceBadge status={station.deviceStatus} />
             </div>
 
+            {/*
+             * 왼쪽에 즉시 반영되는 드롭다운, 오른쪽에 눌러야 하는 검색어 + `조회`.
+             * 검색칸과 버튼이 붙어 있어야 그 둘이 한 벌이라는 게 보입니다.
+             */}
             <form onSubmit={handleSubmit} className="mb-9 flex items-center gap-3">
+                <FilterSelect
+                    label="우산 상태 필터"
+                    value={statusInput}
+                    onChange={(next) => {
+                        setStatusInput(next);
+                        applyQuery({ keyword, status: next });
+                    }}
+                    options={STATUS_OPTIONS}
+                    className="w-[150px]"
+                />
+
                 <label className="relative block">
-                    <span className="sr-only">슬롯 검색</span>
+                    <span className="sr-only">슬롯 번호·대여소 검색</span>
                     <Search
                         className="pointer-events-none absolute left-[14px] top-1/2 size-[13px] -translate-y-1/2 text-brand-muted"
                         aria-hidden
@@ -142,18 +165,10 @@ export function StationDetailPage() {
                     <input
                         value={keywordInput}
                         onChange={(event) => setKeywordInput(event.target.value)}
-                        placeholder="slotId · 거래ID 검색"
+                        placeholder="슬롯 번호 · 대여소 검색"
                         className="h-[38px] w-[320px] rounded-lg bg-brand-surface pl-[38px] pr-3 text-[12.5px] font-medium text-brand-ink outline-none transition-shadow placeholder:text-brand-muted focus-visible:ring-2 focus-visible:ring-brand-blue/40"
                     />
                 </label>
-
-                <FilterSelect
-                    label="우산 상태 필터"
-                    value={statusInput}
-                    onChange={setStatusInput}
-                    options={STATUS_OPTIONS}
-                    className="w-[150px]"
-                />
 
                 <button
                     type="submit"

@@ -18,6 +18,7 @@ import { Badge } from '@/shared/components/Badge';
 import { useReturns } from '@/features/history/hooks/useHistory';
 import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
+import { RefId } from '@/shared/components/RefId';
 import { Pagination } from '@/shared/components/Pagination';
 import type { FilterOption } from '@/shared/components/FilterSelect';
 import { cn } from '@/lib/utils';
@@ -108,7 +109,7 @@ export function ReturnListPage() {
                 statusOptions={STATUS_OPTIONS}
                 keyword={keyword}
                 onKeywordChange={(value) => patch({ q: value })}
-                keywordPlaceholder="사용자 · 반납ID(RT-) 검색"
+                keywordPlaceholder="사용자 · 반납 ID 검색"
                 onSubmit={handleSubmit}
             />
 
@@ -153,7 +154,7 @@ export function ReturnListPage() {
                                 {item.attemptedAt.slice(5)}
                             </span>
                             <span className="font-medium text-brand-ink-soft">{item.userRef}</span>
-                            <span className="font-bold text-brand-ink">{item.returnAttemptId}</span>
+                            <RefId id={item.returnAttemptId} label="반납 시도 ID" />
                             <span className="truncate font-medium text-brand-ink-soft">
                                 {item.stationName}
                                 <span className="ml-[6px] text-[11.5px] text-brand-muted">

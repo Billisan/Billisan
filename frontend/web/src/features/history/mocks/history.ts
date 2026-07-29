@@ -1,3 +1,11 @@
+import {
+    rentalUuid,
+    returnUuid,
+    settlementUuid,
+    slotLabelOf,
+    slotUuidOf,
+    stationUuid,
+} from '@/features/history/mocks/refs';
 import type {
     Rental,
     ReturnAttempt,
@@ -17,9 +25,9 @@ export const HISTORY_SYNCED_AT = '2026-07-24 09:20';
 
 /** 시안 하단 안내 문구. 우산 ID 없이 대여 ID 로 추적한다는 원칙을 화면에 남깁니다. */
 export const RENTAL_LIST_NOTE =
-    '대여 상태: 대여중 · 연체(기한 초과 미반납) · 반납완료 · 분실(장기 미반납) · 개별 우산 ID 없이 대여 ID(R-)로 추적합니다';
+    '대여 상태: 대여중 · 연체(기한 초과 미반납) · 반납완료 · 분실(장기 미반납) · 개별 우산 ID 없이 대여 ID로 추적합니다';
 
-export const MOCK_RENTALS: Rental[] = [
+const RAW_RENTALS: Omit<Rental, 'slotLabel'>[] = [
     {
         rentalId: 'R-88102',
         userRef: 'u_2210',
@@ -106,7 +114,7 @@ export const MOCK_RENTALS: Rental[] = [
     },
 ];
 
-export const MOCK_RETURNS: ReturnAttempt[] = [
+const RAW_RETURNS: Omit<ReturnAttempt, 'slotLabel'>[] = [
     {
         returnAttemptId: 'RT-88213',
         rentalId: 'R-88021',
@@ -221,7 +229,7 @@ export const MOCK_RETURNS: ReturnAttempt[] = [
     },
 ];
 
-export const MOCK_SETTLEMENTS: Settlement[] = [
+const RAW_SETTLEMENTS: Omit<Settlement, 'slotLabel'>[] = [
     {
         settlementId: 'S-1043',
         userRef: 'u_8f3a',
@@ -308,6 +316,48 @@ export const MOCK_SETTLEMENTS: Settlement[] = [
     },
 ];
 
+/*
+ * ---------------------------------------------------------------- UUID 변환
+ *
+ * 위 데이터는 읽기 쉬우라고 `R-88102`·`ST-003`·`SL-03-03` 같은 표시 코드로 적었습니다.
+ * 실제 서버는 전부 `CHAR(36)` UUID 를 줍니다 (ERD). 그 차이를 나중에 메우면 화면·검색·링크를
+ * 다시 손대야 하므로, **내보내는 시점에 UUID 로 바꿔** 지금부터 실제 모양으로 다룹니다.
+ *
+ * 슬롯·검수 목업과 같은 네임스페이스를 써서 화면끼리 ID 가 이어집니다. 슬롯 상세의
+ * `연결 반납 시도` 가 가리키는 값이 반납 이력의 그 건과 실제로 같은 UUID 입니다.
+ *
+ * 사람이 읽던 코드는 버리지 않고 `slotLabel` 로 남깁니다 — 표에 UUID 만 깔면 어느 슬롯인지
+ * 알 수 없습니다.
+ */
+export const MOCK_RENTALS: Rental[] = RAW_RENTALS.map((item) => ({
+    ...item,
+    rentalId: rentalUuid(item.rentalId),
+    stationId: stationUuid(item.stationId),
+    slotLabel: slotLabelOf(item.slotId),
+    slotId: slotUuidOf(item.slotId),
+    returnAttemptId: item.returnAttemptId && returnUuid(item.returnAttemptId),
+    settlementId: item.settlementId && settlementUuid(item.settlementId),
+}));
+
+export const MOCK_RETURNS: ReturnAttempt[] = RAW_RETURNS.map((item) => ({
+    ...item,
+    returnAttemptId: returnUuid(item.returnAttemptId),
+    rentalId: rentalUuid(item.rentalId),
+    stationId: stationUuid(item.stationId),
+    slotLabel: item.slotId && slotLabelOf(item.slotId),
+    slotId: item.slotId && slotUuidOf(item.slotId),
+    settlementId: item.settlementId && settlementUuid(item.settlementId),
+}));
+
+export const MOCK_SETTLEMENTS: Settlement[] = RAW_SETTLEMENTS.map((item) => ({
+    ...item,
+    settlementId: settlementUuid(item.settlementId),
+    rentalId: rentalUuid(item.rentalId),
+    returnAttemptId: item.returnAttemptId && returnUuid(item.returnAttemptId),
+    slotLabel: item.slotId && slotLabelOf(item.slotId),
+    slotId: item.slotId && slotUuidOf(item.slotId),
+}));
+
 export function findRental(id: string | undefined) {
     return MOCK_RENTALS.find((item) => item.rentalId === id);
 }
@@ -333,7 +383,7 @@ export interface UserSummary {
     timeline: UserTimelineEntry[];
 }
 
-export const MOCK_USER: UserSummary = {
+const RAW_USER: UserSummary = {
     userRef: 'u_8f3a',
     period: '최근 30일',
     totalRentals: 8,
@@ -405,4 +455,21 @@ export const MOCK_USER: UserSummary = {
             statusTone: 'green',
         },
     ],
+};
+
+/** 타임라인의 링크도 같은 규칙으로 바꿉니다. 안 바꾸면 눌러도 없는 화면으로 갑니다. */
+export const MOCK_USER: UserSummary = {
+    ...RAW_USER,
+    timeline: RAW_USER.timeline.map((entry) => {
+        const id =
+            entry.kind === '대여'
+                ? rentalUuid(entry.linkId)
+                : entry.kind === '반납'
+                  ? returnUuid(entry.linkId)
+                  : settlementUuid(entry.linkId);
+        const path =
+            entry.kind === '대여' ? 'rentals' : entry.kind === '반납' ? 'returns' : 'settlements';
+
+        return { ...entry, linkId: id, to: `/history/${path}/${id}` };
+    }),
 };

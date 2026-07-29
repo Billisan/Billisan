@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 
 import { useUserHistory } from '@/features/history/hooks/useHistory';
 import { HISTORY_SYNCED_AT } from '@/features/history/mocks/history';
@@ -6,6 +6,7 @@ import { formatWon } from '@/features/history/types';
 import { Badge } from '@/shared/components/Badge';
 import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
+import { RefId } from '@/shared/components/RefId';
 import { cn } from '@/lib/utils';
 
 /**
@@ -119,12 +120,13 @@ export function UserHistoryPage() {
                             <Badge tone={KIND_TONE[entry.kind]}>{entry.kind}</Badge>
                         </span>
                         <span className="font-bold">
-                            <Link
+                            {/* RefId 가 링크까지 만듭니다. 표가 촘촘해 복사 버튼은 뺐습니다. */}
+                            <RefId
+                                id={entry.linkId}
+                                label={`${entry.kind} ID`}
                                 to={entry.to}
-                                className="text-brand-blue-ink transition-opacity hover:opacity-70"
-                            >
-                                {entry.linkId}
-                            </Link>
+                                hideCopy
+                            />
                         </span>
                         <span className="truncate font-medium text-brand-ink-soft">
                             {entry.target}
