@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { fetchStationSummary as fetchStationSummaryMock } from '../api/stationApi'
+import type { RentalBlockReason } from '../types/eligibility'
 import { MAIN_SCREEN_VARIANT, type MainScreenVariant } from '../types/slot'
 
 interface KioskMainState {
@@ -9,6 +10,9 @@ interface KioskMainState {
   isStale: boolean // 방금 받은 숫자가 오래된 값일 수도 있는지
   error: string | null // 조회하다가 실패했으면 에러 메시지
   fetchStationSummary: () => Promise<void> // "지금 재고 좀 다시 확인해줘"라고 부르는 함수
+  rentalBlockReason: RentalBlockReason | null // 얼굴 인증 후 정책 검증에서 대여가 막힌 사유 — 있으면 메인 화면이 모달을 띄운다
+  setRentalBlockReason: (reason: RentalBlockReason) => void
+  clearRentalBlockReason: () => void
 }
 
 export const useKioskMainStore = create<KioskMainState>((set) => ({
@@ -31,6 +35,9 @@ export const useKioskMainStore = create<KioskMainState>((set) => ({
       set({ error: '재고 정보를 확인할 수 없습니다.', isLoading: false })
     }
   },
+  rentalBlockReason: null,
+  setRentalBlockReason: (reason) => set({ rentalBlockReason: reason }),
+  clearRentalBlockReason: () => set({ rentalBlockReason: null }),
 }))
 
 // usableSlotCount(SSOT)에서 화면 variant를 파생시킨다 — 스토어 상태로 별도 저장하지 않음.
