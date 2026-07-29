@@ -9,9 +9,21 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=Asia/Seoul
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      MQTT_BROKER_URL: tcp://mosquitto:1883
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - billisan-net
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: billisan-mqtt
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
     networks:
       - billisan-net
 
