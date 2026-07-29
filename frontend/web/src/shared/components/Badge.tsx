@@ -17,12 +17,15 @@ interface BadgeProps {
     tone: BadgeTone;
     children: ReactNode;
     className?: string;
+    /** 줄임 표기(`ON`·`ERR` 등)를 쓸 때 원래 뜻을 마우스오버로 남깁니다. */
+    title?: string;
 }
 
 /** 표 안에서 상태를 표시하는 알약형 배지 (높이 22px 고정). */
-export function Badge({ tone, children, className }: BadgeProps) {
+export function Badge({ tone, children, className, title }: BadgeProps) {
     return (
         <span
+            title={title}
             className={cn(
                 'inline-flex h-[22px] shrink-0 items-center justify-center rounded-md px-[10px] text-[11px] font-bold leading-none',
                 TONE_CLASS[tone],

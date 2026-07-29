@@ -16,6 +16,7 @@ export const MOCK_NS = {
     inspection: 'c0000000',
     returnAttempt: 'd0000000',
     rental: 'e0000000',
+    settlement: 'f0000000',
 } as const;
 
 /** UUID v4 모양(`8-4-4-4-12`)을 지키는 합성 ID. 진짜 무작위는 아닙니다. */

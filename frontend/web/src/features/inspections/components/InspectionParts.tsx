@@ -1,8 +1,13 @@
 import { formatScore } from '@/features/inspections/mocks/aiVerdict';
 import type { InspectionReviewStatus } from '@/features/inspections/types';
-import { AI_RESULT_TONE, aiResultText, type AiInspectionResult } from '@/features/stations/types';
+import {
+    AI_RESULT_TONE,
+    aiResultHint,
+    aiResultText,
+    type AiInspectionResult,
+} from '@/features/stations/types';
 import { Badge } from '@/shared/components/Badge';
-import { REVIEW_STATUS_LABEL, withCode } from '@/shared/constants/statusLabels';
+import { codeHint, REVIEW_STATUS_LABEL } from '@/shared/constants/statusLabels';
 import { cn } from '@/lib/utils';
 
 /**
@@ -20,7 +25,11 @@ import { cn } from '@/lib/utils';
  */
 export function AiResultBadge({ result }: { result: AiInspectionResult }) {
     return (
-        <Badge tone={AI_RESULT_TONE[result]} className="whitespace-nowrap">
+        <Badge
+            tone={AI_RESULT_TONE[result]}
+            className="whitespace-nowrap"
+            title={aiResultHint(result)}
+        >
             {aiResultText(result)}
         </Badge>
     );
@@ -29,8 +38,12 @@ export function AiResultBadge({ result }: { result: AiInspectionResult }) {
 /** 관리자 처리 여부 배지. AI 결과가 아니라 '사람이 봤는가'입니다. */
 export function ReviewStatusBadge({ status }: { status: InspectionReviewStatus }) {
     return (
-        <Badge tone={status === 'PENDING' ? 'amber' : 'green'} className="whitespace-nowrap">
-            {withCode(REVIEW_STATUS_LABEL, status)}
+        <Badge
+            tone={status === 'PENDING' ? 'amber' : 'green'}
+            className="whitespace-nowrap"
+            title={codeHint(REVIEW_STATUS_LABEL, status)}
+        >
+            {REVIEW_STATUS_LABEL[status]}
         </Badge>
     );
 }

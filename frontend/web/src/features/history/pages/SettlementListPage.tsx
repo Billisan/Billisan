@@ -22,6 +22,7 @@ import { Badge } from '@/shared/components/Badge';
 import { useSettlements } from '@/features/history/hooks/useHistory';
 import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
+import { RefId } from '@/shared/components/RefId';
 import { Pagination } from '@/shared/components/Pagination';
 import type { FilterOption } from '@/shared/components/FilterSelect';
 import { cn } from '@/lib/utils';
@@ -120,7 +121,7 @@ export function SettlementListPage() {
                 statusOptions={STATUS_OPTIONS}
                 keyword={keyword}
                 onKeywordChange={(value) => patch({ q: value })}
-                keywordPlaceholder="사용자 · 정산ID(S-) 검색"
+                keywordPlaceholder="사용자 · 정산 ID 검색"
                 onSubmit={handleSubmit}
             />
 
@@ -173,7 +174,7 @@ export function SettlementListPage() {
                                 {item.createdAt.slice(5)}
                             </span>
                             <span className="font-medium text-brand-ink-soft">{item.userRef}</span>
-                            <span className="font-bold text-brand-ink">{item.settlementId}</span>
+                            <RefId id={item.settlementId} label="정산 ID" />
                             <span className="flex items-center gap-[10px]">
                                 <Badge tone={SETTLEMENT_REASON_TONE[item.reason]}>
                                     {SETTLEMENT_REASON_LABEL[item.reason]}

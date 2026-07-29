@@ -77,7 +77,7 @@ export function InspectionDetailPage() {
                     · {detail.stationName}
                 </p>
                 <Link
-                    to={`/stations/${detail.stationId}/slots/${detail.slotId}`}
+                    to={`/slots/${detail.slotId}`}
                     className="ml-auto inline-flex h-[34px] items-center rounded-[7px] border border-brand-border-soft bg-white px-[14px] text-[12.5px] font-bold text-brand-body transition-colors hover:bg-brand-surface"
                 >
                     슬롯 상세

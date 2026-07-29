@@ -16,6 +16,8 @@ import { Badge } from '@/shared/components/Badge';
 import { useReturnAttempt } from '@/features/history/hooks/useHistory';
 import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
+import { RefId } from '@/shared/components/RefId';
+import { shortId } from '@/shared/lib/shortId';
 
 /**
  * 반납 상세 — `SCR-WEB-RETURN-DETAIL-001` (**P1**, `WEB-API-CAND-005`).
@@ -57,7 +59,7 @@ export function ReturnDetailPage() {
                 breadcrumb={[
                     { label: '이력', to: '/history/returns' },
                     { label: '반납 이력', to: '/history/returns' },
-                    { label: item.returnAttemptId },
+                    { label: shortId(item.returnAttemptId) },
                 ]}
             />
 
@@ -71,10 +73,7 @@ export function ReturnDetailPage() {
                             연결 대여 보기
                         </DetailLinkButton>
                         {item.inspectionId && (
-                            <DetailLinkButton
-                                to={`/stations/${item.stationId}/slots/${item.slotId}`}
-                                primary
-                            >
+                            <DetailLinkButton to={`/slots/${item.slotId}`} primary>
                                 파손 검수로 이동
                             </DetailLinkButton>
                         )}
@@ -84,7 +83,9 @@ export function ReturnDetailPage() {
 
             <div className="grid grid-cols-2 gap-4">
                 <InfoCard title="반납 정보">
-                    <InfoRow label="반납 ID">{item.returnAttemptId}</InfoRow>
+                    <InfoRow label="반납 ID">
+                        <RefId id={item.returnAttemptId} label="반납 시도 ID" />
+                    </InfoRow>
                     <InfoRow label="반납 시각">{item.attemptedAt}</InfoRow>
                     <InfoRow label="반납 대여소">
                         <ValueLink to={`/stations/${item.stationId}`}>
@@ -93,9 +94,7 @@ export function ReturnDetailPage() {
                     </InfoRow>
                     <InfoRow label="슬롯">
                         {item.slotId ? (
-                            <ValueLink to={`/stations/${item.stationId}/slots/${item.slotId}`}>
-                                {item.slotId}
-                            </ValueLink>
+                            <ValueLink to={`/slots/${item.slotId}`}>{item.slotLabel}</ValueLink>
                         ) : (
                             <span className="text-brand-muted">슬롯 미선정</span>
                         )}
@@ -105,7 +104,7 @@ export function ReturnDetailPage() {
                     </InfoRow>
                     <InfoRow label="연결 대여">
                         <ValueLink to={`/history/rentals/${item.rentalId}`}>
-                            {item.rentalId}
+                            {shortId(item.rentalId)}
                         </ValueLink>
                     </InfoRow>
                 </InfoCard>

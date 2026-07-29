@@ -1,7 +1,8 @@
 import { LogOut, Search, ShieldCheck, TriangleAlert, Umbrella } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
+import { usePendingInspectionBySlot } from '@/features/inspections/hooks/useInspections';
 import { DetailLink } from '@/features/stations/components/DetailLink';
 import { useInventory, useStationSlots } from '@/features/stations/hooks/useStations';
 import { MOCK_STATIONS, STATIONS_SYNCED_AT } from '@/features/stations/mocks/stations';
@@ -10,6 +11,7 @@ import {
     formatSlotLabel,
     formatUpdatedAt,
     SLOT_DISPLAY_TONE,
+    slotStatusHint,
     slotStatusText,
     type SlotDisplayStatus,
     type Station,
@@ -18,6 +20,7 @@ import { Badge } from '@/shared/components/Badge';
 import { FilterSelect, type FilterOption } from '@/shared/components/FilterSelect';
 import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
+import { SLOT_DISPLAY_LABEL } from '@/shared/constants/statusLabels';
 import { cn } from '@/lib/utils';
 
 /**
@@ -45,10 +48,15 @@ type StatusFilter =
  */
 const STATUS_OPTIONS: readonly FilterOption<StatusFilter>[] = [
     { value: 'ALL', label: '우산 상태' },
-    { value: 'AVAILABLE', label: '사용 가능' },
-    { value: 'EMPTY', label: '빈 슬롯' },
-    { value: 'ADMIN_REVIEW', label: '관리자 확인' },
-    { value: 'DAMAGED', label: '파손' },
+    /*
+     * 라벨을 손으로 적지 않고 공용 매핑에서 가져옵니다.
+     * `AVAILABLE` 을 '사용 가능'이라고 따로 적어 뒀었는데, 표의 배지는 '이용 가능'이라
+     * 같은 상태가 필터와 표에서 다른 이름으로 보였습니다.
+     */
+    { value: 'AVAILABLE', label: SLOT_DISPLAY_LABEL.AVAILABLE },
+    { value: 'EMPTY', label: SLOT_DISPLAY_LABEL.EMPTY },
+    { value: 'ADMIN_REVIEW', label: SLOT_DISPLAY_LABEL.ADMIN_REVIEW },
+    { value: 'DAMAGED', label: SLOT_DISPLAY_LABEL.DAMAGED },
 ];
 
 // 드롭다운 value 는 UUID 입니다. 그대로 `ADMIN-INVENTORY-001` 의 경로 변수로 들어갑니다.
@@ -70,6 +78,7 @@ function parseStation(value: string | null): string {
 }
 
 export function InventoryPage() {
+    const navigate = useNavigate();
     // 확정된 조회 조건은 URL Query 에만 둡니다 (화면흐름 §6.2).
     const [searchParams, setSearchParams] = useSearchParams();
     const stationId = parseStation(searchParams.get('station'));
@@ -92,21 +101,37 @@ export function InventoryPage() {
     // 표와 다른 API 라 따로 조회합니다 — 서버가 세어 준 값을 클라이언트가 다시 세지 않습니다.
     const inventoryQuery = useInventory(stationId);
     const slotsQuery = useStationSlots(stationId);
+    /*
+     * `ACT-WEB-INVENTORY-004` 검수 상세 이동에 필요한 slotId → inspectionId.
+     * ADMIN-SLOT-001 에 검수 정보가 없어서 ADMIN-INSPECTION-001 로 대신 채웁니다.
+     */
+    const pendingBySlot = usePendingInspectionBySlot();
     const summary = inventoryQuery.data;
     const slotPage = slotsQuery.data;
     const allSlots = useMemo(() => slotPage?.items ?? [], [slotPage]);
 
     const slots = useMemo(() => {
         const normalized = keyword.toLowerCase();
+        /*
+         * 검색 대상은 **사람이 칠 수 있는 값**뿐입니다 — 슬롯 표시 라벨('SL-03-01')과
+         * 대여소 이름·코드. `slotId`·`stationId` 는 UUID 라 검색에 넣지 않습니다.
+         *
+         * 이 화면은 대여소를 드롭다운으로 이미 고른 뒤라 대여소로 검색해도 결과가 전부
+         * 남거나 전부 사라집니다. 그래도 넣어 두는 이유는 표에 '대여소' 열이 보이기
+         * 때문입니다 — 보이는 값으로 걸러지지 않으면 검색이 고장 난 것처럼 보입니다.
+         * 대여소를 넘나드는 검색은 P0 API 가 대여소 단위라(`ADMIN-SLOT-001`) 불가능합니다.
+         */
+        const stationText = `${station.name} ${station.stationCode}`.toLowerCase();
+
         return allSlots.filter((slot) => {
-            // 검색은 표시 라벨('SL-03-01')로 합니다. slotId 는 UUID 라 사람이 칠 수 없습니다.
             const label = formatSlotLabel(station.stationCode, slot.slotNumber).toLowerCase();
-            const matchesKeyword = !normalized || label.includes(normalized);
+            const matchesKeyword =
+                !normalized || label.includes(normalized) || stationText.includes(normalized);
             const matchesStatus = status === 'ALL' || deriveSlotDisplayStatus(slot) === status;
 
             return matchesKeyword && matchesStatus;
         });
-    }, [allSlots, keyword, status, station.stationCode]);
+    }, [allSlots, keyword, status, station.name, station.stationCode]);
 
     /*
      * 집계는 `ADMIN-INVENTORY-001` 필드 그대로입니다.
@@ -145,23 +170,48 @@ export function InventoryPage() {
         <div>
             <PageBar className="mb-6" meta={`${STATIONS_SYNCED_AT} 기준`} />
 
-            {/* 시안은 제목과 조회 조건이 같은 줄에 있습니다. */}
+            {/*
+             * 조회 줄은 **왼쪽에 즉시 반영되는 것, 오른쪽에 눌러야 하는 것** 순서입니다.
+             * 드롭다운은 고르는 순간 적용되고 `조회` 는 검색어 하나만 확정하므로,
+             * 검색칸과 버튼을 붙여 두어야 그 둘이 한 벌이라는 게 보입니다.
+             */}
             <form onSubmit={handleSubmit} className="mb-[22px] flex items-center gap-3">
                 <h2 className="mr-auto text-[21px] font-extrabold leading-none text-brand-ink">
                     우산 재고
                 </h2>
 
-                {/* P0 API 가 대여소 단위라 이 선택이 필수입니다. '전체'는 둘 수 없습니다. */}
+                {/*
+                 * P0 API 가 대여소 단위라 이 선택이 필수입니다. '전체'는 둘 수 없습니다.
+                 *
+                 * 드롭다운은 **고르는 즉시 반영**합니다. 고른 뒤 '조회'를 또 눌러야 하면
+                 * 화면과 선택값이 어긋난 상태가 남습니다. `002 조회` 는 타이핑이 필요한
+                 * 검색어 몫으로 두고, `001 상태 탭 변경` 처럼 선택 자체가 액션인 것은
+                 * 바로 적용합니다 (화면흐름 §7.5).
+                 */}
                 <FilterSelect
                     label="대여소"
                     value={stationInput}
-                    onChange={setStationInput}
+                    onChange={(next) => {
+                        setStationInput(next);
+                        applyQuery({ station: next, keyword, status });
+                    }}
                     options={STATION_OPTIONS}
                     className="w-[150px]"
                 />
 
+                <FilterSelect
+                    label="우산 상태 필터"
+                    value={statusInput}
+                    onChange={(next) => {
+                        setStatusInput(next);
+                        applyQuery({ station: stationId, keyword, status: next });
+                    }}
+                    options={STATUS_OPTIONS}
+                    className="w-[150px]"
+                />
+
                 <label className="relative block">
-                    <span className="sr-only">슬롯 검색</span>
+                    <span className="sr-only">슬롯 번호·대여소 검색</span>
                     <Search
                         className="pointer-events-none absolute left-[14px] top-1/2 size-[13px] -translate-y-1/2 text-brand-muted"
                         aria-hidden
@@ -169,18 +219,10 @@ export function InventoryPage() {
                     <input
                         value={keywordInput}
                         onChange={(event) => setKeywordInput(event.target.value)}
-                        placeholder="slotId · 거래ID 검색"
+                        placeholder="슬롯 번호 · 대여소 검색"
                         className="h-[38px] w-[320px] rounded-lg bg-brand-surface pl-[38px] pr-3 text-[12.5px] font-medium text-brand-ink outline-none transition-shadow placeholder:text-brand-muted focus-visible:ring-2 focus-visible:ring-brand-blue/40"
                     />
                 </label>
-
-                <FilterSelect
-                    label="우산 상태 필터"
-                    value={statusInput}
-                    onChange={setStatusInput}
-                    options={STATUS_OPTIONS}
-                    className="w-[150px]"
-                />
 
                 <button
                     type="submit"
@@ -233,7 +275,7 @@ export function InventoryPage() {
 
             <div className="overflow-hidden rounded-lg bg-white">
                 {/* 열 폭은 시안 좌표 그대로입니다: 302 / 474 / 813.8(중앙) / 933 / 1149~1205 */}
-                <div className="grid h-[42px] grid-cols-[172px_220px_239px_216px_56px] items-center bg-brand-surface pl-[14px] pr-[39px] text-[11.5px] font-bold text-brand-body">
+                <div className="grid h-[42px] grid-cols-[172px_220px_183px_216px_112px] items-center bg-brand-surface pl-[14px] pr-[39px] text-[11.5px] font-bold text-brand-body">
                     <span>slotId</span>
                     <span>대여소</span>
                     <span className="text-center">상태</span>
@@ -244,18 +286,38 @@ export function InventoryPage() {
                 {rows.length > 0 ? (
                     rows.map((slot, index) => {
                         const display = deriveSlotDisplayStatus(slot);
-                        // 주의가 필요한 행만 왼쪽에 색 막대를 답니다 (시안).
-                        const accent =
-                            display === 'DAMAGED'
-                                ? 'bg-tone-red-fg'
-                                : display === 'ADMIN_REVIEW'
-                                  ? 'bg-tone-amber-fg'
-                                  : null;
+                        // 이 슬롯에 걸린 미처리 검수. 없으면 검수 버튼을 그리지 않습니다.
+                        const pendingInspectionId = pendingBySlot.get(slot.slotId);
+                        /*
+                         * 막대는 **관리자가 아직 할 일이 남은 슬롯에만** 답니다.
+                         * `DAMAGED` 는 판정이 끝난 결과라 빼고, 판정을 기다리는
+                         * `ADMIN_REVIEW` 만 표시합니다. 대여소 상세 슬롯 표와 같은 규칙입니다.
+                         */
+                        const accent = display === 'ADMIN_REVIEW' ? 'bg-tone-amber-fg' : null;
 
                         return (
+                            /*
+                             * 행 아무 데나 눌러도 슬롯 상세로 갑니다 — 대여소 표(`Tr`)와 같은
+                             * 규칙입니다. 행 안의 링크(`검수`·`상세`)는 자기 목적지로 가고,
+                             * 글자를 드래그해 고른 것뿐이면 이동하지 않습니다.
+                             *
+                             * 키보드는 행이 아니라 행 안의 링크로 다닙니다. 눌러야 하는 것이
+                             * 이미 링크로 있어서 행에 별도 tabIndex 를 주면 탭 순서만 두 배가
+                             * 됩니다. 행 클릭은 마우스 편의 장치입니다.
+                             */
                             <div
                                 key={slot.slotId}
-                                className="relative grid h-[42.9px] grid-cols-[172px_220px_239px_216px_56px] items-center pl-[14px] pr-[39px] text-[12.5px]"
+                                onClick={(event) => {
+                                    if (
+                                        (event.target as HTMLElement).closest(
+                                            'a,button,input,select',
+                                        )
+                                    )
+                                        return;
+                                    if (window.getSelection()?.toString()) return;
+                                    navigate(`/slots/${slot.slotId}`);
+                                }}
+                                className="relative grid h-[42.9px] cursor-pointer grid-cols-[172px_220px_183px_216px_112px] items-center pl-[14px] pr-[39px] text-[12.5px] transition-colors hover:bg-brand-surface"
                             >
                                 {/* 구분선은 카드 폭 전체가 아니라 좌우 14px 안쪽까지만 긋습니다. */}
                                 {index > 0 && (
@@ -283,6 +345,7 @@ export function InventoryPage() {
                                     <Badge
                                         tone={SLOT_DISPLAY_TONE[display]}
                                         className="whitespace-nowrap"
+                                        title={slotStatusHint(display)}
                                     >
                                         {slotStatusText(display)}
                                     </Badge>
@@ -290,14 +353,31 @@ export function InventoryPage() {
                                 <span className="font-medium tabular-nums text-brand-ink-soft">
                                     {formatUpdatedAt(slot.updatedAt)}
                                 </span>
-                                <span className="flex justify-center">
+                                <span className="flex items-center justify-center">
                                     {/*
-                                     * 검수 여부는 `ADMIN-SLOT-001` 응답에 없어 목록에서 판단할 수
-                                     * 없습니다. 상세로 넘겨서 확인합니다.
+                                     * 행마다 버튼은 **하나**입니다. 그 행이 지금 필요로 하는 것만
+                                     * 내놓습니다 — 판정을 기다리면 `검수`, 아니면 `상세`.
+                                     *
+                                     * §7.5 의 `ACT-WEB-INVENTORY-003 상세 이동` 과
+                                     * `004 검수 상세 이동` 둘 다 살아 있습니다. 두 화면이 서로
+                                     * 연결돼 있어서(검수 상세 → '슬롯 상세', 슬롯 상세 → '검수하기')
+                                     * 어느 쪽으로 들어가도 반대편에 닿습니다.
+                                     *
+                                     * `ACT-WEB-INVENTORY-004` 대상은 `ADMIN-SLOT-001` 응답만으로는
+                                     * 알 수 없습니다(검수 정보가 없음). 미처리 검수 목록을 슬롯
+                                     * 기준으로 뒤집어 둔 매핑에서 찾고, 없으면 `상세` 로 둡니다 —
+                                     * 틀린 곳으로 보내지 않습니다.
                                      */}
-                                    <DetailLink
-                                        to={`/stations/${station.stationId}/slots/${slot.slotId}`}
-                                    />
+                                    {pendingInspectionId ? (
+                                        <Link
+                                            to={`/inspections/${pendingInspectionId}`}
+                                            className="inline-flex h-[24px] items-center rounded-[6px] bg-tone-amber-fg px-[10px] text-[11px] font-bold text-white transition-opacity hover:opacity-85"
+                                        >
+                                            검수
+                                        </Link>
+                                    ) : (
+                                        <DetailLink to={`/slots/${slot.slotId}`} />
+                                    )}
                                 </span>
                             </div>
                         );

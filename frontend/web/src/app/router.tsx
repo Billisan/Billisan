@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 
 import { AppShell } from '@/components/layout/AppShell';
+import { LegacySlotRedirect } from '@/app/LegacySlotRedirect';
 import { NotFoundPage } from '@/app/NotFoundPage';
 import { PlaceholderPage } from '@/app/PlaceholderPage';
 import { ProtectedRoute } from '@/app/ProtectedRoute';
@@ -41,10 +42,23 @@ export const router = createBrowserRouter([
 
                     { path: 'stations', element: <StationListPage /> },
                     { path: 'stations/:stationId', element: <StationDetailPage /> },
-                    {
-                        path: 'stations/:stationId/slots/:slotId',
-                        element: <SlotDetailPage />,
-                    },
+                    /*
+                     * 슬롯 상세는 대여소 아래 중첩하지 않습니다.
+                     *
+                     * 화면흐름 §4 의 라우팅 후보가 `/admin/slots/:slotId` 로 평면이고,
+                     * `ADMIN-SLOT-DETAIL-001 GET /slots/{slotId}` 도 슬롯 ID 하나만 받으며
+                     * 응답에 `stationId` 가 들어 있습니다. 주소에 대여소 ID 를 또 넣으면
+                     * 길어지기만 하는 게 아니라, 주소의 대여소와 슬롯의 실제 소속이 어긋났을 때
+                     * 다른 대여소 이름·코드로 표시되는 문제가 생깁니다.
+                     */
+                    { path: 'slots/:slotId', element: <SlotDetailPage /> },
+                    /*
+                     * 옛 중첩 주소로 들어오면 새 주소로 넘깁니다.
+                     *
+                     * 열어 둔 탭·북마크·주고받은 링크가 갑자기 404 로 죽지 않게 하는 장치입니다.
+                     * `replace` 라 뒤로가기 기록에 옛 주소가 남지 않습니다.
+                     */
+                    { path: 'stations/:stationId/slots/:slotId', element: <LegacySlotRedirect /> },
 
                     // 아래는 메뉴만 있고 화면은 아직 없는 자리입니다.
                     // 해당 도메인 페이지가 생기면 PlaceholderPage 를 실제 페이지로 교체하세요.

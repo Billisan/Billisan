@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 
 import {
     inspectionsApi,
@@ -27,6 +28,35 @@ export function useInspectionList(params: InspectionListParams) {
          */
         placeholderData: (previous) => previous,
     });
+}
+
+/**
+ * 슬롯 → 미처리 검수 ID 매핑 — `ACT-WEB-INVENTORY-004` 검수 상세 이동용.
+ *
+ * 재고·슬롯 목록(`ADMIN-SLOT-001`)에는 검수 정보가 없습니다. `serviceStatus=ADMIN_REVIEW` 로
+ * "격리됐다"까지만 알 수 있고, 검수 상세로 가는 데 필요한 `inspectionId` 가 없습니다.
+ *
+ * 그래서 **응답을 늘려 달라고 하지 않고 있는 API 로 풉니다.** `ADMIN-INSPECTION-001` 응답
+ * `items[]` 에 `slotId` 가 필수로 들어 있어서, 미처리 목록을 한 번 받아 슬롯 기준으로 뒤집으면
+ * 어느 슬롯의 검수가 무엇인지 알 수 있습니다.
+ *
+ * **한계 하나는 알고 씁니다.** 이 목록은 cursor 페이지네이션이고 한 번에 최대 100건입니다.
+ * 미처리가 100건을 넘으면 뒷장의 슬롯은 매핑이 비고, 그 행은 검수 버튼 없이 상세 링크만
+ * 남습니다 (틀린 곳으로 보내지 않습니다). P0 구성은 대여소 8곳 × 슬롯 3~5개라 여유가 큽니다.
+ */
+export function usePendingInspectionBySlot() {
+    const query = useInspectionList({ reviewStatus: 'PENDING', size: 100 });
+
+    const bySlot = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const item of query.data?.items ?? []) {
+            // 같은 슬롯에 미처리가 여럿이면 목록 정렬(미처리 우선·최신순)의 첫 건을 씁니다.
+            if (!map.has(item.slotId)) map.set(item.slotId, item.inspectionId);
+        }
+        return map;
+    }, [query.data]);
+
+    return bySlot;
 }
 
 /** ADMIN-INSPECTION-002 */

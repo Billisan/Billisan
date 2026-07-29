@@ -1,5 +1,9 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { RefreshCw } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+
+import { cn } from '@/lib/utils';
+import { AI_RESULT_LABEL, REVIEW_STATUS_LABEL } from '@/shared/constants/statusLabels';
 
 import {
     AiResultBadge,
@@ -30,20 +34,27 @@ import { PageBar } from '@/shared/components/PageBar';
  * 3. 숫자 페이지 → 이전/다음. 응답에 `nextCursor` 만 있어 임의 페이지로 뛸 수 없습니다.
  */
 
+/**
+ * 값은 계약 Enum(`InspectionResult`) 네 개 그대로 보내고, **화면 글자는 한글**입니다.
+ * 라벨을 손으로 적지 않고 공용 매핑에서 가져와 표의 AI 결과 배지와 어긋나지 않게 합니다
+ * (ERD §2.4.1 "관리자 웹의 배지·표·상세 화면은 한글 명칭 우선").
+ *
+ * 목록에 `정상 판정` 행이 없는 건 정상입니다 — AI 가 정상으로 본 반납은 관리자 검수로
+ * 넘어오지 않습니다. 선택지는 계약 Enum 을 다 열어 둡니다.
+ */
 const AI_RESULT_OPTIONS: readonly FilterOption<AiResultFilter>[] = [
     { value: 'ALL', label: 'AI 결과' },
-    // 계약 Enum(`InspectionResult`) 네 값 그대로입니다. 목록에 NORMAL 행이 없는 건 정상입니다 —
-    // AI 가 정상으로 본 반납은 관리자 검수로 넘어오지 않습니다.
-    { value: 'NORMAL', label: 'NORMAL' },
-    { value: 'DAMAGED', label: 'DAMAGED' },
-    { value: 'UNCERTAIN', label: 'UNCERTAIN' },
-    { value: 'FAILED', label: 'FAILED' },
+    { value: 'NORMAL', label: AI_RESULT_LABEL.NORMAL },
+    { value: 'DAMAGED', label: AI_RESULT_LABEL.DAMAGED },
+    { value: 'UNCERTAIN', label: AI_RESULT_LABEL.UNCERTAIN },
+    { value: 'FAILED', label: AI_RESULT_LABEL.FAILED },
 ];
 
 const REVIEW_OPTIONS: readonly FilterOption<ReviewStatusFilter>[] = [
     { value: 'ALL', label: '처리 상태' },
-    { value: 'PENDING', label: '검수 대기' },
-    { value: 'DECIDED', label: '검수 완료' },
+    // 처리 상태 배지와 같은 매핑을 씁니다.
+    { value: 'PENDING', label: REVIEW_STATUS_LABEL.PENDING },
+    { value: 'DECIDED', label: REVIEW_STATUS_LABEL.DECIDED },
 ];
 
 const PERIOD_OPTIONS: readonly FilterOption<string>[] = [
@@ -100,7 +111,7 @@ export function InspectionListPage() {
     const cursor = trail[trail.length - 1];
 
     // ADMIN-INSPECTION-001. 목업인지 실 API 인지는 inspectionsApi 안에서만 갈립니다.
-    const { data, isPending, isError, error } = useInspectionList({
+    const { data, isPending, isError, error, refetch, isFetching } = useInspectionList({
         aiResult,
         reviewStatus,
         from: fromDateOf(period),
@@ -111,12 +122,27 @@ export function InspectionListPage() {
     const items = data?.items ?? [];
     const pendingCount = items.filter((item) => item.reviewStatus === 'PENDING').length;
 
-    const handleSubmit = (event: FormEvent) => {
-        event.preventDefault();
+    /**
+     * 드롭다운을 고르는 즉시 URL 에 반영합니다.
+     *
+     * 이 화면은 조회 조건이 전부 드롭다운이라 '조회' 버튼이 할 일이 없습니다. 대신 버튼을
+     * **수동 갱신**으로 돌립니다 — 검수는 계속 새로 들어오는 목록이고, 화면흐름 §16 이
+     * 오래된 데이터를 "조회 기준 시각·새로고침 표시 / 포커스 복귀 또는 수동 갱신"으로
+     * 다루라고 정했습니다.
+     */
+    const applyFilters = (next: {
+        ai?: typeof aiInput;
+        review?: typeof reviewInput;
+        period?: typeof periodInput;
+    }) => {
+        const nextAi = next.ai ?? aiResult;
+        const nextReview = next.review ?? reviewStatus;
+        const nextPeriod = next.period ?? period;
+
         const params = new URLSearchParams();
-        if (aiInput !== 'ALL') params.set('ai', aiInput);
-        if (reviewInput !== 'ALL') params.set('review', reviewInput);
-        if (periodInput !== 'ALL') params.set('period', periodInput);
+        if (nextAi !== 'ALL') params.set('ai', nextAi);
+        if (nextReview !== 'ALL') params.set('review', nextReview);
+        if (nextPeriod !== 'ALL') params.set('period', nextPeriod);
         setSearchParams(params);
     };
 
@@ -129,35 +155,50 @@ export function InspectionListPage() {
                     파손 검수
                 </h2>
 
-                <form onSubmit={handleSubmit} className="flex items-center gap-3">
+                <div className="flex items-center gap-3">
                     <FilterSelect
                         label="조회 기간"
                         value={periodInput}
-                        onChange={setPeriodInput}
+                        onChange={(next) => {
+                            setPeriodInput(next);
+                            applyFilters({ period: next });
+                        }}
                         options={PERIOD_OPTIONS}
                         className="w-[140px]"
                     />
                     <FilterSelect
                         label="AI 결과 필터"
                         value={aiInput}
-                        onChange={setAiInput}
+                        onChange={(next) => {
+                            setAiInput(next);
+                            applyFilters({ ai: next });
+                        }}
                         options={AI_RESULT_OPTIONS}
                         className="w-[140px]"
                     />
                     <FilterSelect
                         label="처리 상태 필터"
                         value={reviewInput}
-                        onChange={setReviewInput}
+                        onChange={(next) => {
+                            setReviewInput(next);
+                            applyFilters({ review: next });
+                        }}
                         options={REVIEW_OPTIONS}
                         className="w-[140px]"
                     />
                     <button
-                        type="submit"
-                        className="h-[38px] w-[78px] rounded-[7px] bg-brand-blue text-[13px] font-bold text-white transition-colors hover:bg-brand-blue/90"
+                        type="button"
+                        onClick={() => refetch()}
+                        disabled={isFetching}
+                        className="inline-flex h-[38px] w-[92px] items-center justify-center gap-[6px] rounded-[7px] border border-brand-border-soft bg-white text-[13px] font-bold text-brand-body transition-colors hover:bg-brand-surface disabled:cursor-not-allowed disabled:text-brand-muted"
                     >
-                        조회
+                        <RefreshCw
+                            className={cn('size-[13px]', isFetching && 'animate-spin')}
+                            aria-hidden
+                        />
+                        새로고침
                     </button>
-                </form>
+                </div>
             </div>
 
             {isPending ? (
