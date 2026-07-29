@@ -1,5 +1,10 @@
 import { env } from '@/config/env';
 import { http } from '@/lib/axios';
+import {
+    clearMockSession,
+    restoreMockSession,
+    saveMockSession,
+} from '@/features/auth/mocks/mockSession';
 import type {
     LoginRequest,
     LoginResponse,
@@ -45,14 +50,18 @@ async function mockLogin({ loginId, password }: LoginRequest): Promise<LoginResp
         throw new Error('INVALID_ADMIN_CREDENTIALS');
     }
 
+    const identity = { adminId: DEMO_ADMIN_ID, loginId: loginId.trim(), role: 'ADMIN' } as const;
+    const expiry = expiryFromNow();
+
+    // 서버가 세션 쿠키를 심는 자리입니다. 토큰이 아니라 신원·만료만 남습니다.
+    saveMockSession(identity, expiry.absoluteExpiresAt);
+
     return {
         // 목업 토큰. 어디에도 저장되지 않고 메모리에만 머뭅니다.
         accessToken: `mock.${Date.now().toString(36)}`,
         tokenType: 'Bearer',
-        adminId: DEMO_ADMIN_ID,
-        loginId: loginId.trim(),
-        role: 'ADMIN',
-        ...expiryFromNow(),
+        ...identity,
+        ...expiry,
     };
 }
 
@@ -77,7 +86,12 @@ export const authApi = {
      * 백엔드가 httpOnly 세션 쿠키를 함께 내려 줘야 합니다 (axios `withCredentials: true`).
      */
     me: async (): Promise<MeResponse> => {
-        if (env.mockAuth) throw new Error('ADMIN_SESSION_EXPIRED');
+        if (env.mockAuth) {
+            // 세션 쿠키 대신 sessionStorage 를 읽습니다. 만료면 서버의 401 과 같게 던집니다.
+            const restored = restoreMockSession();
+            if (!restored) throw new Error('ADMIN_SESSION_EXPIRED');
+            return restored;
+        }
 
         const { data } = await http.get<MeResponse>('/auth/me');
         return data;
@@ -85,7 +99,10 @@ export const authApi = {
 
     /** ADMIN-AUTH-002 — 멱등입니다. */
     logout: async (): Promise<LogoutResponse> => {
-        if (env.mockAuth) return { loggedOut: true };
+        if (env.mockAuth) {
+            clearMockSession();
+            return { loggedOut: true };
+        }
 
         const { data } = await http.post<LogoutResponse>('/auth/logout');
         return data;

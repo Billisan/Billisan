@@ -12,6 +12,9 @@ import { useAuthStore } from '@/features/auth/stores/authStore';
  * 이 호출이 성공하려면 백엔드가 **httpOnly 세션 쿠키**를 함께 내려 줘야 합니다
  * (axios 는 `withCredentials: true`).
  *
+ * 목업 모드에서는 서버가 없어서 `authApi.me()` 가 sessionStorage 에 남긴 신원을 읽습니다
+ * (`mocks/mockSession.ts`). 어느 쪽이든 화면 입장에서는 같은 호출입니다.
+ *
  * 실패는 정상 흐름입니다 — 그냥 로그인 안 한 상태라는 뜻이라 조용히 넘어갑니다.
  */
 
@@ -29,8 +32,15 @@ export function useSessionRestore(): boolean {
     const admin = useAuthStore((s) => s.admin);
     const setAuth = useAuthStore((s) => s.setAuth);
 
-    // 목업·우회 모드이거나 이미 로그인돼 있으면 물어볼 필요가 없습니다.
-    const skip = env.mockAuth || env.authBypass || Boolean(admin) || attempted;
+    /*
+     * 우회 모드이거나 이미 로그인돼 있으면 물어볼 필요가 없습니다.
+     *
+     * **목업 모드는 여기서 건너뛰지 않습니다.** 예전에는 `env.mockAuth` 를 넣어 뒀는데,
+     * 그러면 새로고침할 때마다 복원을 아예 시도하지 않아서 무조건 로그인 화면으로
+     * 튕겼습니다. 새로고침은 로그아웃이 아닙니다 (화면흐름 §15).
+     * 목업 모드의 `authApi.me()` 는 sessionStorage 에서 세션을 되살립니다.
+     */
+    const skip = env.authBypass || Boolean(admin) || attempted;
     const [settled, setSettled] = useState(skip);
 
     useEffect(() => {
