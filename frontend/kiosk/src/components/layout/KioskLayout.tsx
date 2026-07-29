@@ -1,7 +1,7 @@
 import dayjs from 'dayjs'
 import 'dayjs/locale/ko'
 import { useEffect, useState, type ReactNode } from 'react'
-import logo from '../../assets/logo/logo.svg'
+import logo from '../../assets/logo.svg'
 import { ChevronLeftIcon } from '../icons/ChevronLeftIcon'
 
 dayjs.locale('ko')
