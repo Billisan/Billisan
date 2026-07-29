@@ -8,15 +8,17 @@ interface ErrorScreenProps {
   message: string
   actionLabel?: string
   onAction: () => void
+  currentStep?: 1 | 2 | 3
 }
 
 export function ErrorScreen({
   message,
   actionLabel = '홈으로',
   onAction,
+  currentStep,
 }: ErrorScreenProps) {
   return (
-    <KioskLayout>
+    <KioskLayout currentStep={currentStep}>
       <IconBadge variant="error">
         <AlertCircleIcon className="h-12 w-12" />
       </IconBadge>
