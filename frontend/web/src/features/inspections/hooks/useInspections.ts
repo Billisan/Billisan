@@ -5,7 +5,6 @@ import {
     type InspectionListParams,
 } from '@/features/inspections/api/inspectionsApi';
 import type { InspectionDecisionInput } from '@/features/inspections/types';
-import type { Slot } from '@/features/stations/types';
 import { qk } from '@/shared/api/queryKeys';
 
 /**
@@ -51,12 +50,10 @@ export function useDecideInspection() {
         mutationFn: ({
             inspectionId,
             input,
-            slot,
         }: {
             inspectionId: string;
             input: InspectionDecisionInput;
-            slot: Slot;
-        }) => inspectionsApi.decide(inspectionId, input, slot),
+        }) => inspectionsApi.decide(inspectionId, input),
         retry: false,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: qk.inspections.all });

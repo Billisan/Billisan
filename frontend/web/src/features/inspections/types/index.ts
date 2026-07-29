@@ -1,4 +1,11 @@
-import type { AiInspectionResult, InspectionDecision } from '@/features/stations/types';
+import type {
+    AiInspectionResult,
+    InspectionDecision,
+    LockStatus,
+    SlotItemCondition,
+    SlotOccupancyStatus,
+    SlotServiceStatus,
+} from '@/features/stations/types';
 
 /**
  * 파손 검수 — `SCR-WEB-INSPECTION-LIST-001` · `SCR-WEB-INSPECTION-DETAIL-001`.
@@ -27,18 +34,27 @@ import type { AiInspectionResult, InspectionDecision } from '@/features/stations
  */
 export type InspectionReviewStatus = 'PENDING' | 'DECIDED';
 
-/**
- * `ADMIN-INSPECTION-001` 의 `items[]` 한 줄. 응답에 있는 필드가 전부입니다.
- *
- * 시안에 있던 `대여소 이름` 은 응답에 없습니다(`stationId` 만 옵니다). 목업에서는
- * 대여소 목록으로 이름을 붙여 보여주고, 실연동 때 백엔드에 `stationName` 추가를 요청해야 합니다.
- */
+/** `ADMIN-INSPECTION-001` 의 `items[]` 한 줄. */
 export interface InspectionListItem {
     inspectionId: string;
     /** 이 검수를 만든 반납 시도. 대여(RENTAL)가 아니라 반납(RETURN_ATTEMPT)입니다. */
     returnAttemptId: string;
     stationId: string;
     slotId: string;
+
+    /*
+     * ↓ 계약 추가 요청분 (12-R 원본에는 아직 없습니다).
+     *
+     * 원본 응답은 `stationId`·`slotId` UUID 뿐이라 화면에 36자 UUID 말고는 보여줄 게
+     * 없습니다. 두 값 모두 이미 다른 관리자 응답에 있는 값이고(STATION.name,
+     * ADMIN-SLOT-001 의 slotNumber), 금지 필드(비밀번호·이미지·얼굴·카드번호)에
+     * 해당하지 않으며 논리 계약 수도 늘리지 않습니다.
+     * TODO: 백엔드 반영이 확인되면 이 주석만 지우세요.
+     */
+    /** 반납 대여소 표시 이름 — `STATION.name` */
+    stationName: string;
+    /** 대여소 내 슬롯 표시 번호 — `SLOT.slot_number` */
+    slotNumber: number;
     /** AI 보조 결과. 이것만으로 파손이 확정되지 않습니다 (§3.1). */
     aiResult: AiInspectionResult;
     /** 추론 점수. `FAILED` 는 추론 자체가 끝나지 않아 점수가 없습니다. */
@@ -63,27 +79,71 @@ export interface InspectionDetail extends InspectionListItem {
     rentalId: string;
     /** 관리자 최종 판정. 미처리면 null 이고, AI 결과로 대신 채우지 않습니다. */
     decision: InspectionDecision | null;
-    /** 관리자가 적은 판정 사유. 미처리면 null 입니다. */
-    note: string | null;
+    /** 관리자 판정 사유 코드 */
+    decisionReasonCode: string | null;
+    /** 관리자 판정 메모 */
+    decisionNote: string | null;
+    /** 판정 관리자 식별자 */
+    decidedBy: string | null;
     decidedAt: string | null;
+
+    /* 판정 화면이 현재 슬롯 상태를 같이 보여줄 수 있도록 4축이 함께 옵니다. */
+    slotOccupancyStatus: SlotOccupancyStatus;
+    slotItemCondition: SlotItemCondition | null;
+    slotServiceStatus: SlotServiceStatus;
+    slotLockStatus: LockStatus;
 }
 
-/** `ADMIN-INSPECTION-003` 요청 본문. */
+/** `ADMIN-INSPECTION-003` 요청 본문 (12-R B-5). */
 export interface InspectionDecisionInput {
     decision: InspectionDecision;
     /**
-     * 관리자가 적은 판정 사유. 없으면 서버가 `422 ADMIN_REASON_REQUIRED` 로 거절합니다.
+     * 현장 판정 사유 코드. **필수**입니다. 없으면 `422 ADMIN_REASON_REQUIRED` 입니다.
      *
-     * TODO: 본문에는 `reasonCode` 도 있는데 문서에 나오는 값이 `PHYSICAL_DAMAGE_CONFIRMED`
-     *       하나뿐이라 아직 보내지 않습니다. 정작 명세의 `note` 예시가 "캐노피 찢김 확인" 이라,
-     *       시안의 `CANOPY_TORN` 드롭다운은 note 로 갈 내용을 code 자리에 올려둔 것이었습니다.
-     *       Enum 이 확정되면 슬롯 상태 변경 모달과 같이 고치세요.
+     * 명세는 타입만 `String` 이라고 하고 허용 목록을 주지 않습니다. 값을 지어낼 수 없어서
+     * 입력칸으로 두고 서버가 검증하게 합니다.
+     * TODO: 백엔드에서 허용 코드 목록을 받으면 select 로 바꾸세요.
      */
-    note: string;
+    reasonCode: string;
+    /** 현장 확인 메모. **선택**입니다. */
+    note: string | null;
     /** 현장에서 실물을 확인했는지. 이미지가 없으니 이게 판정의 근거입니다. */
     physicalStateConfirmed: boolean;
     /** 조회 응답 문자열을 그대로 되돌려 보냅니다. */
     expectedUpdatedAt: string;
+}
+
+/**
+ * `ADMIN-INSPECTION-003` 응답 `data`.
+ *
+ * 판정 결과가 슬롯·정산 권위 상태를 통째로 돌려줍니다. 별도 재조회 없이도 화면을 갱신할 수
+ * 있지만, 계약이 "성공 후 관련 목록 캐시를 무효화하고 서버 최종 상태를 다시 조회"라고 해서
+ * 훅에서는 무효화 쪽을 씁니다.
+ */
+export interface InspectionDecisionResult {
+    inspectionId: string;
+    reviewStatus: InspectionReviewStatus;
+    decision: InspectionDecision;
+    decidedBy: string;
+    decidedAt: string;
+    slot: {
+        slotId: string;
+        occupancyStatus: SlotOccupancyStatus;
+        itemCondition: SlotItemCondition | null;
+        serviceStatus: SlotServiceStatus;
+        lockStatus: LockStatus;
+        updatedAt: string;
+    };
+    /** 파손 정산 결과. 정산이 없으면 null */
+    settlement: {
+        settlementId: string;
+        reason: 'DAMAGE';
+        amount: number;
+        paidAmount: number;
+        outstandingAmount: number;
+        status: 'PENDING' | 'PAID' | 'CANCELLED';
+    } | null;
+    updatedAt: string;
 }
 
 /**

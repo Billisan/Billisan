@@ -9,7 +9,6 @@ import {
     ScoreBar,
 } from '@/features/inspections/components/InspectionParts';
 import { useDecideInspection, useInspection } from '@/features/inspections/hooks/useInspections';
-import { formatSlotLabel } from '@/features/stations/types';
 import { PageBar } from '@/shared/components/PageBar';
 
 /**
@@ -28,7 +27,7 @@ export function InspectionDetailPage() {
 
     // ADMIN-INSPECTION-002. 판정이 성공하면 훅이 캐시를 무효화해 이 조회가 다시 돕니다
     // — 계약이 요구하는 "권위 상세 재조회"입니다 (화면흐름 §7.7 · API명세 B-5).
-    const { data: found, isPending } = useInspection(inspectionId);
+    const { data: detail, isPending } = useInspection(inspectionId);
     const decide = useDecideInspection();
 
     if (isPending) {
@@ -42,7 +41,7 @@ export function InspectionDetailPage() {
         );
     }
 
-    if (!found) {
+    if (!detail) {
         return (
             <div>
                 <PageBar breadcrumb={[{ label: '파손 검수', to: '/inspections' }]} />
@@ -53,9 +52,8 @@ export function InspectionDetailPage() {
         );
     }
 
-    const { detail, station, slot } = found;
-    // 화면에는 라벨을, 라우트·API 에는 UUID 를 씁니다.
-    const slotLabel = formatSlotLabel(station.stationCode, slot.slotNumber);
+    // 화면에는 사람이 읽는 값을, 라우트·API 에는 UUID 를 씁니다.
+    const slotLabel = `${detail.slotNumber}번 슬롯`;
 
     return (
         <div>
@@ -76,10 +74,10 @@ export function InspectionDetailPage() {
                     {slotLabel}
                 </h2>
                 <p className="ml-[8px] truncate text-[12px] font-medium text-brand-muted">
-                    · {station.name}({station.stationCode})
+                    · {detail.stationName}
                 </p>
                 <Link
-                    to={`/stations/${station.stationId}/slots/${slot.slotId}`}
+                    to={`/stations/${detail.stationId}/slots/${detail.slotId}`}
                     className="ml-auto inline-flex h-[34px] items-center rounded-[7px] border border-brand-border-soft bg-white px-[14px] text-[12.5px] font-bold text-brand-body transition-colors hover:bg-brand-surface"
                 >
                     슬롯 상세
@@ -134,11 +132,9 @@ export function InspectionDetailPage() {
                                     {detail.inspectionId}
                                 </span>
                             </MetaRow>
-                            <MetaRow label="반납 ID">{detail.returnAttemptId}</MetaRow>
-                            <MetaRow label="대여 ID">{detail.rentalId}</MetaRow>
-                            <MetaRow label="대여소">
-                                {station.name} ({station.stationCode})
-                            </MetaRow>
+                            <MetaRow label="반납 ID">{shortId(detail.returnAttemptId)}</MetaRow>
+                            <MetaRow label="대여 ID">{shortId(detail.rentalId)}</MetaRow>
+                            <MetaRow label="대여소">{detail.stationName}</MetaRow>
                             <MetaRow label="슬롯">{slotLabel}</MetaRow>
                             <MetaRow label="최근 갱신">{detail.updatedAt.slice(11, 19)}</MetaRow>
                         </dl>
@@ -147,12 +143,10 @@ export function InspectionDetailPage() {
                     <DecisionForm
                         detail={detail}
                         onCancel={() => navigate('/inspections')}
-                        // TODO: ADMIN-INSPECTION-003 `PATCH /inspections/{id}/decision` 연결.
-                        //       지금은 목업 스토어에 결과만 얹고 이 화면이 그대로 다시 그려집니다.
                         pending={decide.isPending}
                         error={decide.error}
                         onSubmit={(input) =>
-                            decide.mutate({ inspectionId: detail.inspectionId, input, slot })
+                            decide.mutate({ inspectionId: detail.inspectionId, input })
                         }
                     />
                 </div>

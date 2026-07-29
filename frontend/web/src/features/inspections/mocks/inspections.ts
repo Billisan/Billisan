@@ -1,13 +1,14 @@
-import { aiResultOf, aiScoreOf } from '@/features/inspections/mocks/aiVerdict';
+import { MODEL_VERSION, aiResultOf, aiScoreOf } from '@/features/inspections/mocks/aiVerdict';
 import type {
     InspectionDetail,
     InspectionListItem,
     InspectionReviewStatus,
 } from '@/features/inspections/types';
-import { buildSlots } from '@/features/stations/mocks/slots';
+import { MOCK_NS, mockUuid } from '@/features/stations/mocks/ids';
+import { buildSlots, inspectionStateOf, slotSeq } from '@/features/stations/mocks/slots';
+import { decisionInputOf, isInspectionDecided } from '@/features/stations/mocks/slotOverrides';
 import { MOCK_STATIONS } from '@/features/stations/mocks/stations';
-import { outcomeOf } from '@/features/stations/mocks/slotOverrides';
-import type { AiInspectionResult, Slot, Station } from '@/features/stations/types';
+import type { SlotSummary, Station } from '@/features/stations/types';
 
 /**
  * 파손 검수 목업.
@@ -15,24 +16,20 @@ import type { AiInspectionResult, Slot, Station } from '@/features/stations/type
  * 대여소 상세·슬롯 상세와 **같은 슬롯 목업에서 파생**시킵니다. 따로 만들면 같은 슬롯이
  * 화면마다 다른 상태로 보여서, 예전에 AI 결과와 슬롯 상태가 어긋나 보였던 문제가 되돌아옵니다.
  *
- * TODO: ADMIN-INSPECTION-001 · 002 연동 시 이 파일을 지우고 TanStack Query 로 교체하세요.
+ * TODO: ADMIN-INSPECTION-001 · 002 연동 시 이 파일을 지우세요.
  */
 
 /** 목록 기준 시각. 시안 상단의 '2026-07-24 09:20 기준' 값입니다. */
 export const INSPECTIONS_SYNCED_AT = '2026-07-24 09:20';
 
-/** 한 번에 받아 오는 건수 (`ADMIN-INSPECTION-001` 의 `size`). */
+/** 한 번에 받아 오는 건수. 명세 기본값은 20, 최소 1, 최대 100 입니다. */
 export const INSPECTION_PAGE_SIZE = 8;
-
-/** Orin 추론 모델. `EDGE-INSPECT-001` 예시의 `modelVersion` 값입니다. */
-const MODEL_VERSION = 'damage-model-v1';
 
 /**
  * 목업 표시용 시각 계산.
  *
  * 슬롯의 `updatedAt` **원문은 이 함수를 통과시키지 않습니다**. 그 값은 CAS 로 그대로
- * 왕복해야 하고, Date 로 파싱했다가 다시 만들면 마이크로초가 잘립니다 (API명세 B-5).
- * 여기서 만드는 건 화면에 찍을 `processedAt` 뿐입니다.
+ * 왕복해야 하고, Date 로 파싱했다가 다시 만들면 마이크로초가 잘립니다.
  */
 function shiftMinutes(at: string, minutes: number): string {
     const [date, rest] = at.split('T');
@@ -48,25 +45,34 @@ function shiftMinutes(at: string, minutes: number): string {
     );
 }
 
-export interface InspectionRow {
+/** 목업 내부에서만 쓰는 원본 묶음. 화면으로는 `item` 만 나갑니다. */
+interface InspectionSeed {
     item: InspectionListItem;
     station: Station;
-    slot: Slot;
+    slot: SlotSummary;
 }
 
 /**
  * 전체 대여소의 검수를 한 줄로 폅니다.
  *
  * `ADMIN-INSPECTION-001` 은 `GET /api/v1/admin/inspections` 로 **전역 목록**입니다.
- * 대여소 범위인 `ADMIN-INVENTORY-001`·`ADMIN-SLOT-001` 과 달라서, 여러 대여소가
- * 섞인 목록을 만들 수 있습니다.
+ * 대여소 범위인 `ADMIN-INVENTORY-001`·`ADMIN-SLOT-001` 과 다릅니다.
+ *
+ * 기본 정렬은 명세 그대로 **미처리(PENDING) 우선, 같은 상태에서는 `processedAt` 내림차순**입니다.
  */
-export function buildInspectionRows(): InspectionRow[] {
-    const rows: InspectionRow[] = [];
+function buildInspectionSeeds(): InspectionSeed[] {
+    const rows: InspectionSeed[] = [];
 
     MOCK_STATIONS.forEach((station, stationIndex) => {
         buildSlots(station).forEach((slot, slotIndex) => {
-            if (!slot.inspection) return;
+            const seeded = inspectionStateOf(station, slot.slotNumber);
+            if (!seeded) return;
+
+            // 관리자가 방금 판정했으면 그 결과가 우선입니다.
+            const reviewStatus: InspectionReviewStatus = isInspectionDecided(slot.slotId)
+                ? 'DECIDED'
+                : seeded;
+            const decided = reviewStatus === 'DECIDED';
 
             // 검수는 슬롯이 마지막으로 갱신되기 전에 끝나 있습니다. 대여소·슬롯마다 어긋나게
             // 밀어서 같은 시각이 겹쳐 보이지 않게 합니다.
@@ -79,39 +85,39 @@ export function buildInspectionRows(): InspectionRow[] {
                 station,
                 slot,
                 item: {
-                    inspectionId: slot.inspection.inspectionId,
-                    returnAttemptId: returnAttemptIdOf(slot),
+                    inspectionId: mockUuid(MOCK_NS.inspection, slotSeq(station, slot.slotNumber)),
+                    returnAttemptId: mockUuid(
+                        MOCK_NS.returnAttempt,
+                        slotSeq(station, slot.slotNumber),
+                    ),
                     stationId: station.stationId,
                     slotId: slot.slotId,
-                    aiResult: aiResultOf(slot),
-                    aiScore: aiScoreOf(slot),
+                    // 계약 추가 요청분. 서버가 채워 주면 목업의 이 두 줄만 지우면 됩니다.
+                    stationName: station.name,
+                    slotNumber: slot.slotNumber,
+                    aiResult: aiResultOf(slot, decided),
+                    aiScore: aiScoreOf(slot, decided),
                     modelVersion: MODEL_VERSION,
                     processedAt,
-                    reviewStatus: slot.inspection.reviewStatus,
+                    reviewStatus,
                     updatedAt: slot.updatedAt,
                 },
             });
         });
     });
 
-    // 서버가 최신순으로 준다고 보고 그대로 씁니다. 클라이언트가 임의 정렬을 만들지 않습니다.
-    return rows.sort((a, b) => b.item.processedAt.localeCompare(a.item.processedAt));
-}
-
-/**
- * 반납 ID 표시 코드.
- *
- * ERD `RETURN_ATTEMPT.return_attempt_id` 는 UUID 뿐이고 사람이 읽을 짧은 코드 컬럼이 없습니다.
- * 아래는 화면에서 읽히게 만든 **목업 표시 규칙**입니다.
- * TODO: 실연동 때 백엔드에 표시용 코드가 있는지 확인하세요.
- */
-function returnAttemptIdOf(slot: Slot): string {
-    return `RT-88${slot.slotId.slice(-3)}`;
+    return rows.sort((a, b) => {
+        // 미처리 우선
+        if (a.item.reviewStatus !== b.item.reviewStatus) {
+            return a.item.reviewStatus === 'PENDING' ? -1 : 1;
+        }
+        return b.item.processedAt.localeCompare(a.item.processedAt);
+    });
 }
 
 /* ------------------------------------------------------------------ 목록 조회 */
 
-export type AiResultFilter = 'ALL' | AiInspectionResult;
+export type AiResultFilter = 'ALL' | InspectionListItem['aiResult'];
 export type ReviewStatusFilter = 'ALL' | InspectionReviewStatus;
 
 export interface InspectionQuery {
@@ -124,8 +130,9 @@ export interface InspectionQuery {
     size: number;
 }
 
+/** `ADMIN-INSPECTION-001` 응답 `data` */
 export interface InspectionPage {
-    rows: InspectionRow[];
+    items: InspectionListItem[];
     /** 다음 쪽이 없으면 null. 총 건수·총 페이지 수는 응답에 없습니다. */
     nextCursor: string | null;
 }
@@ -134,12 +141,10 @@ export interface InspectionPage {
  * `ADMIN-INSPECTION-001` 을 흉내 냅니다. query 는 계약에 있는 것만 받습니다:
  * `aiResult, reviewStatus, modelVersion, from, to, cursor, size`.
  *
- * 시안에 있던 `반납ID · 대여소 검색` 칸은 뺐습니다. 계약 query 에 키워드 검색이 없고,
- * "클라이언트가 승인되지 않은 필터를 만들지 않는다"가 목록 공통 규칙입니다.
- * 대신 계약에 있는 조회 기간(`from`)을 넣었습니다.
+ * 시안에 있던 `반납ID · 대여소 검색` 칸은 뺐습니다. 계약 query 에 키워드 검색이 없습니다.
  */
 export function listInspections(query: InspectionQuery): InspectionPage {
-    const filtered = buildInspectionRows().filter(({ item }) => {
+    const filtered = buildInspectionSeeds().filter(({ item }) => {
         if (query.aiResult !== 'ALL' && item.aiResult !== query.aiResult) return false;
         if (query.reviewStatus !== 'ALL' && item.reviewStatus !== query.reviewStatus) return false;
         if (query.from && item.processedAt.slice(0, 10) < query.from) return false;
@@ -148,38 +153,42 @@ export function listInspections(query: InspectionQuery): InspectionPage {
 
     // cursor 는 서버만 해석합니다. 이 목업이 서버 역할이라 여기서만 풀어 씁니다.
     const offset = query.cursor ? Number(query.cursor.replace('c_', '')) : 0;
-    const rows = filtered.slice(offset, offset + query.size);
+    const page = filtered.slice(offset, offset + query.size);
     const next = offset + query.size;
 
-    return { rows, nextCursor: next < filtered.length ? `c_${next}` : null };
+    return {
+        items: page.map((row) => row.item),
+        nextCursor: next < filtered.length ? `c_${next}` : null,
+    };
 }
 
 /* ------------------------------------------------------------------ 상세 조회 */
 
-/**
- * `ADMIN-INSPECTION-002` 를 흉내 냅니다.
- *
- * 판정 결과는 슬롯 목업 스토어(`slotOverrides`)에서 읽습니다. 관리자가 방금 저장한 판정이
- * 검수 상세·슬롯 상세·대여소 상세에서 같은 값으로 보여야 하기 때문입니다.
- */
-export function findInspection(
-    inspectionId: string | undefined,
-): { detail: InspectionDetail; station: Station; slot: Slot } | undefined {
-    const row = buildInspectionRows().find((entry) => entry.item.inspectionId === inspectionId);
+/** 판정 목업이 슬롯을 찾을 때 씁니다. 실 API 에는 이런 조회가 필요 없습니다. */
+export function slotOfInspection(inspectionId: string): SlotSummary | undefined {
+    return buildInspectionSeeds().find((entry) => entry.item.inspectionId === inspectionId)?.slot;
+}
+
+/** `ADMIN-INSPECTION-002` 를 흉내 냅니다. */
+export function findInspection(inspectionId: string | undefined): InspectionDetail | undefined {
+    const row = buildInspectionSeeds().find((entry) => entry.item.inspectionId === inspectionId);
     if (!row) return undefined;
 
-    const outcome = outcomeOf(row.slot);
     const decided = row.item.reviewStatus === 'DECIDED';
+    const input = decisionInputOf(row.slot.slotId);
+    const damaged = row.slot.itemCondition === 'DAMAGED' || row.slot.itemCondition === 'REPAIRABLE';
 
     return {
-        station: row.station,
-        slot: row.slot,
-        detail: {
-            ...row.item,
-            rentalId: row.item.returnAttemptId.replace('RT-', 'RN-'),
-            decision: decided ? (outcome?.adminVerdict ?? null) : null,
-            note: decided ? (outcome?.reason ?? null) : null,
-            decidedAt: decided ? row.slot.updatedAt : null,
-        },
+        ...row.item,
+        rentalId: mockUuid(MOCK_NS.rental, slotSeq(row.station, row.slot.slotNumber)),
+        decision: decided ? (damaged ? 'DAMAGED' : 'NORMAL') : null,
+        decisionReasonCode: decided ? input.reasonCode : null,
+        decisionNote: decided ? input.note : null,
+        decidedBy: decided ? mockUuid(MOCK_NS.station, 1) : null,
+        decidedAt: decided ? row.slot.updatedAt : null,
+        slotOccupancyStatus: row.slot.occupancyStatus,
+        slotItemCondition: row.slot.itemCondition,
+        slotServiceStatus: row.slot.serviceStatus,
+        slotLockStatus: row.slot.lockStatus,
     };
 }

@@ -16,7 +16,6 @@ import {
 } from '@/features/inspections/mocks/inspections';
 import { DetailLink } from '@/features/stations/components/DetailLink';
 import { InspectLink } from '@/features/stations/components/InspectLink';
-import { formatSlotLabel } from '@/features/stations/types';
 import { DataTable, TBody, TableCard, Td, Th, THead, Tr } from '@/shared/components/DataTable';
 import { FilterSelect, type FilterOption } from '@/shared/components/FilterSelect';
 import { PageBar } from '@/shared/components/PageBar';
@@ -109,8 +108,8 @@ export function InspectionListPage() {
         size: INSPECTION_PAGE_SIZE,
     });
 
-    const rows = data?.rows ?? [];
-    const pendingCount = rows.filter(({ item }) => item.reviewStatus === 'PENDING').length;
+    const items = data?.items ?? [];
+    const pendingCount = items.filter((item) => item.reviewStatus === 'PENDING').length;
 
     const handleSubmit = (event: FormEvent) => {
         event.preventDefault();
@@ -165,7 +164,7 @@ export function InspectionListPage() {
                 <ListState>불러오는 중…</ListState>
             ) : isError ? (
                 <ListState>목록을 불러오지 못했습니다. {error.message}</ListState>
-            ) : rows.length > 0 ? (
+            ) : items.length > 0 ? (
                 <TableCard>
                     <DataTable>
                         {/* 열 너비는 시안(1280px)의 열 좌표에서 역산한 값입니다. */}
@@ -188,7 +187,7 @@ export function InspectionListPage() {
                         </THead>
 
                         <TBody>
-                            {rows.map(({ item, station, slot }) => {
+                            {items.map((item) => {
                                 const pending = item.reviewStatus === 'PENDING';
 
                                 return (
@@ -206,20 +205,11 @@ export function InspectionListPage() {
                                             </span>
                                         </Td>
                                         <Td>
-                                            {/*
-                                             * 대여소 이름은 `ADMIN-INSPECTION-001` 응답에 없습니다.
-                                             * 목업이라 대여소 목록에서 붙여 씁니다.
-                                             * TODO: 실연동 시 백엔드에 `stationName` 추가를 요청하세요.
-                                             */}
                                             <span className="block font-medium text-brand-ink-soft">
-                                                {station.name}
+                                                {item.stationName}
                                             </span>
                                             <span className="mt-[3px] block text-[10.8px] font-medium text-brand-muted">
-                                                {station.stationCode} ·{' '}
-                                                {formatSlotLabel(
-                                                    station.stationCode,
-                                                    slot.slotNumber,
-                                                )}
+                                                {item.slotNumber}번 슬롯
                                             </span>
                                         </Td>
                                         <Td className="font-bold tabular-nums text-brand-ink">
@@ -261,7 +251,7 @@ export function InspectionListPage() {
 
             <div className="mt-[22px] flex items-center justify-between pr-2">
                 <p className="text-xs font-semibold text-brand-body">
-                    이 쪽 {rows.length}건 · 검수 대기 {pendingCount}건
+                    이 쪽 {items.length}건 · 검수 대기 {pendingCount}건
                 </p>
                 <CursorPager
                     canPrev={trail.length > 1}

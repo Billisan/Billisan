@@ -38,6 +38,7 @@ export function DecisionForm({
     error?: Error | null;
 }) {
     const [decision, setDecision] = useState<InspectionDecision | null>(null);
+    const [reasonCode, setReasonCode] = useState('');
     const [note, setNote] = useState('');
     const [confirmed, setConfirmed] = useState(false);
 
@@ -65,9 +66,14 @@ export function DecisionForm({
                     </span>
                 </div>
 
-                <p className="mt-[15px] text-[11.5px] font-semibold text-brand-body">판정 사유</p>
+                <p className="mt-[15px] text-[11.5px] font-semibold text-brand-body">사유 코드</p>
+                <p className="mt-[6px] text-[12.5px] font-bold text-brand-ink">
+                    {detail.decisionReasonCode ?? '—'}
+                </p>
+
+                <p className="mt-[13px] text-[11.5px] font-semibold text-brand-body">메모</p>
                 <p className="mt-[6px] rounded-lg bg-brand-surface px-3 py-[11px] text-[12.5px] font-medium leading-[1.5] text-brand-ink">
-                    {detail.note ?? '—'}
+                    {detail.decisionNote ?? '—'}
                 </p>
 
                 {/*
@@ -114,15 +120,29 @@ export function DecisionForm({
                 </span>
             </label>
 
+            {/*
+             * 명세가 요구하는 두 칸입니다 — `reasonCode`(필수) · `note`(선택).
+             * 허용 코드 목록이 문서에 없어서 값을 지어내지 않고 입력칸으로 둡니다.
+             */}
             <label className="mt-[18px] block">
                 <span className="text-[11.5px] font-semibold text-brand-body">
-                    판정 사유 <span className="text-tone-red-fg">*</span>
+                    사유 코드 <span className="text-tone-red-fg">*</span>
                 </span>
+                <input
+                    value={reasonCode}
+                    onChange={(event) => setReasonCode(event.target.value)}
+                    placeholder="서버가 허용한 사유 코드"
+                    className="mt-[7px] h-[38px] w-full rounded-lg bg-brand-surface px-3 text-[12.5px] font-medium text-brand-ink outline-none transition-shadow placeholder:text-brand-placeholder focus-visible:ring-2 focus-visible:ring-brand-blue/40"
+                />
+            </label>
+
+            <label className="mt-[14px] block">
+                <span className="text-[11.5px] font-semibold text-brand-body">메모</span>
                 <textarea
                     value={note}
                     onChange={(event) => setNote(event.target.value)}
                     rows={3}
-                    placeholder="현장에서 확인한 내용을 적어 두세요. 저장 후에는 이력에 그대로 남습니다."
+                    placeholder="현장에서 확인한 내용을 적어 두세요 (선택)"
                     className="mt-[7px] h-[70px] w-full resize-none rounded-lg bg-brand-surface px-3 py-[10px] text-[12.5px] font-medium leading-[1.5] text-brand-ink outline-none transition-shadow placeholder:text-brand-placeholder focus-visible:ring-2 focus-visible:ring-brand-blue/40"
                 />
             </label>
@@ -157,7 +177,8 @@ export function DecisionForm({
                             if (!canSubmit || decision === null) return;
                             onSubmit({
                                 decision,
-                                note: note.trim(),
+                                reasonCode: reasonCode.trim(),
+                                note: note.trim() || null,
                                 physicalStateConfirmed: confirmed,
                                 // 조회 응답 문자열을 그대로 되돌려 보냅니다 (마이크로초 보존).
                                 expectedUpdatedAt: detail.updatedAt,
