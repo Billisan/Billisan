@@ -16,8 +16,7 @@ import { PageBar } from '@/shared/components/PageBar';
 import { Pagination } from '@/shared/components/Pagination';
 
 type StatusFilter =
-    | 'ALL'
-    | Extract<SlotDisplayStatus, 'AVAILABLE' | 'RENTED' | 'EMPTY' | 'ADMIN_REVIEW' | 'DAMAGED'>;
+    'ALL' | Extract<SlotDisplayStatus, 'AVAILABLE' | 'EMPTY' | 'ADMIN_REVIEW' | 'DAMAGED'>;
 
 /**
  * '건조 중'은 넣지 않습니다. `DRYING` 은 DB Enum 이 아니고 채택 전까지 미표시입니다
@@ -26,7 +25,6 @@ type StatusFilter =
 const STATUS_OPTIONS: readonly FilterOption<StatusFilter>[] = [
     { value: 'ALL', label: '우산 상태' },
     { value: 'AVAILABLE', label: '사용 가능' },
-    { value: 'RENTED', label: '대여 중' },
     { value: 'EMPTY', label: '빈 슬롯' },
     { value: 'ADMIN_REVIEW', label: '관리자 확인' },
     { value: 'DAMAGED', label: '파손' },

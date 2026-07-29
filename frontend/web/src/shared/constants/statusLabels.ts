@@ -66,12 +66,11 @@ export const DECISION_LABEL = {
 /**
  * 표에 한 칸으로 보여줄 파생 슬롯 상태.
  *
- * `RENTED` 는 슬롯 Enum 이 아니라 활성 대여 연결에서 파생합니다. ERD §2.4.1 의 예시가
- * `대여 중(ACTIVE)` 라서 한글명을 거기 맞춥니다.
+ * `RENTED` 는 없습니다. 관리자 API 어디에도 활성 대여 연결이 없어서, 우산이 나가 있는
+ * 슬롯은 서버 기준으로도 빈 슬롯입니다 (12-R B-4).
  */
 export const SLOT_DISPLAY_LABEL = {
     AVAILABLE: '이용 가능',
-    RENTED: '대여 중',
     EMPTY: '빈 슬롯',
     DAMAGED: '파손',
     ADMIN_REVIEW: '관리자 확인',

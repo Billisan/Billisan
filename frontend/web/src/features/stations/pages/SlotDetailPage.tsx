@@ -10,8 +10,11 @@ import {
     useSlotDetail,
     useStation,
 } from '@/features/stations/hooks/useStations';
-import { type SlotHistoryEntry } from '@/features/stations/mocks/slotDetail';
-import { historyOf, outcomeOf } from '@/features/stations/mocks/slotOverrides';
+import {
+    buildSlotHistory,
+    shortRef,
+    type SlotHistoryEntry,
+} from '@/features/stations/mocks/slotDetail';
 import {
     AI_RESULT_TONE,
     aiResultText,
@@ -65,8 +68,9 @@ export function SlotDetailPage() {
     // 'SL-03-01' 은 station_code + slot_number 로 만드는 표시 라벨입니다. DB 컬럼이 아닙니다.
     const slotLabel = formatSlotLabel(station.stationCode, slot.slotNumber);
     const display = deriveSlotDisplayStatus(slot);
-    const outcome = outcomeOf(slot);
-    const history = historyOf(slot);
+    // 상세 응답의 latestInspection / latestReturnAttempt 를 그대로 씁니다 (12-R B-4).
+    const inspection = slot.latestInspection;
+    const history = buildSlotHistory(slot);
     const pendingId = pendingInspectionId(slot);
 
     return (
@@ -140,45 +144,54 @@ export function SlotDetailPage() {
                     </InfoRow>
                 </InfoCard>
 
-                <InfoCard title="최근 처리 결과">
-                    {outcome ? (
+                <InfoCard title="최근 검수">
+                    {inspection ? (
                         <>
-                            <InfoRow label="마지막 반납">
-                                <LinkText>{outcome.lastRentalId}</LinkText>
-                            </InfoRow>
                             {/* AI·관리자·슬롯은 값 집합이 셋 다 다릅니다. 라벨로도 구분해 둡니다. */}
-                            <InfoRow label="AI 판정 (참고) / 신뢰도">
+                            <InfoRow label="AI 판정 (참고) / 점수">
                                 <span className="flex items-center gap-[7px]">
-                                    {/* AI 값 집합은 슬롯 상태와 달라 톤 매핑도 따로 씁니다. */}
-                                    <Badge tone={AI_RESULT_TONE[outcome.aiVerdict]}>
-                                        {aiResultText(outcome.aiVerdict)}
+                                    <Badge tone={AI_RESULT_TONE[inspection.aiResult]}>
+                                        {aiResultText(inspection.aiResult)}
                                     </Badge>
                                     <span className="text-brand-muted">/</span>
                                     {/* FAILED 는 점수가 없습니다. 0.00 으로 채우지 않습니다. */}
                                     <span className="text-[13px] font-semibold tabular-nums text-brand-ink">
-                                        {formatScore(outcome.aiConfidence)}
+                                        {formatScore(inspection.aiScore)}
                                     </span>
                                 </span>
                             </InfoRow>
                             <InfoRow label="관리자 최종 판정 (확정)">
                                 {/* 미처리(PENDING)면 아직 판정이 없습니다. AI 결과로 대신 채우지 않습니다. */}
-                                {outcome.adminVerdict ? (
-                                    <Badge tone={DECISION_TONE[outcome.adminVerdict]}>
-                                        {decisionText(outcome.adminVerdict)}
+                                {inspection.decision ? (
+                                    <Badge tone={DECISION_TONE[inspection.decision]}>
+                                        {decisionText(inspection.decision)}
                                     </Badge>
                                 ) : (
                                     <Badge tone="amber">판정 대기</Badge>
                                 )}
                             </InfoRow>
-                            <InfoRow label="판정 사유">
-                                <span className="text-[13px] font-semibold text-brand-ink">
-                                    {outcome.reason ?? (
-                                        <span className="font-medium text-brand-muted">—</span>
-                                    )}
+                            <InfoRow label="모델 버전 / 처리 시각">
+                                <span className="text-[13px] font-semibold tabular-nums text-brand-ink">
+                                    {inspection.modelVersion} ·{' '}
+                                    {formatUpdatedAt(inspection.processedAt)}
                                 </span>
                             </InfoRow>
+                            {/*
+                             * 판정 사유는 슬롯 상세 응답에 없습니다. `latestInspection` 에는
+                             * 사유 코드·메모가 들어 있지 않아 검수 상세로 넘겨서 봅니다.
+                             */}
                             <InfoRow label="연결 반납 시도">
-                                <LinkText>{outcome.returnAttemptId}</LinkText>
+                                <LinkText>
+                                    {shortRef(slot.latestReturnAttempt?.returnAttemptId) ?? '—'}
+                                </LinkText>
+                            </InfoRow>
+                            <InfoRow label="판정 사유">
+                                <Link
+                                    to={`/inspections/${inspection.inspectionId}`}
+                                    className="text-[13px] font-bold text-brand-blue-ink transition-opacity hover:opacity-70"
+                                >
+                                    검수 상세에서 보기
+                                </Link>
                             </InfoRow>
                         </>
                     ) : (

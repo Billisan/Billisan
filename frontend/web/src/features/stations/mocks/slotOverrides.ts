@@ -2,14 +2,7 @@ import { useSyncExternalStore } from 'react';
 
 import type { InspectionDecisionInput } from '@/features/inspections/types';
 import type { SlotStatusChange } from '@/features/stations/components/SlotStatusDialog';
-import {
-    buildSlotHistory,
-    buildSlotOutcome,
-    rentalIdOf,
-    type SlotHistoryEntry,
-    type SlotOutcome,
-} from '@/features/stations/mocks/slotDetail';
-import { deriveSlotDisplayStatus, type Slot } from '@/features/stations/types';
+import type { SlotSummary } from '@/features/stations/types';
 
 /**
  * 관리자 명령의 **임시** 결과 보관소.
@@ -19,17 +12,17 @@ import { deriveSlotDisplayStatus, type Slot } from '@/features/stations/types';
  *
  * TODO: ADMIN-INSPECTION-003 · ADMIN-SLOT-STATUS-001 연동 시 이 파일을 통째로 지우세요.
  *       실제 계약은 명령 성공 뒤 **서버 권위 상세를 재조회**하는 것이지, 클라이언트가
- *       결과를 만들어 내는 게 아닙니다 (화면흐름 §7.7 · API명세 B-5).
+ *       결과를 만들어 내는 게 아닙니다 (12-R B-6).
  */
 
 interface SlotOverride {
-    /** 첫 변경 직전의 슬롯. 아래 entries 는 이 상태 위에 쌓인 것입니다. */
-    original: Slot;
-    slot: Slot;
-    /** 관리자가 만든 이력 줄. 최신순입니다. */
-    entries: SlotHistoryEntry[];
-    /** 마지막 판정 사유. '최근 처리 결과' 카드에 그대로 보여줍니다. */
-    reason: string | null;
+    /** 4축 변경분 */
+    patch: Partial<SlotSummary>;
+    /** 검수가 확정됐는지. 슬롯 목록 응답에는 없는 값이라 여기서만 들고 있습니다. */
+    inspectionDecided: boolean;
+    /** 관리자가 적은 판정 사유 코드·메모 */
+    reasonCode: string | null;
+    note: string | null;
 }
 
 const store = new Map<string, SlotOverride>();
@@ -48,7 +41,7 @@ function subscribe(listener: () => void) {
     };
 }
 
-/** 목업이 바뀔 때 화면을 다시 그리기 위한 버전 값. useMemo 의존성에 넣으세요. */
+/** 목업이 바뀔 때 화면을 다시 그리기 위한 버전 값. */
 export function useSlotOverrides(): number {
     return useSyncExternalStore(
         subscribe,
@@ -69,115 +62,84 @@ function nowStamp(): string {
     );
 }
 
-function record(slot: Slot, next: Partial<Slot>, entry: SlotHistoryEntry, reason: string | null) {
-    const existing = store.get(slot.slotId);
-
-    store.set(slot.slotId, {
-        original: existing?.original ?? slot,
-        slot: { ...(existing?.slot ?? slot), ...next },
-        entries: [entry, ...(existing?.entries ?? [])],
-        reason,
-    });
-    emit();
-}
-
 /* ------------------------------------------------------------------ 읽기 */
 
-/** 변경된 적이 있으면 그 결과를, 없으면 원본을 돌려줍니다. */
-export function applyOverride(slot: Slot): Slot {
-    return store.get(slot.slotId)?.slot ?? slot;
+/**
+ * 변경된 적이 있으면 그 결과를 얹어 돌려줍니다.
+ *
+ * 제네릭인 이유: 목록(`SlotSummary`)과 상세(`SlotDetail`) 둘 다 통과시켜야 하는데,
+ * 상세로 들어온 값을 `SlotSummary` 로 좁혀 반환하면 `latestInspection` 같은 필드가 날아갑니다.
+ */
+export function applyOverride<T extends SlotSummary>(slot: T): T {
+    const override = store.get(slot.slotId);
+    return override ? { ...slot, ...override.patch } : slot;
 }
 
-/** 관리자가 만든 줄을 원래 이력 위에 얹습니다. */
-export function historyOf(slot: Slot): SlotHistoryEntry[] {
-    const override = store.get(slot.slotId);
-    if (!override) return buildSlotHistory(slot);
-
-    return [...override.entries, ...buildSlotHistory(override.original)];
+/** 이 슬롯의 검수가 관리자 판정으로 확정됐는지 (목업 전용). */
+export function isInspectionDecided(slotId: string): boolean {
+    return store.get(slotId)?.inspectionDecided ?? false;
 }
 
-/** 판정 사유만 관리자가 실제로 적은 값으로 바꿔 줍니다. */
-export function outcomeOf(slot: Slot): SlotOutcome | null {
-    const outcome = buildSlotOutcome(slot);
-    const override = store.get(slot.slotId);
-    if (!outcome || !override?.reason) return outcome;
-
-    return { ...outcome, reason: override.reason };
+/** 관리자가 실제로 적은 판정 사유. 검수 상세에서 그대로 보여줍니다. */
+export function decisionInputOf(slotId: string): {
+    reasonCode: string | null;
+    note: string | null;
+} {
+    const override = store.get(slotId);
+    return { reasonCode: override?.reasonCode ?? null, note: override?.note ?? null };
 }
 
 /* ------------------------------------------------------------------ 쓰기 */
 
-/**
- * ADMIN-INSPECTION-003 의 결과를 흉내 냅니다.
- * 판정 → 슬롯 상태 매핑은 화면흐름 §10.2 그대로입니다.
- */
-export function applyInspectionDecision(slot: Slot, input: InspectionDecisionInput) {
-    const at = nowStamp();
-    const from = deriveSlotDisplayStatus(slot);
-    const decided = { ...slot.inspection!, reviewStatus: 'DECIDED' as const };
-
-    const next: Partial<Slot> =
-        input.decision === 'NORMAL'
-            ? {
-                  serviceStatus: 'AVAILABLE',
-                  itemCondition: 'NORMAL',
-                  inspection: decided,
-                  updatedAt: at,
-              }
-            : input.decision === 'DAMAGED'
-              ? {
-                    serviceStatus: 'OUT_OF_SERVICE',
-                    itemCondition: 'DAMAGED',
-                    inspection: decided,
-                    updatedAt: at,
-                }
-              : // KEEP_ADMIN_REVIEW — 검수는 미처리로, 슬롯은 ADMIN_REVIEW 로 그대로.
-                {
-                    serviceStatus: 'ADMIN_REVIEW',
-                    itemCondition: 'UNKNOWN',
-                    updatedAt: at,
-                };
-
-    record(
-        slot,
-        next,
-        {
-            at,
-            kind: '검수',
-            linkId: rentalIdOf(slot),
-            from,
-            to: deriveSlotDisplayStatus({ ...slot, ...next }),
-            note: `관리자 판정 — ${input.decision}`,
-            noteSub: input.note,
-        },
-        input.note,
-    );
+function record(slotId: string, next: SlotOverride) {
+    const existing = store.get(slotId);
+    store.set(slotId, {
+        patch: { ...(existing?.patch ?? {}), ...next.patch },
+        inspectionDecided: next.inspectionDecided,
+        reasonCode: next.reasonCode,
+        note: next.note,
+    });
+    emit();
 }
 
-/** ADMIN-SLOT-STATUS-001 의 결과를 흉내 냅니다. 정산은 만들지 않습니다. */
-export function applySlotStatusChange(slot: Slot, change: SlotStatusChange) {
+/**
+ * `ADMIN-INSPECTION-003` 의 결과를 흉내 냅니다.
+ * 판정 → 슬롯 상태 매핑은 12-R B-5 그대로입니다.
+ */
+export function applyInspectionDecision(slot: SlotSummary, input: InspectionDecisionInput) {
     const at = nowStamp();
-    const from = deriveSlotDisplayStatus(slot);
 
-    const next: Partial<Slot> = {
-        serviceStatus: change.targetServiceStatus,
-        // occupancyStatus 가 EMPTY 면 itemCondition 은 null 이어야 합니다 (API명세 §3.1).
-        itemCondition: slot.occupancyStatus === 'EMPTY' ? null : change.targetItemCondition,
-        updatedAt: at,
-    };
+    const patch: Partial<SlotSummary> =
+        input.decision === 'NORMAL'
+            ? { serviceStatus: 'AVAILABLE', itemCondition: 'NORMAL', updatedAt: at }
+            : input.decision === 'DAMAGED'
+              ? { serviceStatus: 'OUT_OF_SERVICE', itemCondition: 'DAMAGED', updatedAt: at }
+              : // KEEP_ADMIN_REVIEW — 검수는 미처리로, 슬롯은 ADMIN_REVIEW 로 그대로.
+                { serviceStatus: 'ADMIN_REVIEW', itemCondition: 'UNKNOWN', updatedAt: at };
 
-    record(
-        slot,
-        next,
-        {
-            at,
-            kind: '상태 변경',
-            linkId: null,
-            from,
-            to: deriveSlotDisplayStatus({ ...slot, ...next }),
-            note: change.note,
-            noteSub: change.physicalStateConfirmed ? '현장에서 실물 확인함' : undefined,
+    record(slot.slotId, {
+        patch,
+        // 보류는 검수를 확정하지 않습니다.
+        inspectionDecided: input.decision !== 'KEEP_ADMIN_REVIEW',
+        reasonCode: input.reasonCode,
+        note: input.note ?? null,
+    });
+}
+
+/** `ADMIN-SLOT-STATUS-001` 의 결과를 흉내 냅니다. 정산은 만들지 않습니다. */
+export function applySlotStatusChange(slot: SlotSummary, change: SlotStatusChange) {
+    record(slot.slotId, {
+        patch: {
+            serviceStatus: change.targetServiceStatus,
+            // 점유가 EMPTY 면 itemCondition 은 null 입니다 (12-R B-4).
+            itemCondition:
+                slot.occupancyStatus === 'EMPTY' || change.targetItemCondition === 'EMPTY'
+                    ? null
+                    : change.targetItemCondition,
+            updatedAt: nowStamp(),
         },
-        null,
-    );
+        inspectionDecided: isInspectionDecided(slot.slotId),
+        reasonCode: change.reasonCode,
+        note: change.note ?? null,
+    });
 }

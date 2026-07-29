@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react';
 import {
     deriveSlotDisplayStatus,
     SLOT_DISPLAY_TONE,
-    type Slot,
+    type SlotSummary,
     type SlotDisplayStatus,
-    type SlotItemCondition,
+    type SlotTargetItemCondition,
     type SlotServiceStatus,
 } from '@/features/stations/types';
 import { Badge } from '@/shared/components/Badge';
@@ -33,7 +33,7 @@ interface Choice {
     id: string;
     label: string;
     serviceStatus: SlotServiceStatus;
-    itemCondition: SlotItemCondition;
+    itemCondition: SlotTargetItemCondition;
     /** 미리보기 배지에 쓸 파생 상태 */
     display: SlotDisplayStatus;
     desc: string;
@@ -103,14 +103,20 @@ const CHOICES: Choice[] = [
 /**
  * ADMIN-SLOT-STATUS-001 요청 본문.
  *
- * TODO: 본문에는 `reasonCode` 도 있는데 문서에 확정값이 `PHYSICAL_DAMAGE_CONFIRMED` 하나뿐이고
- *       Enum 목록이 없습니다. 값을 지어내지 않으려고 지금은 보내지 않습니다.
- *       백엔드 담당자와 목록을 확정하면 이 필드를 되살리고 사유를 select 로 바꾸세요.
+ * 12-R B-4 기준으로 `reasonCode` 는 **필수**, `note` 는 선택입니다.
  */
 export interface SlotStatusChange {
     targetServiceStatus: SlotServiceStatus;
-    targetItemCondition: SlotItemCondition;
-    /** 관리자가 적은 변경 사유. 없으면 서버가 `422 ADMIN_REASON_REQUIRED` 로 거절합니다. */
+    targetItemCondition: SlotTargetItemCondition;
+    /**
+     * 변경 사유 코드. **필수**입니다. 없으면 `422 ADMIN_REASON_REQUIRED` 로 거절됩니다.
+     *
+     * 명세는 "자유 상태값이 아니라 **서버가 허용한 코드**"라고만 하고 목록을 주지 않습니다.
+     * 값을 지어낼 수 없어서 지금은 입력칸으로 두고, 서버가 검증합니다.
+     * TODO: 백엔드에서 허용 코드 목록을 받으면 select 로 바꾸세요.
+     */
+    reasonCode: string;
+    /** 현장 확인 메모. 선택입니다. */
     note: string;
     physicalStateConfirmed: boolean;
     /** 조회 응답 문자열을 그대로 되돌려 보냅니다. Date 로 파싱하면 마이크로초가 잘립니다. */
@@ -119,7 +125,7 @@ export interface SlotStatusChange {
 
 interface SlotStatusDialogProps {
     open: boolean;
-    slot: Slot;
+    slot: SlotSummary;
     /** 'SL-03-06 · 제1공학관(ST-003)' 형태의 부제 */
     subtitle: string;
     onClose: () => void;
@@ -136,6 +142,7 @@ export function SlotStatusDialog({
     const current = deriveSlotDisplayStatus(slot);
 
     const [choiceId, setChoiceId] = useState(CHOICES[3].id);
+    const [reasonCode, setReasonCode] = useState('');
     const [note, setNote] = useState('');
     const [confirmed, setConfirmed] = useState(false);
 
@@ -144,6 +151,7 @@ export function SlotStatusDialog({
         if (!open) return;
         // 우산이 없는 슬롯이면 기본 선택도 우산을 전제하지 않는 것으로 둡니다.
         setChoiceId(slot.occupancyStatus === 'OCCUPIED' ? CHOICES[3].id : CHOICES[2].id);
+        setReasonCode('');
         setNote('');
         setConfirmed(false);
     }, [open, slot.occupancyStatus]);
@@ -164,13 +172,15 @@ export function SlotStatusDialog({
     const hasItem = slot.occupancyStatus === 'OCCUPIED';
     const unchanged =
         choice.serviceStatus === slot.serviceStatus && choice.itemCondition === slot.itemCondition;
-    const canSubmit = !unchanged && note.trim() !== '' && (hasItem || !choice.requiresItem);
+    // reasonCode 가 필수라 그것부터 봅니다. note 는 선택입니다 (12-R B-4).
+    const canSubmit = !unchanged && reasonCode.trim() !== '' && (hasItem || !choice.requiresItem);
 
     const handleSubmit = () => {
         if (!canSubmit) return;
         onSubmit({
             targetServiceStatus: choice.serviceStatus,
             targetItemCondition: choice.itemCondition,
+            reasonCode: reasonCode.trim(),
             note: note.trim(),
             physicalStateConfirmed: confirmed,
             expectedUpdatedAt: slot.updatedAt,
@@ -280,22 +290,36 @@ export function SlotStatusDialog({
                     {choice.desc}
                     {!hasItem && (
                         <span className="mt-[6px] block text-brand-body">
-                            이 슬롯은 지금 비어 있어{slot.activeRentalId ? ' (대여 중)' : ''} 우산
-                            상태를 지정하는 선택지는 고를 수 없습니다.
+                            이 슬롯은 지금 비어 있어 우산 상태를 지정하는 선택지는 고를 수 없습니다.
                         </span>
                     )}
                 </p>
 
-                {/* 시안은 사유 select + 메모 두 칸이지만, 고를 사유 목록이 아직 없어 한 칸으로 둡니다. */}
+                {/*
+                 * 명세가 요구하는 두 칸입니다 — `reasonCode`(필수) · `note`(선택).
+                 * 허용 코드 목록이 문서에 없어서 값을 지어내지 않고 입력칸으로 둡니다.
+                 */}
                 <label className="mt-[18px] block">
                     <span className="mb-[8px] block text-[13px] font-bold text-brand-ink">
-                        사유 <span className="text-tone-red-fg">*</span>
+                        사유 코드 <span className="text-tone-red-fg">*</span>
+                    </span>
+                    <input
+                        value={reasonCode}
+                        onChange={(event) => setReasonCode(event.target.value)}
+                        placeholder="서버가 허용한 사유 코드"
+                        className="h-[38px] w-full rounded-lg border border-brand-border-soft bg-white px-[14px] text-[12.5px] font-medium text-brand-ink outline-none placeholder:text-brand-muted focus-visible:ring-2 focus-visible:ring-brand-blue/40"
+                    />
+                </label>
+
+                <label className="mt-[14px] block">
+                    <span className="mb-[8px] block text-[13px] font-bold text-brand-ink">
+                        메모
                     </span>
                     <textarea
                         value={note}
                         onChange={(event) => setNote(event.target.value)}
                         rows={2}
-                        placeholder="현장에서 확인한 내용을 적어 두세요"
+                        placeholder="현장에서 확인한 내용을 적어 두세요 (선택)"
                         className="w-full resize-none rounded-lg border border-brand-border-soft bg-white px-[14px] py-[10px] text-[12.5px] font-medium leading-[19px] text-brand-ink outline-none placeholder:text-brand-muted focus-visible:ring-2 focus-visible:ring-brand-blue/40"
                     />
                 </label>

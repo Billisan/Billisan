@@ -66,13 +66,15 @@ export type StationStatus = 'SHORTAGE' | 'NORMAL' | 'SURPLUS' | 'OFFLINE';
 
 /**
  * 재고 상태 임계값 (대여 가능 수량 기준).
+ *
+ * 대여소당 SLOT 이 3~5개라 임계값도 그 규모입니다 (상위 기획 §4.1).
  * TODO: 운영 정책 확정되면 대여소별 설정값으로 빼세요.
  */
 export const STOCK_THRESHOLD = {
     /** 이 값 이상이면 과잉 */
-    surplus: 40,
+    surplus: 4,
     /** 이 값 이상이면 적정, 미만이면 부족 */
-    normal: 20,
+    normal: 2,
 } as const;
 
 export function getStationStatus(station: Station): StationStatus {
@@ -118,51 +120,74 @@ export function sortByStock(stations: Station[]): Station[] {
  */
 export type SlotServiceStatus = 'AVAILABLE' | 'ADMIN_REVIEW' | 'OUT_OF_SERVICE';
 export type SlotOccupancyStatus = 'EMPTY' | 'OCCUPIED' | 'UNKNOWN';
-export type SlotItemCondition = 'EMPTY' | 'NORMAL' | 'DAMAGED' | 'REPAIRABLE' | 'UNKNOWN';
 export type LockStatus = 'LOCKED' | 'UNLOCKED' | 'UNKNOWN' | 'ERROR';
 
-/** 슬롯에 걸린 검수. 미처리(PENDING)면 표에 '검수 대기'로 나옵니다. */
-export interface SlotInspection {
-    /** ERD `DAMAGE_INSPECTION.inspection_id` — UUID */
-    inspectionId: string;
-    reviewStatus: 'PENDING' | 'DECIDED';
-}
+/**
+ * 응답의 품질 상태. **`EMPTY` 가 없습니다** — 빈 슬롯은 `null` 로 옵니다 (12-R B-4).
+ * 예전에 "ERD 는 EMPTY, API 는 null" 로 열어 뒀던 충돌이 API 쪽으로 확정됐습니다.
+ */
+export type SlotItemCondition = 'NORMAL' | 'DAMAGED' | 'REPAIRABLE' | 'UNKNOWN';
 
 /**
- * ERD `SLOT`.
- *
- * 신원은 `slotId`(UUID)이고, 사람이 부르는 번호는 `slotNumber`(`UNIQUE(station_id, slot_number)`)입니다.
- * 'SL-03-01' 같은 코드 컬럼은 ERD 에 없습니다 — `stationCode` + `slotNumber` 로 만드는 표시 라벨입니다.
+ * `ADMIN-SLOT-STATUS-001` 요청의 `targetItemCondition`.
+ * 요청에는 `EMPTY` 가 **포함**됩니다. 응답 enum 과 달라서 타입을 나눠 둡니다.
  */
-export interface Slot {
-    /** ERD PK. 라우트·API 에 쓰는 진짜 신원입니다. */
+export type SlotTargetItemCondition = 'EMPTY' | SlotItemCondition;
+
+/**
+ * `ADMIN-SLOT-001` 의 `items[]` 한 줄. **응답에 있는 필드가 전부입니다.**
+ *
+ * 활성 대여도, 검수 요약도 이 응답에 없습니다. 그래서 목록에서는 '대여 중'·'검수 대기'를
+ * 표시할 수 없고, 그 정보는 `ADMIN-SLOT-DETAIL-001` 에만 있습니다.
+ *
+ * 'SL-03-01' 같은 코드 컬럼도 없습니다 — `stationCode` + `slotNumber` 로 만드는 표시 라벨입니다.
+ */
+export interface SlotSummary {
+    /** UUID. 라우트·API 에 쓰는 신원입니다. */
     slotId: string;
-    /** ERD FK */
-    stationId: string;
-    /** `slot_number INT` — 대여소 안에서의 물리 번호 */
+    /** 대여소 안에서의 표시 번호 */
     slotNumber: number;
     occupancyStatus: SlotOccupancyStatus;
-    serviceStatus: SlotServiceStatus;
-    /**
-     * 비어 있는 슬롯의 값이 문서마다 다릅니다.
-     *   ERD  — `item_condition NOT NULL`, `occupancy=EMPTY ⇔ item_condition=EMPTY`
-     *   API  — "`occupancyStatus = EMPTY` 이면 `itemCondition = null`"
-     * 어느 쪽이 와도 되게 null 을 허용하고, 화면에서는 null 을 `EMPTY` 와 같게 봅니다.
-     * TODO: 백엔드 담당자 확인 후 한쪽으로 좁히세요.
-     */
+    /** 점유가 `EMPTY` 면 `null` */
     itemCondition: SlotItemCondition | null;
+    serviceStatus: SlotServiceStatus;
     lockStatus: LockStatus;
     /**
-     * 이 슬롯에 걸린 활성 대여. '대여 중'은 슬롯 Enum 이 아니라 RENTAL 연결에서 파생합니다
-     * (GAP-WEB-005 · WF-WEB-CHANGE-005).
-     */
-    activeRentalId: string | null;
-    inspection: SlotInspection | null;
-    /**
-     * 서버 updatedAt 원문. DATETIME(6) 마이크로초라서 Date 로 파싱했다가 다시 만들면
-     * 자릿수가 잘려 expectedUpdatedAt CAS 가 항상 409 가 됩니다. 문자열 그대로 보관하세요.
+     * 서버 updatedAt 원문이자 CAS 기준. `DATETIME(6)` 마이크로초라서 Date 로 파싱했다가
+     * 다시 만들면 자릿수가 잘려 CAS 가 항상 409 가 됩니다. 문자열 그대로 보관하세요.
      */
     updatedAt: string;
+}
+
+/** `ADMIN-SLOT-DETAIL-001` 의 `latestReturnAttempt` */
+export interface SlotReturnAttemptRef {
+    returnAttemptId: string;
+    rentalId: string;
+    status: string;
+}
+
+/** `ADMIN-SLOT-DETAIL-001` 의 `latestInspection` */
+export interface SlotInspectionRef {
+    inspectionId: string;
+    aiResult: AiInspectionResult;
+    /** 추론 실패 시 null */
+    aiScore: number | null;
+    modelVersion: string;
+    processedAt: string;
+    reviewStatus: 'PENDING' | 'DECIDED';
+    /** 미확정이면 null */
+    decision: InspectionDecision | null;
+}
+
+/** `ADMIN-SLOT-DETAIL-001` 응답 `data` */
+export interface SlotDetail extends SlotSummary {
+    stationId: string;
+    /** 최근 연결 반납 시도. 없으면 null */
+    latestReturnAttempt: SlotReturnAttemptRef | null;
+    /** 최근 연결 검수 메타데이터. 없으면 null */
+    latestInspection: SlotInspectionRef | null;
+    /** 최근 관리자 변경자. 시스템 변경이면 null */
+    updatedBy: string | null;
 }
 
 /**
@@ -177,15 +202,22 @@ export function formatSlotLabel(stationCode: string, slotNumber: number): string
 
 /** 표에 한 칸으로 보여줄 파생 상태. 저장되는 값이 아닙니다. */
 export type SlotDisplayStatus =
-    'AVAILABLE' | 'RENTED' | 'EMPTY' | 'DAMAGED' | 'ADMIN_REVIEW' | 'OUT_OF_SERVICE' | 'UNKNOWN';
+    'AVAILABLE' | 'EMPTY' | 'DAMAGED' | 'ADMIN_REVIEW' | 'OUT_OF_SERVICE' | 'UNKNOWN';
 
-/** 4축 + 대여 연결 → 표시용 상태 하나 (화면흐름 §17 매핑표) */
-export function deriveSlotDisplayStatus(slot: Slot): SlotDisplayStatus {
-    if (slot.activeRentalId) return 'RENTED';
+/**
+ * 4축 → 표시용 상태 하나.
+ *
+ * **'대여 중'은 없습니다.** 관리자 API 어디에도 활성 대여 연결이 없습니다 —
+ * 슬롯 목록에도, 슬롯 상세에도 (상세의 `latestReturnAttempt` 는 '최근 반납 시도'이지
+ * '지금 나가 있는 대여'가 아닙니다). 우산이 대여 중인 슬롯은 서버 기준으로도
+ * `EMPTY + AVAILABLE` 이며, 화면도 그대로 '빈 슬롯'으로 보여줍니다.
+ *
+ * 대여 가능 조건은 `AVAILABLE + OCCUPIED + NORMAL + LOCKED` 입니다 (ERD SLOT 불변조건).
+ */
+export function deriveSlotDisplayStatus(slot: SlotSummary): SlotDisplayStatus {
     if (slot.serviceStatus === 'ADMIN_REVIEW') return 'ADMIN_REVIEW';
     if (slot.itemCondition === 'DAMAGED' || slot.itemCondition === 'REPAIRABLE') return 'DAMAGED';
     if (slot.serviceStatus === 'OUT_OF_SERVICE') return 'OUT_OF_SERVICE';
-    // ERD 는 EMPTY, API 는 null 을 쓴다고 해서 둘 다 빈 슬롯으로 봅니다.
     if (slot.occupancyStatus === 'EMPTY') return 'EMPTY';
     if (
         slot.occupancyStatus === 'OCCUPIED' &&
@@ -251,7 +283,6 @@ export function decisionText(decision: InspectionDecision): string {
 
 export const SLOT_DISPLAY_TONE: Record<SlotDisplayStatus, BadgeTone> = {
     AVAILABLE: 'green',
-    RENTED: 'blue',
     EMPTY: 'slate',
     DAMAGED: 'red',
     ADMIN_REVIEW: 'amber',
@@ -259,9 +290,15 @@ export const SLOT_DISPLAY_TONE: Record<SlotDisplayStatus, BadgeTone> = {
     UNKNOWN: 'slate',
 };
 
-/** 검수 상세로 넘길 수 있는 슬롯인지 (미처리 검수가 걸려 있는 경우) */
-export function pendingInspectionId(slot: Slot): string | null {
-    return slot.inspection?.reviewStatus === 'PENDING' ? slot.inspection.inspectionId : null;
+/**
+ * 검수 상세로 넘길 수 있는 슬롯인지.
+ *
+ * 검수 요약은 슬롯 **상세**에만 있습니다. 목록(`SlotSummary`)으로는 판단할 수 없습니다.
+ */
+export function pendingInspectionId(slot: SlotDetail): string | null {
+    return slot.latestInspection?.reviewStatus === 'PENDING'
+        ? slot.latestInspection.inspectionId
+        : null;
 }
 
 /**

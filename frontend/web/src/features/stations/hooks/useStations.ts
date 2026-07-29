@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { SlotStatusChange } from '@/features/stations/components/SlotStatusDialog';
-import { stationsApi, type SlotListParams } from '@/features/stations/api/stationsApi';
-import type { Slot } from '@/features/stations/types';
+import { stationsApi } from '@/features/stations/api/stationsApi';
+import type { SlotSummary } from '@/features/stations/types';
 import { qk } from '@/shared/api/queryKeys';
 
 /**
@@ -41,11 +41,11 @@ export function useInventory(stationId: string | undefined) {
     });
 }
 
-/** ADMIN-SLOT-001 */
-export function useStationSlots(stationId: string | undefined, params: SlotListParams = {}) {
+/** ADMIN-SLOT-001. cursor 가 없어 한 번에 다 옵니다. */
+export function useStationSlots(stationId: string | undefined) {
     return useQuery({
-        queryKey: qk.slots.list(stationId ?? '', params as Record<string, unknown>),
-        queryFn: () => stationsApi.slots(stationId!, params),
+        queryKey: qk.slots.list(stationId ?? '', {}),
+        queryFn: () => stationsApi.slots(stationId!),
         enabled: Boolean(stationId),
         retry: false,
     });
@@ -72,7 +72,7 @@ export function useChangeSlotStatus() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ slot, change }: { slot: Slot; change: SlotStatusChange }) =>
+        mutationFn: ({ slot, change }: { slot: SlotSummary; change: SlotStatusChange }) =>
             stationsApi.changeSlotStatus(slot, change),
         retry: false,
         onSuccess: () => {
