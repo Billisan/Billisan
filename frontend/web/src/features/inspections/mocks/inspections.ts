@@ -1,3 +1,4 @@
+import { MOCK_RETURNS } from '@/features/history/mocks/history';
 import { MODEL_VERSION, aiResultOf, aiScoreOf } from '@/features/inspections/mocks/aiVerdict';
 import type {
     InspectionDetail,
@@ -45,6 +46,16 @@ function shiftMinutes(at: string, minutes: number): string {
     );
 }
 
+/**
+ * 이 슬롯으로 들어온 반납 시도.
+ *
+ * 이력 목업이 슬롯을 **모양으로 요청**해서 배정받으므로, 같은 슬롯을 여기서 되짚으면
+ * 검수 ↔ 반납이 양방향으로 이어집니다. 이력에 그 슬롯을 쓴 반납이 없으면 `undefined`.
+ */
+function returnAttemptOfSlot(slotId: string): string | undefined {
+    return MOCK_RETURNS.find((attempt) => attempt.slotId === slotId)?.returnAttemptId;
+}
+
 /** 목업 내부에서만 쓰는 원본 묶음. 화면으로는 `item` 만 나갑니다. */
 interface InspectionSeed {
     item: InspectionListItem;
@@ -86,10 +97,17 @@ function buildInspectionSeeds(): InspectionSeed[] {
                 slot,
                 item: {
                     inspectionId: mockUuid(MOCK_NS.inspection, slotSeq(station, slot.slotNumber)),
-                    returnAttemptId: mockUuid(
-                        MOCK_NS.returnAttempt,
-                        slotSeq(station, slot.slotNumber),
-                    ),
+                    /*
+                     * 이 슬롯으로 들어온 반납이 이력에 있으면 그 UUID 를 씁니다.
+                     *
+                     * 예전에는 늘 `mockUuid(returnAttempt, slotSeq(...))` 를 만들어 넣었는데,
+                     * 반납 이력에 그런 반납은 없어서 검수 목록·상세의 '반납 ID' 가 어디에도
+                     * 없는 값이었습니다. 화면에 링크가 아니라 축약 표시로만 나가서 눌러
+                     * 볼 수도 없었고요.
+                     */
+                    returnAttemptId:
+                        returnAttemptOfSlot(slot.slotId) ??
+                        mockUuid(MOCK_NS.returnAttempt, slotSeq(station, slot.slotNumber)),
                     stationId: station.stationId,
                     slotId: slot.slotId,
                     // 계약 추가 요청분. 서버가 채워 주면 목업의 이 두 줄만 지우면 됩니다.

@@ -14,6 +14,7 @@ import {
     RENTAL_STATUS_LABEL,
     RENTAL_STATUS_TONE,
     rentalDisplayStatus,
+    RETURN_STATUS_LABEL,
     REVIEW_STATUS_LABEL,
     SETTLEMENT_STATUS_LABEL,
 } from '@/features/history/types';
@@ -100,7 +101,7 @@ export function RentalDetailPage() {
                     </InfoRow>
                     <InfoRow label="대여 대여소">
                         <ValueLink to={`/stations/${rental.stationId}`}>
-                            {rental.stationName} ({rental.stationId})
+                            {rental.stationName}
                         </ValueLink>
                     </InfoRow>
                     <InfoRow label="슬롯">
@@ -121,7 +122,7 @@ export function RentalDetailPage() {
                             <InfoRow label="반납 시각">{linkedReturn.attemptedAt}</InfoRow>
                             <InfoRow label="반납 대여소">
                                 <ValueLink to={`/stations/${linkedReturn.stationId}`}>
-                                    {linkedReturn.stationName} ({linkedReturn.stationId})
+                                    {linkedReturn.stationName}
                                 </ValueLink>
                             </InfoRow>
                             <InfoRow label="반납 슬롯">
@@ -161,10 +162,19 @@ export function RentalDetailPage() {
                 <Timeline
                     steps={[
                         { label: '대여', at: rental.rentedAt.slice(5), done: true },
+                        /*
+                         * 반납 시도가 **있는 것**과 **끝난 것**은 다릅니다. 예전에는
+                         * `Boolean(linkedReturn)` 이라, 그 시도가 `복구 필요`·`실패` 여도
+                         * 체크가 찍혀 반납이 끝난 것처럼 보였습니다.
+                         */
                         {
                             label: '반납',
-                            at: linkedReturn?.attemptedAt.slice(5) ?? '—',
-                            done: Boolean(linkedReturn),
+                            at: linkedReturn
+                                ? linkedReturn.status === 'COMPLETED'
+                                    ? linkedReturn.attemptedAt.slice(5)
+                                    : RETURN_STATUS_LABEL[linkedReturn.status]
+                                : '—',
+                            done: linkedReturn?.status === 'COMPLETED',
                         },
                         /*
                          * 관리자 검수 판정 단계입니다. 예전 이름 '반납 처리' 는 위 '대여 상태
@@ -181,7 +191,9 @@ export function RentalDetailPage() {
                                     ? '해당 없음'
                                     : REVIEW_STATUS_LABEL[linkedReturn.reviewStatus]
                                 : '—',
-                            done: Boolean(linkedReturn) && linkedReturn?.reviewStatus !== 'PENDING',
+                            done:
+                                linkedReturn?.status === 'COMPLETED' &&
+                                linkedReturn.reviewStatus !== 'PENDING',
                         },
                         /*
                          * 정산 단계는 **결제까지 끝났을 때만** 완료입니다. 정산 행이 있으면

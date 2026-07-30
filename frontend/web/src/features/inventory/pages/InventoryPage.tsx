@@ -18,7 +18,7 @@ import {
 } from '@/features/stations/types';
 import { Badge } from '@/shared/components/Badge';
 import { FilterSelect, type FilterOption } from '@/shared/components/FilterSelect';
-import { ErrorState, LoadingState } from '@/shared/components/PageState';
+import { EmptyState, ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
 import { SearchInput } from '@/shared/components/SearchInput';
 import { PageTitle } from '@/shared/components/PageTitle';
@@ -65,7 +65,7 @@ const STATUS_OPTIONS: readonly FilterOption<StatusFilter>[] = [
 // 드롭다운 value 는 UUID 입니다. 그대로 `ADMIN-INVENTORY-001` 의 경로 변수로 들어갑니다.
 const STATION_OPTIONS: readonly FilterOption<string>[] = MOCK_STATIONS.map((station) => ({
     value: station.stationId,
-    label: `${station.name} (${station.stationCode})`,
+    label: station.name,
 }));
 
 function parseStatus(value: string | null): StatusFilter {
@@ -124,18 +124,20 @@ export function InventoryPage() {
          * 남거나 전부 사라집니다. 그래도 넣어 두는 이유는 표에 '대여소' 열이 보이기
          * 때문입니다 — 보이는 값으로 걸러지지 않으면 검색이 고장 난 것처럼 보입니다.
          * 대여소를 넘나드는 검색은 P0 API 가 대여소 단위라(`ADMIN-SLOT-001`) 불가능합니다.
+         *
+         * `stationCode` 는 뺐습니다 — ERD v3.0 이 P0 필수 컬럼에서 제외했습니다.
          */
-        const stationText = `${station.name} ${station.stationCode}`.toLowerCase();
+        const stationText = station.name.toLowerCase();
 
         return allSlots.filter((slot) => {
-            const label = formatSlotLabel(station.stationCode, slot.slotNumber).toLowerCase();
+            const label = formatSlotLabel(slot.slotNumber).toLowerCase();
             const matchesKeyword =
                 !normalized || label.includes(normalized) || stationText.includes(normalized);
             const matchesStatus = status === 'ALL' || deriveSlotDisplayStatus(slot) === status;
 
             return matchesKeyword && matchesStatus;
         });
-    }, [allSlots, keyword, status, station.name, station.stationCode]);
+    }, [allSlots, keyword, status, station.name]);
 
     /*
      * 집계는 `ADMIN-INVENTORY-001` 필드 그대로입니다.
@@ -160,6 +162,9 @@ export function InventoryPage() {
         if (next.status !== 'ALL') params.set('status', next.status);
         setSearchParams(params);
     };
+
+    /** 확정된 조회 조건이 걸려 있는지 (대여소 선택은 전제라 세지 않습니다) */
+    const hasFilter = keyword !== '' || status !== 'ALL';
 
     const handleSubmit = (event: FormEvent) => {
         event.preventDefault();
@@ -285,11 +290,12 @@ export function InventoryPage() {
             <div className="overflow-hidden rounded-lg bg-white">
                 {/* 열 폭은 시안 좌표 그대로입니다: 302 / 474 / 813.8(중앙) / 933 / 1149~1205 */}
                 <div className="grid h-[42px] grid-cols-[172px_220px_183px_216px_112px] items-center bg-brand-surface pl-[14px] pr-[39px] text-[11.5px] font-bold text-brand-body">
-                    <span>slotId</span>
+                    <span>슬롯</span>
                     <span>대여소</span>
                     <span className="text-center">상태</span>
                     <span>최근 상태 변경</span>
-                    <span />
+                    {/* 화면에는 안 보이지만 열 이름은 있어야 합니다 — 스크린리더가 읽습니다. */}
+                    <span className="sr-only">슬롯 작업</span>
                 </div>
 
                 {rows.length > 0 ? (
@@ -339,7 +345,7 @@ export function InventoryPage() {
                                     />
                                 )}
                                 <span className="font-bold text-brand-ink">
-                                    {formatSlotLabel(station.stationCode, slot.slotNumber)}
+                                    {formatSlotLabel(slot.slotNumber)}
                                 </span>
                                 <span className="font-medium text-brand-ink-soft">
                                     {station.name}
@@ -390,9 +396,22 @@ export function InventoryPage() {
                 ) : slotsQuery.isError ? (
                     <ErrorState error={slotsQuery.error} onRetry={() => slotsQuery.refetch()} />
                 ) : (
-                    <div className="flex h-[200px] items-center justify-center text-[13px] font-medium text-brand-muted">
-                        조건에 맞는 슬롯이 없습니다.
-                    </div>
+                    /*
+                     * 대여소를 고르는 건 조회 조건이 아니라 이 화면의 전제입니다(P0 API 가
+                     * 대여소 단위). 그래서 '조건'에는 검색어·상태만 셉니다.
+                     */
+                    <EmptyState
+                        filtered={hasFilter}
+                        onReset={() => {
+                            setKeywordInput('');
+                            setStatusInput('ALL');
+                            applyQuery({ station: stationId, keyword: '', status: 'ALL' });
+                        }}
+                    >
+                        {hasFilter
+                            ? '조회 조건에 맞는 슬롯이 없습니다.'
+                            : '이 대여소에는 슬롯이 없습니다.'}
+                    </EmptyState>
                 )}
             </div>
 

@@ -5,7 +5,8 @@ import { deriveSlotDisplayStatus, type Station } from '@/features/stations/types
 /**
  * 대여소 목업 데이터.
  *
- * 신원은 `stationId`(UUID)이고 'ST-003' 은 ERD `station_code` 로 화면 표시용입니다.
+ * 신원은 `stationId`(UUID)뿐입니다. ERD v3.0 이 `station_code`·`location_text` 를 P0 필수
+ * 컬럼에서 뺐어서 표시도 `name` 으로만 합니다.
  *
  * **슬롯 개수는 `slotCount` 하나로 정합니다.** 상위 기획 §4.1 이 "제품·DB·API·화면은
  * 대여소당 3~5 SLOT을 지원"이라고 했고, ERD 는 "SLOT 행 수와 Station 설정으로 수량을
@@ -19,11 +20,8 @@ import { deriveSlotDisplayStatus, type Station } from '@/features/stations/types
  */
 
 interface StationSeed {
-    /** `station_code` */
-    code: string;
     name: string;
     /** `location_text` — 좌표가 아니라 자유 텍스트입니다 */
-    locationText: string;
     /** 이 대여소에 실제로 설치된 SLOT 행 수 */
     slotCount: number;
     deviceStatus: Station['deviceStatus'];
@@ -33,72 +31,56 @@ interface StationSeed {
 
 const SEEDS: StationSeed[] = [
     {
-        code: 'ST-001',
         name: '정문 광장',
-        locationText: '정문 광장 버스정류장 옆',
         slotCount: 5,
         deviceStatus: 'ONLINE',
         serviceStatus: 'AVAILABLE',
         position: { x: 20.1, y: 86.0 },
     },
     {
-        code: 'ST-002',
         name: '중앙도서관',
-        locationText: '중앙도서관 1층 출입구',
         slotCount: 5,
         deviceStatus: 'ONLINE',
         serviceStatus: 'AVAILABLE',
         position: { x: 46.8, y: 30.2 },
     },
     {
-        code: 'ST-003',
         name: '제1공학관',
-        locationText: '제1공학관 로비',
         slotCount: 5,
         deviceStatus: 'ONLINE',
         serviceStatus: 'AVAILABLE',
         position: { x: 79.9, y: 38.6 },
     },
     {
-        code: 'ST-005',
         name: '경영관',
-        locationText: '경영관 후문',
         slotCount: 4,
         deviceStatus: 'ONLINE',
         serviceStatus: 'AVAILABLE',
         position: { x: 28.2, y: 51.6 },
     },
     {
-        code: 'ST-006',
         name: '자연과학관',
-        locationText: '자연과학관 중앙 계단',
         slotCount: 4,
         deviceStatus: 'ONLINE',
         serviceStatus: 'AVAILABLE',
         position: { x: 59.7, y: 56.2 },
     },
     {
-        code: 'ST-007',
         name: '생활관 A',
-        locationText: '생활관 A동 1층',
         slotCount: 5,
         deviceStatus: 'ONLINE',
         serviceStatus: 'AVAILABLE',
         position: { x: 82.3, y: 71.5 },
     },
     {
-        code: 'ST-008',
         name: '빌리대역 출구',
-        locationText: '빌리대역 2번 출구',
         slotCount: 5,
         deviceStatus: 'ONLINE',
         serviceStatus: 'AVAILABLE',
         position: { x: 16.8, y: 20.2 },
     },
     {
-        code: 'ST-011',
         name: '대운동장',
-        locationText: '대운동장 관중석 입구',
         slotCount: 3,
         // 장치가 끊긴 대여소. `ERROR` 와 구분되는 상태입니다.
         deviceStatus: 'OFFLINE',
@@ -110,9 +92,7 @@ const SEEDS: StationSeed[] = [
 /** 집계 없이 설정만 담은 대여소. 슬롯 생성의 입력값입니다. */
 const CONFIGS: Station[] = SEEDS.map((seed, index) => ({
     stationId: mockUuid(MOCK_NS.station, index + 1),
-    stationCode: seed.code,
     name: seed.name,
-    locationText: seed.locationText,
     serviceStatus: seed.serviceStatus,
     deviceStatus: seed.deviceStatus,
     slotCount: seed.slotCount,

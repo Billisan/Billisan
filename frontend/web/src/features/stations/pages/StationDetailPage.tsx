@@ -12,6 +12,8 @@ import {
 } from '@/features/stations/types';
 import { FilterSelect, type FilterOption } from '@/shared/components/FilterSelect';
 import { PageBar } from '@/shared/components/PageBar';
+import { EmptyState } from '@/shared/components/PageState';
+import { RefId } from '@/shared/components/RefId';
 import { SearchInput } from '@/shared/components/SearchInput';
 import { PageTitle } from '@/shared/components/PageTitle';
 import { SLOT_DISPLAY_LABEL } from '@/shared/constants/statusLabels';
@@ -64,13 +66,14 @@ export function StationDetailPage() {
 
         const normalized = keyword.toLowerCase();
         /*
-         * 검색 대상은 사람이 칠 수 있는 값뿐입니다 — 슬롯 표시 라벨('SL-03-01')과
-         * 대여소 이름·코드. `slotId` 는 UUID 라 넣지 않습니다.
+         * 검색 대상은 사람이 칠 수 있는 값뿐입니다 — 슬롯 표기('3번 슬롯')와 대여소 이름.
+         * `slotId` 는 UUID 라 넣지 않고, `stationCode` 는 ERD v3.0 에서 P0 필수 컬럼이
+         * 아니라 뺐습니다.
          */
-        const stationText = `${station.name} ${station.stationCode}`.toLowerCase();
+        const stationText = station.name.toLowerCase();
 
         return (slotPage?.items ?? []).filter((slot) => {
-            const label = formatSlotLabel(station.stationCode, slot.slotNumber).toLowerCase();
+            const label = formatSlotLabel(slot.slotNumber).toLowerCase();
             const matchesKeyword =
                 !normalized || label.includes(normalized) || stationText.includes(normalized);
             const matchesStatus = status === 'ALL' || deriveSlotDisplayStatus(slot) === status;
@@ -119,33 +122,37 @@ export function StationDetailPage() {
         applyQuery({ keyword: keywordInput.trim(), status: statusInput });
     };
 
+    /** 확정된 조회 조건이 하나라도 걸려 있는지 (URL 값 기준 — 입력 중인 값이 아닙니다) */
+    const hasFilter = keyword !== '' || status !== 'ALL';
+
     return (
         <div>
             <PageBar
                 className="mb-[18px]"
-                breadcrumb={[
-                    { label: '대여소 관리', to: '/stations' },
-                    { label: `${station.stationCode} ${station.name}` },
-                ]}
+                breadcrumb={[{ label: '대여소 관리', to: '/stations' }, { label: station.name }]}
                 meta={`최근 통신 ${STATION_SYNCED_AT}`}
             />
 
-            <div className="mb-[29px] flex items-center gap-3">
-                <PageTitle className="mr-[11px]" documentTitle={`${station.name} 대여소`}>
-                    {station.name}
-                </PageTitle>
-                <span className="text-[13px] font-bold text-brand-muted">
-                    {station.stationCode}
-                </span>
-                {/* 슬롯별 온라인과 같은 값입니다. 대여소 장치 상태에서 파생합니다(GAP-WEB-013). */}
-                <DeviceBadge status={station.deviceStatus} />
-            </div>
-
             {/*
-             * 왼쪽에 즉시 반영되는 드롭다운, 오른쪽에 눌러야 하는 검색어 + `조회`.
-             * 검색칸과 버튼이 붙어 있어야 그 둘이 한 벌이라는 게 보입니다.
+             * 제목·신원·장치 상태는 왼쪽, 조회는 오른쪽 끝. 대여소 관리·우산 재고와 같은
+             * 리듬입니다. 예전에는 제목 줄과 조회 줄이 따로였는데 오른쪽이 크게 비었습니다.
+             *
+             * 드롭다운은 고르는 즉시 반영되고 `조회` 는 검색어만 확정합니다. 검색칸과
+             * 버튼이 붙어 있어야 그 둘이 한 벌이라는 게 보입니다.
              */}
             <form onSubmit={handleSubmit} className="mb-9 flex items-center gap-3">
+                <div className="mr-auto flex items-center gap-3">
+                    <PageTitle documentTitle={`${station.name} 대여소`}>{station.name}</PageTitle>
+                    {/*
+                     * 예전에는 `stationCode`('ST-003')를 이름 옆에 붙였습니다. ERD v3.0 이 그
+                     * 컬럼을 P0 필수에서 뺐고, 이 화면은 대여소가 주제라 신원(UUID)을 둘 자리도
+                     * 여기입니다. 축약 + 복사로 백엔드·로그와 대조할 수 있게 둡니다.
+                     */}
+                    <RefId id={station.stationId} label="대여소 ID" />
+                    {/* 슬롯별 온라인과 같은 값입니다. 대여소 장치 상태에서 파생합니다(GAP-WEB-013). */}
+                    <DeviceBadge status={station.deviceStatus} />
+                </div>
+
                 <FilterSelect
                     label="우산 상태 필터"
                     value={statusInput}
@@ -180,9 +187,22 @@ export function StationDetailPage() {
             {rows.length > 0 ? (
                 <SlotTable station={station} slots={rows} />
             ) : (
-                <div className="flex h-[200px] items-center justify-center rounded-lg bg-white text-[13px] font-medium text-brand-muted">
-                    조건에 맞는 슬롯이 없습니다.
-                </div>
+                /*
+                 * 이 대여소에 슬롯이 없는 것과, 필터에 걸려 안 보이는 것은 다릅니다.
+                 * 상태 필터를 걸어 둔 채로 오면 "슬롯이 하나도 없는 대여소" 로 읽힙니다.
+                 */
+                <EmptyState
+                    filtered={hasFilter}
+                    onReset={() => {
+                        setKeywordInput('');
+                        setStatusInput('ALL');
+                        applyQuery({ keyword: '', status: 'ALL' });
+                    }}
+                >
+                    {hasFilter
+                        ? '조회 조건에 맞는 슬롯이 없습니다.'
+                        : '이 대여소에는 슬롯이 없습니다.'}
+                </EmptyState>
             )}
 
             <p className="mt-[22px] text-xs font-semibold text-brand-body">

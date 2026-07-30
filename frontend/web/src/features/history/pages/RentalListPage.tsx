@@ -18,7 +18,7 @@ import {
 } from '@/features/history/types';
 import { Badge } from '@/shared/components/Badge';
 import { useRentals } from '@/features/history/hooks/useHistory';
-import { ErrorState, LoadingState } from '@/shared/components/PageState';
+import { EmptyState, ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
 import { PageTitle } from '@/shared/components/PageTitle';
 import { RefId } from '@/shared/components/RefId';
@@ -119,6 +119,13 @@ export function RentalListPage() {
         setSearchParams(params);
     };
 
+    /*
+     * 기간은 늘 걸려 있는 조건이라(기본 30일) 이것만으로는 '필터 중'으로 보지 않습니다.
+     * 기본값에서 벗어난 것만 셉니다.
+     */
+    const hasFilter = period !== '30D' || status !== 'ALL' || keyword !== '';
+    const resetFilters = () => patch({ period: '30D', status: 'ALL', q: '', page: '1' });
+
     return (
         <div>
             <PageBar className="mb-[18px]" meta={`${HISTORY_SYNCED_AT} 기준`} />
@@ -157,8 +164,15 @@ export function RentalListPage() {
                     <span>사용자</span>
                     <span>대여 ID</span>
                     <span>대여 위치</span>
-                    <span>대여 상태</span>
-                    <span className="text-center">상세</span>
+                    {/*
+                     * 배지가 든 열은 제목과 내용을 함께 가운데로 둡니다. 색 네모는 폭이
+                     * 글자마다 달라서 왼쪽에 붙이면 줄마다 시작점이 어긋나 보입니다.
+                     * `DataTable` 을 쓰는 표(슬롯·검수)는 원래 `align="center"` 였고
+                     * 격자 목록만 왼쪽이라 어긋나 있었습니다.
+                     */}
+                    <span className="text-center">대여 상태</span>
+                    {/* 화면에는 안 보이지만 열 이름은 있어야 합니다 — 스크린리더가 읽습니다. */}
+                    <span className="sr-only">상세 보기</span>
                 </div>
 
                 {visible.length > 0 ? (
@@ -195,7 +209,7 @@ export function RentalListPage() {
                                         {rental.slotLabel}
                                     </span>
                                 </span>
-                                <span>
+                                <span className="flex justify-center">
                                     <Badge tone={RENTAL_STATUS_TONE[display]}>
                                         {RENTAL_STATUS_LABEL[display]}
                                     </Badge>
@@ -211,9 +225,15 @@ export function RentalListPage() {
                 ) : query.isError ? (
                     <ErrorState error={query.error} onRetry={() => query.refetch()} />
                 ) : (
-                    <div className="flex h-[200px] items-center justify-center text-[13px] font-medium text-brand-muted">
-                        조건에 맞는 대여가 없습니다.
-                    </div>
+                    /*
+                     * 조건 때문에 0건인 것과 데이터가 아예 없는 것을 갈라 말합니다.
+                     * 필터를 걸어 둔 걸 잊으면 "대여 이력이 없다" 로 읽힙니다.
+                     */
+                    <EmptyState filtered={hasFilter} onReset={resetFilters}>
+                        {hasFilter
+                            ? '조회 조건에 맞는 대여 이력이 없습니다.'
+                            : '대여 이력이 없습니다.'}
+                    </EmptyState>
                 )}
             </div>
 

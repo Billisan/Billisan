@@ -18,9 +18,10 @@ import {
 } from '@/features/history/types';
 import { Badge } from '@/shared/components/Badge';
 import { useReturns } from '@/features/history/hooks/useHistory';
-import { ErrorState, LoadingState } from '@/shared/components/PageState';
+import { EmptyState, ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
 import { PageTitle } from '@/shared/components/PageTitle';
+import { AiResultBadge } from '@/features/inspections/components/InspectionParts';
 import { RefId } from '@/shared/components/RefId';
 import { ROW_CLICKABLE, useRowNavigate } from '@/shared/hooks/useRowNavigate';
 import { Pagination } from '@/shared/components/Pagination';
@@ -61,7 +62,14 @@ const STATUS_OPTIONS: readonly FilterOption<StatusFilter>[] = [
 ];
 
 const PAGE_SIZE = 7;
-const COLS = 'grid-cols-[140px_112px_150px_232px_112px_104px_1fr]';
+/*
+ * 화면흐름 §9.1 이 요구하는 표시 항목: attemptedAt · user · returnAttemptId ·
+ * returnStation·returnSlot · **InspectionResult** · status · 검수 처리 상태.
+ *
+ * AI 결과가 빠져 있었는데, 그게 없으면 '관리자 검수 = 검수 없음' 인 이유를 화면에서
+ * 알 수 없습니다. AI 가 정상으로 본 반납은 검수가 아예 만들어지지 않기 때문입니다.
+ */
+const COLS = 'grid-cols-[128px_104px_138px_196px_100px_104px_96px_1fr]';
 
 export function ReturnListPage() {
     // 확정 API 가 없어 목업이 뒤에 있습니다. 화면은 그 사실을 모릅니다.
@@ -108,6 +116,13 @@ export function ReturnListPage() {
         setSearchParams(params);
     };
 
+    /*
+     * 기간은 늘 걸려 있는 조건이라(기본 30일) 이것만으로는 '필터 중'으로 보지 않습니다.
+     * 기본값에서 벗어난 것만 셉니다.
+     */
+    const hasFilter = period !== '30D' || status !== 'ALL' || keyword !== '';
+    const resetFilters = () => patch({ period: '30D', status: 'ALL', q: '', page: '1' });
+
     return (
         <div>
             <PageBar className="mb-[18px]" meta={`${HISTORY_SYNCED_AT} 기준`} />
@@ -145,9 +160,16 @@ export function ReturnListPage() {
                     <span>사용자</span>
                     <span>반납 ID</span>
                     <span>반납 위치</span>
-                    <span>반납 상태</span>
-                    <span>관리자 검수</span>
-                    <span className="text-center">상세</span>
+                    {/*
+                     * 배지가 든 열은 제목과 내용을 함께 가운데로 둡니다. 색 네모는 폭이
+                     * 글자마다 달라서 왼쪽에 붙이면 줄마다 시작점이 어긋나 보입니다.
+                     * `DataTable` 을 쓰는 표(슬롯·검수)는 원래 `align="center"` 였고
+                     * 격자 목록만 왼쪽이라 어긋나 있었습니다.
+                     */}
+                    <span className="text-center">AI 결과</span>
+                    <span className="text-center">반납 상태</span>
+                    <span className="text-center">관리자 검수</span>
+                    <span className="sr-only">상세 보기</span>
                 </div>
 
                 {visible.length > 0 ? (
@@ -176,23 +198,43 @@ export function ReturnListPage() {
                             <RefId id={item.returnAttemptId} label="반납 시도 ID" />
                             <span className="truncate font-medium text-brand-ink-soft">
                                 {item.stationName}
+                                {/*
+                                 * 예전에는 `slotId` UUID 원문이 대여소 이름 옆에 그대로
+                                 * 깔렸습니다. 사람이 읽을 값이 아니고 열 폭만 잡아먹었습니다.
+                                 * 슬롯 표기(`3번 슬롯`)로 바꿉니다 — 신원이 필요하면
+                                 * 행을 눌러 상세로 갑니다.
+                                 */}
                                 <span className="ml-[6px] text-[11.5px] text-brand-muted">
-                                    {item.slotId ?? '슬롯 미선정'}
+                                    {item.slotLabel ?? '슬롯 미선정'}
                                 </span>
                             </span>
-                            <span>
+                            {/*
+                             * AI 는 **보조 결과**입니다. 파손 의심이 떠도 파손이 확정된 게
+                             * 아니고, 확정은 관리자 검수(옆 열)에서만 납니다 (화면흐름 §17).
+                             */}
+                            <span className="flex justify-center">
+                                <AiResultBadge result={item.aiResult} />
+                            </span>
+                            <span className="flex justify-center">
                                 <Badge tone={RETURN_STATUS_TONE[item.status]}>
                                     {RETURN_STATUS_LABEL[item.status]}
                                 </Badge>
                             </span>
                             {/* 검수가 안 걸린 반납은 비웁니다 — AI 가 정상으로 본 건은 넘어오지 않습니다. */}
-                            <span>
+                            <span className="flex justify-center">
                                 {item.reviewStatus ? (
                                     <Badge tone={REVIEW_STATUS_TONE[item.reviewStatus]}>
                                         {REVIEW_STATUS_LABEL[item.reviewStatus]}
                                     </Badge>
                                 ) : (
-                                    <span className="text-brand-muted">—</span>
+                                    /*
+                                     * `—` 로 두면 "값이 없다" 로만 읽힙니다. 실제 뜻은
+                                     * **검수 대상이 아니었다** 는 것이라 글자로 적습니다.
+                                     * AI 가 정상으로 본 반납은 관리자 검수로 넘어오지 않습니다.
+                                     */
+                                    <span className="text-[11.5px] font-medium text-brand-muted">
+                                        검수 없음
+                                    </span>
                                 )}
                             </span>
                             <span className="flex justify-center">
@@ -205,9 +247,15 @@ export function ReturnListPage() {
                 ) : query.isError ? (
                     <ErrorState error={query.error} onRetry={() => query.refetch()} />
                 ) : (
-                    <div className="flex h-[200px] items-center justify-center text-[13px] font-medium text-brand-muted">
-                        조건에 맞는 반납이 없습니다.
-                    </div>
+                    /*
+                     * 조건 때문에 0건인 것과 데이터가 아예 없는 것을 갈라 말합니다.
+                     * 필터를 걸어 둔 걸 잊으면 "반납 이력이 없다" 로 읽힙니다.
+                     */
+                    <EmptyState filtered={hasFilter} onReset={resetFilters}>
+                        {hasFilter
+                            ? '조회 조건에 맞는 반납 이력이 없습니다.'
+                            : '반납 이력이 없습니다.'}
+                    </EmptyState>
                 )}
             </div>
 
