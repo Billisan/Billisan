@@ -19,6 +19,7 @@ export function PickupSlotScreen({
         label="우산함 번호"
         message={`${slotNumber}번 우산함에서 우산을 꺼내주세요`}
         actionLabel="꺼냈어요"
+        type="rental"
         onAction={onAction}
       />
     </KioskLayout>
