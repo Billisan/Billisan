@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { FaceGuideOverlay } from '../../components/common/FaceGuideOverlay'
+import type { StepFlow } from '../../components/layout/StepIndicator'
 import { useFaceAuthStore } from '../../store/faceAuthStore'
 import { AUTH_SCREEN_VARIANT, FACE_AUTH_RESULT } from '../../types/faceAuth'
 import { CameraCaptureScreen } from '../common/CameraCaptureScreen'
@@ -20,9 +21,14 @@ const AUTH_TIMEOUT_MS = 10_000
 interface AuthScreenProps {
   onBack: () => void
   onAuthenticated: () => void
+  mode?: StepFlow
 }
 
-export function AuthScreen({ onBack, onAuthenticated }: AuthScreenProps) {
+export function AuthScreen({
+  onBack,
+  onAuthenticated,
+  mode = 'RENT',
+}: AuthScreenProps) {
   const variant = useFaceAuthStore((state) => state.variant)
   const startCapture = useFaceAuthStore((state) => state.startCapture)
   const authenticateFace = useFaceAuthStore((state) => state.authenticateFace)
@@ -49,7 +55,9 @@ export function AuthScreen({ onBack, onAuthenticated }: AuthScreenProps) {
 
   switch (variant) {
     case AUTH_SCREEN_VARIANT.GUIDE:
-      return <FaceAuthGuideScreen onAction={startCapture} onBack={onBack} />
+      return (
+        <FaceAuthGuideScreen onAction={startCapture} onBack={onBack} flow={mode} />
+      )
 
     case AUTH_SCREEN_VARIANT.FACE_CAPTURE:
       return (
@@ -58,6 +66,7 @@ export function AuthScreen({ onBack, onAuthenticated }: AuthScreenProps) {
           guide={<FaceGuideOverlay />}
           onBack={onBack}
           currentStep={2}
+          flow={mode}
         />
       )
 
@@ -67,6 +76,7 @@ export function AuthScreen({ onBack, onAuthenticated }: AuthScreenProps) {
           title="환영합니다!"
           subtitle="잠시만 기다려주세요"
           currentStep={2}
+          flow={mode}
         />
       )
 
@@ -84,6 +94,7 @@ export function AuthScreen({ onBack, onAuthenticated }: AuthScreenProps) {
           secondaryActionLabel="홈으로 돌아가기"
           onSecondaryAction={onBack}
           currentStep={2}
+          flow={mode}
         />
       )
 
@@ -99,6 +110,7 @@ export function AuthScreen({ onBack, onAuthenticated }: AuthScreenProps) {
           actionLabel="홈으로 돌아가기"
           onAction={onBack}
           currentStep={2}
+          flow={mode}
         />
       )
   }
