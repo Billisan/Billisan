@@ -47,12 +47,44 @@ export function StationListPage() {
         const normalized = keyword.toLowerCase();
         if (!normalized) return stations;
 
-        return stations.filter((station) =>
-            // 대여소명으로만 찾습니다. UUID 를 외워서 치는 사람은 없고, 예전에 함께
-            // 검색하던 `stationCode` 는 ERD v3.0 에서 P0 필수 컬럼이 아닙니다.
-            station.name.toLowerCase().includes(normalized),
+        return stations.filter(
+            (station) =>
+                station.name.toLowerCase().includes(normalized) ||
+                /*
+                 * **UUID 앞자리로도 찾습니다.**
+                 *
+                 * 아무도 36자를 외워서 치지는 않습니다. 하지만 반대 방향이 실제로 생깁니다 —
+                 * 백엔드 로그·문의에 `de9ef0ce-…` 가 찍혀 있고 그게 어느 대여소인지 알아내야
+                 * 할 때입니다. 그때 붙여 넣을 곳이 없으면 목록을 눈으로 훑어야 합니다.
+                 *
+                 * 표시가 앞 8자 축약이라 앞자리만 붙여 넣어도 걸리고, 36자 전체를 붙여 넣어도
+                 * 걸립니다. 예전에 함께 검색하던 `stationCode` 는 ERD v3.0 에서 P0 필수
+                 * 컬럼이 아니라 쓰지 않습니다.
+                 */
+                station.stationId.toLowerCase().startsWith(normalized),
         );
     }, [keyword, stations]);
+
+    /**
+     * 조회 결과 전체의 합계. **한 쪽이 아니라 `filtered` 전체를 셉니다.**
+     *
+     * 계약이 이 값을 따로 주지는 않습니다. `ADMIN-INVENTORY-001` 은 대여소 하나의 집계라
+     * 전 대여소 합계를 내려면 목록을 받아 더하는 수밖에 없습니다.
+     * TODO: 운영 집계 API(`WEB-API-CAND-001 · P1`)가 확정되면 그 값으로 바꾸세요.
+     */
+    const totals = useMemo(
+        () =>
+            filtered.reduce(
+                (acc, station) => ({
+                    available: acc.available + station.available,
+                    capacity: acc.capacity + station.capacity,
+                    damaged: acc.damaged + station.damaged,
+                    adminReview: acc.adminReview + station.adminReview,
+                }),
+                { available: 0, capacity: 0, damaged: 0, adminReview: 0 },
+            ),
+        [filtered],
+    );
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
     const currentPage = Math.min(page, totalPages);
@@ -86,7 +118,7 @@ export function StationListPage() {
 
                 <SearchInput
                     label="대여소 검색"
-                    placeholder="대여소명 검색"
+                    placeholder="대여소명 · 대여소 ID 검색"
                     value={keywordInput}
                     onChange={setKeywordInput}
                     onClear={() => {
@@ -128,7 +160,24 @@ export function StationListPage() {
                 </EmptyState>
             )}
 
-            <div className="mt-[22px] flex justify-end pr-2">
+            {/*
+             * 조회 결과 전체의 합계.
+             *
+             * 표는 한 쪽에 8개만 보여 주므로, 지금 보고 있는 쪽만으로는 캠퍼스 전체 재고를
+             * 알 수 없습니다. 관리자가 제일 먼저 알고 싶은 건 "지금 빌려줄 수 있는 우산이
+             * 몇 개인가" 라, 그 숫자를 페이지와 무관하게 한 줄로 둡니다.
+             *
+             * `filtered`(조회 조건이 걸린 전체) 기준입니다 — 검색 중이면 그 결과의 합계여야
+             * 표와 아귀가 맞습니다.
+             */}
+            <div className="mt-[22px] flex items-center justify-between pr-2">
+                <p className="text-xs font-semibold text-brand-body">
+                    {`대여소 ${filtered.length}개소 · `}
+                    <span className="text-brand-ink">사용 가능 {totals.available}</span>
+                    {` / 전체 슬롯 ${totals.capacity}`}
+                    {totals.damaged > 0 && ` · 파손 ${totals.damaged}`}
+                    {totals.adminReview > 0 && ` · 관리자 확인 ${totals.adminReview}`}
+                </p>
                 <Pagination
                     page={currentPage}
                     totalPages={totalPages}
