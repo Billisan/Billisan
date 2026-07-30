@@ -30,6 +30,8 @@ interface Item {
     count: number | null;
     to: string;
     hint: string;
+    /** 이 항목의 조회가 실패했는지 */
+    failed: boolean;
 }
 
 export function NotificationBell() {
@@ -46,6 +48,7 @@ export function NotificationBell() {
             count: inspections.data ? inspections.data.items.length : null,
             to: '/inspections?review=PENDING',
             hint: '관리자 판정이 필요합니다',
+            failed: inspections.isError,
         },
         {
             label: '미정산',
@@ -54,11 +57,21 @@ export function NotificationBell() {
                 : null,
             to: '/history/settlements?status=PENDING',
             hint: '납부가 끝나지 않은 정산입니다',
+            failed: settlements.isError,
         },
     ];
 
     const actionable = items.filter((item) => (item.count ?? 0) > 0);
-    const loading = items.some((item) => item.count === null);
+    const failed = items.filter((item) => item.failed);
+    /*
+     * 실패한 항목은 로딩으로 세지 않습니다.
+     *
+     * 예전에는 건수가 `null` 이면 전부 '불러오는 중' 으로 봤는데, 실패해도 `null` 이라
+     * 영원히 그 문장이 남았습니다. 게다가 성공한 항목과 나란히 보여서, 4건이 뜬 옆에
+     * '불러오는 중' 이 붙어 있는 이상한 모양이 됐습니다. 대시보드 카드에서 같은 문제를
+     * 고쳐 놨는데 여기만 빠져 있었습니다.
+     */
+    const loading = items.some((item) => item.count === null && !item.failed);
 
     useEffect(() => {
         if (!open) return;
@@ -116,7 +129,11 @@ export function NotificationBell() {
                         </p>
                     )}
 
-                    {!loading && actionable.length === 0 && (
+                    {/*
+                     * 실패한 항목은 '없다' 로 접지 않습니다. 건수를 모르는 것과 0건인 것은
+                     * 다르고, 여기서 접으면 관리자가 처리할 게 없다고 믿고 넘어갑니다.
+                     */}
+                    {!loading && actionable.length === 0 && failed.length === 0 && (
                         <p className="px-[14px] py-[14px] text-[12px] font-medium text-brand-muted">
                             지금 처리할 항목이 없습니다.
                         </p>
@@ -147,6 +164,16 @@ export function NotificationBell() {
                                 {item.count}건
                             </span>
                         </Link>
+                    ))}
+
+                    {failed.map((item) => (
+                        <p
+                            key={item.to}
+                            role="alert"
+                            className="px-[14px] py-[10px] text-[12px] font-medium text-brand-muted"
+                        >
+                            {item.label} 건수를 불러오지 못했습니다.
+                        </p>
                     ))}
                 </div>
             )}
