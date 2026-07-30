@@ -14,6 +14,13 @@ public interface FaceProfileSyncOperationRepository
 
 	Optional<FaceProfileSyncOperationEntity> findByRequestId(String requestId);
 
+	@Query("""
+		SELECT operation.userRef
+		FROM FaceProfileSyncOperationEntity operation
+		WHERE operation.requestId = :requestId
+		""")
+	Optional<String> findUserRefByRequestId(@Param("requestId") String requestId);
+
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("""
 		SELECT operation

@@ -27,6 +27,14 @@ public class IdempotencyService {
 	public ReturnAttemptResult createReturnAttempt(ReturnAttemptCommand command) {
 		validate(command);
 
+		ReturnAttemptRow existing = repository
+			.findReturnAttemptByRequestId(command.requestId())
+			.orElse(null);
+		if (existing != null) {
+			requireSameReturnPayload(existing, command);
+			return returnAttemptResult(existing, Outcome.REPLAYED);
+		}
+
 		String generatedId = UUID.randomUUID().toString();
 		LocalDateTime createdAt = now();
 		repository.upsertReturnAttempt(
@@ -38,7 +46,7 @@ public class IdempotencyService {
 		);
 
 		ReturnAttemptRow stored = repository
-			.findReturnAttemptByRequestId(command.requestId())
+			.lockReturnAttemptByRequestId(command.requestId())
 			.orElseThrow(() -> new IllegalStateException(
 				"Return attempt was not readable after upsert"
 			));
@@ -48,6 +56,13 @@ public class IdempotencyService {
 			? Outcome.APPLIED
 			: Outcome.REPLAYED;
 
+		return returnAttemptResult(stored, outcome);
+	}
+
+	private ReturnAttemptResult returnAttemptResult(
+		ReturnAttemptRow stored,
+		Outcome outcome
+	) {
 		return new ReturnAttemptResult(
 			stored.returnAttemptId(),
 			stored.requestId(),

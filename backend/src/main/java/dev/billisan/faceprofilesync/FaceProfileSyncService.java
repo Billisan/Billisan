@@ -62,7 +62,18 @@ public class FaceProfileSyncService {
 		String requestId,
 		Integer templateVersion
 	) {
+		requireText(requestId, "requestId");
+		String userRef = repository.findUserRefByRequestId(requestId)
+			.orElseThrow(() -> new IllegalArgumentException(
+				"Unknown face profile sync request"
+			));
+		lockUserRef(userRef);
 		FaceProfileSyncOperationEntity operation = lock(requestId);
+		if (!userRef.equals(operation.getUserRef())) {
+			throw new IllegalStateException(
+				"Face profile sync userRef changed while acquiring locks"
+			);
+		}
 		boolean replayed = operation.getSyncStatus() == SyncStatus.SUCCEEDED;
 		LocalDateTime confirmedAt = now();
 		operation.markSucceeded(templateVersion, confirmedAt);
@@ -77,7 +88,7 @@ public class FaceProfileSyncService {
 				""",
 				registered,
 				confirmedAt,
-				operation.getUserRef()
+				userRef
 			) != 1) {
 				throw new IllegalStateException(
 					"Face registration projection user does not exist"

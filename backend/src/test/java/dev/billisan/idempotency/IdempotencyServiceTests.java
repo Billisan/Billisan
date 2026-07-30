@@ -264,6 +264,42 @@ class IdempotencyServiceTests {
 	}
 
 	@Test
+	void sameRequestIdAfterCompletedReturnReplaysStoredAttempt() {
+		ReturnAttemptCommand command =
+			new ReturnAttemptCommand("return-request-after-completion", RENTAL_1, SLOT_2);
+
+		ReturnAttemptResult first = service.createReturnAttempt(command);
+		LocalDateTime completedAt = LocalDateTime.now(ZoneOffset.UTC)
+			.plusSeconds(1)
+			.withNano(123_456_000);
+		assertEquals(1, jdbcTemplate.update("""
+			UPDATE return_attempt
+			SET status = 'COMPLETED',
+			    physical_completed_at = ?,
+			    completed_at = ?,
+			    updated_at = ?
+			WHERE request_id = ?
+			""",
+			completedAt,
+			completedAt,
+			completedAt,
+			command.requestId()
+		));
+		assertEquals("COMPLETED", text("""
+			SELECT status FROM rental WHERE rental_id = ?
+			""", RENTAL_1));
+
+		ReturnAttemptResult replayed = service.createReturnAttempt(command);
+
+		assertEquals(Outcome.REPLAYED, replayed.outcome());
+		assertEquals(first.returnAttemptId(), replayed.returnAttemptId());
+		assertEquals("COMPLETED", replayed.status());
+		assertEquals(1, count("""
+			SELECT COUNT(*) FROM return_attempt WHERE request_id = ?
+			""", command.requestId()));
+	}
+
+	@Test
 	void sameRequestIdConcurrentlyCreatesOneAttemptAndOneSlotTransition() throws Exception {
 		ReturnAttemptCommand command =
 			new ReturnAttemptCommand("return-request-concurrent", RENTAL_1, SLOT_2);

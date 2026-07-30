@@ -44,6 +44,22 @@ class IdempotencyRepository {
 	}
 
 	Optional<ReturnAttemptRow> findReturnAttemptByRequestId(String requestId) {
+		return findReturnAttempt("""
+			WHERE request_id = ?
+			""", requestId);
+	}
+
+	Optional<ReturnAttemptRow> lockReturnAttemptByRequestId(String requestId) {
+		return findReturnAttempt("""
+			WHERE request_id = ?
+			FOR UPDATE
+			""", requestId);
+	}
+
+	private Optional<ReturnAttemptRow> findReturnAttempt(
+		String whereClause,
+		String requestId
+	) {
 		return queryOptional("""
 			SELECT
 				return_attempt_id,
@@ -53,8 +69,7 @@ class IdempotencyRepository {
 				status,
 				created_at
 			FROM return_attempt
-			WHERE request_id = ?
-			""",
+			""" + whereClause,
 			(rs, rowNumber) -> new ReturnAttemptRow(
 				rs.getString("return_attempt_id"),
 				rs.getString("rental_id"),
