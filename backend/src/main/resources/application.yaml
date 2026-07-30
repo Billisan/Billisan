@@ -4,8 +4,8 @@ spring:
 
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/billisan?useSSL=false&serverTimezone=Asia/Seoul}
-    username: ${SPRING_DATASOURCE_USERNAME:billisan}
-    password: ${SPRING_DATASOURCE_PASSWORD:changeme}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -17,6 +17,10 @@ spring:
   sql:
     init:
       mode: always
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration-seconds: ${JWT_EXPIRATION_SECONDS:3600}
 
 mqtt:
   broker-url: ${MQTT_BROKER_URL:tcp://localhost:1883}
