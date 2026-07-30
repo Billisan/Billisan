@@ -13,6 +13,10 @@ const FACE_STREAM_TOKEN = import.meta.env.VITE_FACE_STREAM_TOKEN
 // 문서 근거가 약함 — 이번 PLAN은 화면 진입 후 일정 시간 뒤 자동 시작으로 근사한다.
 const AUTO_CAPTURE_DELAY_MS = 1500
 
+// AUTH_TIMEOUT(PROJECT_GUIDE.md §17) 대응 — 캠 화면 진입 후 인증이 오래 걸리면 입력을 폐기하고 홈으로 돌아간다.
+// 정확한 시간은 DEC-SF-010(09-screen-flow.md §6)이 아직 DECISION_REQUIRED라 10초는 임시값 — PoC 후 재확인 필요.
+const AUTH_TIMEOUT_MS = 10_000
+
 interface AuthScreenProps {
   onBack: () => void
   onAuthenticated: () => void
@@ -34,6 +38,14 @@ export function AuthScreen({ onBack, onAuthenticated }: AuthScreenProps) {
     }, AUTO_CAPTURE_DELAY_MS)
     return () => clearTimeout(timer)
   }, [variant, authenticateFace, onAuthenticated])
+
+  // 카메라 화면(FACE_CAPTURE)에서 10초 안에 다음 단계(FACE_PROCESSING 등)로 넘어가지 못하면 홈으로 돌아간다.
+  useEffect(() => {
+    if (variant !== AUTH_SCREEN_VARIANT.FACE_CAPTURE) return
+
+    const timer = setTimeout(onBack, AUTH_TIMEOUT_MS)
+    return () => clearTimeout(timer)
+  }, [variant, onBack])
 
   switch (variant) {
     case AUTH_SCREEN_VARIANT.GUIDE:
@@ -61,9 +73,16 @@ export function AuthScreen({ onBack, onAuthenticated }: AuthScreenProps) {
     case AUTH_SCREEN_VARIANT.FACE_NOT_DETECTED:
       return (
         <ErrorScreen
-          message="얼굴을 인식하지 못했어요. 다시 촬영해주세요."
-          actionLabel="다시 촬영"
+          title="안면 인식이 되지 않았습니다"
+          tips={[
+            '화면 가이드 라인에 얼굴을 맞춰주세요.',
+            '얼굴을 정면으로 바라봐 주세요.',
+            '마스크를 잠시 벗어주세요.',
+          ]}
+          actionLabel="안면 인식 다시하기"
           onAction={retry}
+          secondaryActionLabel="홈으로 돌아가기"
+          onSecondaryAction={onBack}
           currentStep={2}
         />
       )
@@ -71,8 +90,13 @@ export function AuthScreen({ onBack, onAuthenticated }: AuthScreenProps) {
     case AUTH_SCREEN_VARIANT.FACE_NOT_MATCHED:
       return (
         <ErrorScreen
-          message="일치하는 얼굴 정보를 찾지 못했어요."
-          actionLabel="홈으로"
+          title="일치하는 학생 정보를 찾을 수 없습니다"
+          tips={[
+            '얼굴은 확인되었지만 연결된 학생 계정이 없습니다.',
+            '학생 인증을 완료한 계정인지 확인해주세요.',
+            '문제가 계속되면 관리자에게 문의해주세요.',
+          ]}
+          actionLabel="홈으로 돌아가기"
           onAction={onBack}
           currentStep={2}
         />
