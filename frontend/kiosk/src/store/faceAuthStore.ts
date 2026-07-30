@@ -1,51 +1,52 @@
 import { create } from 'zustand'
-import { authenticateFace as authenticateFaceApi } from '../api/faceAuthApi'
-import { requestFaceAuthStart } from '../api/piSocket'
-import {
-  AUTH_SCREEN_VARIANT,
-  FACE_AUTH_RESULT,
-  type AuthScreenVariant,
-  type FaceAuthResult,
-} from '../types/faceAuth'
+import { startFaceAuthStream } from '../api/piSocket'
+import { AUTH_SCREEN_VARIANT, type AuthScreenVariant } from '../types/faceAuth'
 
 interface FaceAuthState {
   variant: AuthScreenVariant
-  startCapture: () => Promise<void>
-  authenticateFace: () => Promise<FaceAuthResult>
-  retry: () => void
+  guidanceMessage: string | null
+  startCapture: (onAuthenticated: () => void) => void
+  retry: (onAuthenticated: () => void) => void
   reset: () => void
 }
 
-export const useFaceAuthStore = create<FaceAuthState>((set) => ({
+// 스토어 밖(모듈 스코프)에서 진행 중인 스트림의 종료 함수를 들고 있는다 — retry/reset 시 이전 연결을 정리하기 위함.
+let closeStream: (() => void) | null = null
+
+export const useFaceAuthStore = create<FaceAuthState>((set, get) => ({
   variant: AUTH_SCREEN_VARIANT.GUIDE,
+  guidanceMessage: null,
 
-  // DEC-032 — Pi에 얼굴 인증 시작을 요청하고, Pi 응답을 받은 뒤에야 FACE_CAPTURE로 전환한다.
-  // 실패 시 처리 방식은 아직 정해지지 않아 콘솔 로깅만 하고 GUIDE에 머무른다(6절 참고).
-  startCapture: async () => {
-    try {
-      await requestFaceAuthStart()
-      set({ variant: AUTH_SCREEN_VARIANT.FACE_CAPTURE })
-    } catch (error) {
-      console.error('Pi 얼굴 인증 시작 요청 실패', error)
-    }
+  // DEC-032 — Pi에 얼굴 인증을 요청하고, 실시간 stage 스트림(AUTH_STARTED/GUIDANCE/AUTH_SUCCEEDED/AUTH_FAILED)에
+  // 따라 화면을 전환한다. 프로토콜은 Envelope 방식이 아니라 flat {stage,...} 방식(2026-07-30 팀 확인).
+  startCapture: (onAuthenticated) => {
+    closeStream?.()
+    set({ variant: AUTH_SCREEN_VARIANT.FACE_CAPTURE, guidanceMessage: null })
+
+    closeStream = startFaceAuthStream({
+      onGuidance: (message) => set({ guidanceMessage: message }),
+
+      // MATCHED는 다음 화면으로 넘어가는 지점이라 이 스토어의 variant를 바꾸지 않는다 —
+      // 호출부(AuthScreen → App.tsx)가 onAuthenticated로 결과를 받아 전환한다.
+      onSucceeded: () => {
+        set({ guidanceMessage: null })
+        onAuthenticated()
+      },
+
+      // AUTH_FAILED가 "미검출"과 "미매칭" 중 무엇인지 구분하는 정보가 아직 없어
+      // 일단 FACE_NOT_MATCHED로 매핑한다(임시 매핑, PLAN §5 참고).
+      onFailed: () => set({ variant: AUTH_SCREEN_VARIANT.FACE_NOT_MATCHED, guidanceMessage: null }),
+
+      onUnhandledStage: (raw) => console.log('[Pi WS] 아직 처리하지 않는 stage', raw),
+    })
   },
 
-  authenticateFace: async () => {
-    set({ variant: AUTH_SCREEN_VARIANT.FACE_PROCESSING })
-    const result = await authenticateFaceApi()
+  // 새 인증 시도이므로 startCapture와 동일하게 처음부터 다시 연결한다.
+  retry: (onAuthenticated) => get().startCapture(onAuthenticated),
 
-    if (result === FACE_AUTH_RESULT.NOT_DETECTED) {
-      set({ variant: AUTH_SCREEN_VARIANT.FACE_NOT_DETECTED })
-    } else if (result === FACE_AUTH_RESULT.NOT_MATCHED) {
-      set({ variant: AUTH_SCREEN_VARIANT.FACE_NOT_MATCHED })
-    }
-    // MATCHED는 다음 화면(RENT-001, 다음 PLAN)으로 넘어가는 지점이라
-    // 이 스토어의 variant를 바꾸지 않는다 — 호출부(AuthScreen)가 결과를 보고 전환한다.
-
-    return result
+  reset: () => {
+    closeStream?.()
+    closeStream = null
+    set({ variant: AUTH_SCREEN_VARIANT.GUIDE, guidanceMessage: null })
   },
-
-  retry: () => set({ variant: AUTH_SCREEN_VARIANT.FACE_CAPTURE }),
-
-  reset: () => set({ variant: AUTH_SCREEN_VARIANT.GUIDE }),
 }))
