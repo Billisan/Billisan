@@ -38,5 +38,3 @@ out/
 
 ### Deploy ###
 .env
-.env.*
-!.env.example
