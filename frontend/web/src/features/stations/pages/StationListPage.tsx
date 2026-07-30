@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { StationTable } from '@/features/stations/components/StationTable';
 import { useStations } from '@/features/stations/hooks/useStations';
 import { STATIONS_SYNCED_AT } from '@/features/stations/mocks/stations';
-import { ErrorState, LoadingState } from '@/shared/components/PageState';
+import { EmptyState, ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
 import { SearchInput } from '@/shared/components/SearchInput';
 import { PageTitle } from '@/shared/components/PageTitle';
@@ -111,9 +111,21 @@ export function StationListPage() {
             ) : rows.length > 0 ? (
                 <StationTable stations={rows} />
             ) : (
-                <div className="flex h-[200px] items-center justify-center rounded-lg bg-white text-[13px] font-medium text-brand-muted">
-                    조건에 맞는 대여소가 없습니다.
-                </div>
+                /*
+                 * 검색어 때문에 0건인지, 정말 대여소가 없는지를 갈라 말합니다. 검색어를
+                 * 넣어 둔 걸 잊으면 "대여소가 하나도 없다" 로 읽힙니다.
+                 */
+                <EmptyState
+                    filtered={Boolean(keyword)}
+                    onReset={() => {
+                        setKeywordInput('');
+                        applyQuery({ keyword: '', page: 1 });
+                    }}
+                >
+                    {keyword
+                        ? `'${keyword}' 에 해당하는 대여소가 없습니다.`
+                        : '등록된 대여소가 없습니다.'}
+                </EmptyState>
             )}
 
             <div className="mt-[22px] flex justify-end pr-2">

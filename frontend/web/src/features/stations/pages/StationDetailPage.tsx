@@ -12,6 +12,7 @@ import {
 } from '@/features/stations/types';
 import { FilterSelect, type FilterOption } from '@/shared/components/FilterSelect';
 import { PageBar } from '@/shared/components/PageBar';
+import { EmptyState } from '@/shared/components/PageState';
 import { RefId } from '@/shared/components/RefId';
 import { SearchInput } from '@/shared/components/SearchInput';
 import { PageTitle } from '@/shared/components/PageTitle';
@@ -121,6 +122,9 @@ export function StationDetailPage() {
         applyQuery({ keyword: keywordInput.trim(), status: statusInput });
     };
 
+    /** 확정된 조회 조건이 하나라도 걸려 있는지 (URL 값 기준 — 입력 중인 값이 아닙니다) */
+    const hasFilter = keyword !== '' || status !== 'ALL';
+
     return (
         <div>
             <PageBar
@@ -183,9 +187,22 @@ export function StationDetailPage() {
             {rows.length > 0 ? (
                 <SlotTable station={station} slots={rows} />
             ) : (
-                <div className="flex h-[200px] items-center justify-center rounded-lg bg-white text-[13px] font-medium text-brand-muted">
-                    조건에 맞는 슬롯이 없습니다.
-                </div>
+                /*
+                 * 이 대여소에 슬롯이 없는 것과, 필터에 걸려 안 보이는 것은 다릅니다.
+                 * 상태 필터를 걸어 둔 채로 오면 "슬롯이 하나도 없는 대여소" 로 읽힙니다.
+                 */
+                <EmptyState
+                    filtered={hasFilter}
+                    onReset={() => {
+                        setKeywordInput('');
+                        setStatusInput('ALL');
+                        applyQuery({ keyword: '', status: 'ALL' });
+                    }}
+                >
+                    {hasFilter
+                        ? '조회 조건에 맞는 슬롯이 없습니다.'
+                        : '이 대여소에는 슬롯이 없습니다.'}
+                </EmptyState>
             )}
 
             <p className="mt-[22px] text-xs font-semibold text-brand-body">

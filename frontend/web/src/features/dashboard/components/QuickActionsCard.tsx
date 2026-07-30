@@ -2,6 +2,7 @@ import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { Panel } from '@/features/dashboard/components/Panel';
+import { PanelState } from '@/features/dashboard/components/PanelState';
 import { useSettlements } from '@/features/history/hooks/useHistory';
 import { useInspectionList } from '@/features/inspections/hooks/useInspections';
 import { cn } from '@/lib/utils';
@@ -42,6 +43,17 @@ export function QuickActionsCard({ className }: { className?: string }) {
         ? settlements.data.filter((item) => item.status === 'PENDING').length
         : null;
 
+    /*
+     * 조회가 실패하면 숫자 자리에 `—` 가 영원히 남습니다. 불러오는 중과 구분이 안 되고,
+     * 눌러 들어가 봐야 뭐가 잘못됐는지 알게 됩니다. 이 영역만 다시 시도할 수 있게
+     * 바꿔 끼웁니다 (화면흐름 §16).
+     */
+    const failed = inspections.isError || settlements.isError;
+    const retry = () => {
+        if (inspections.isError) void inspections.refetch();
+        if (settlements.isError) void settlements.refetch();
+    };
+
     const actions = [
         { label: '파손 검수 대기', count: pendingInspections, to: '/inspections?review=PENDING' },
         /*
@@ -58,6 +70,19 @@ export function QuickActionsCard({ className }: { className?: string }) {
             to: '/history/settlements?status=PENDING',
         },
     ];
+
+    if (failed) {
+        return (
+            <Panel className={cn('p-[18px]', className)}>
+                <PanelState
+                    pending={false}
+                    failed
+                    message="처리 대기 건수를 불러오지 못했습니다"
+                    onRetry={retry}
+                />
+            </Panel>
+        );
+    }
 
     return (
         <Panel className={cn('gap-3 p-[18px]', className)}>

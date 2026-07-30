@@ -23,6 +23,7 @@ import { InspectLink } from '@/features/stations/components/InspectLink';
 import { DataTable, TBody, TableCard, Td, Th, THead, Tr } from '@/shared/components/DataTable';
 import { FilterSelect, type FilterOption } from '@/shared/components/FilterSelect';
 import { PageBar } from '@/shared/components/PageBar';
+import { EmptyState } from '@/shared/components/PageState';
 import { RefId } from '@/shared/components/RefId';
 import { PageTitle } from '@/shared/components/PageTitle';
 
@@ -147,6 +148,9 @@ export function InspectionListPage() {
         if (nextPeriod !== 'ALL') params.set('period', nextPeriod);
         setSearchParams(params);
     };
+
+    /** 확정된 조회 조건이 걸려 있는지 (기본값은 셋 다 '전체') */
+    const hasFilter = aiResult !== 'ALL' || reviewStatus !== 'ALL' || period !== 'ALL';
 
     return (
         <div>
@@ -292,7 +296,22 @@ export function InspectionListPage() {
                     </DataTable>
                 </TableCard>
             ) : (
-                <ListState>조건에 맞는 검수가 없습니다.</ListState>
+                /*
+                 * 필터에 걸려 0건인 것과 검수가 아예 없는 것은 다릅니다. 대시보드에서
+                 * '파손 검수 대기' 를 눌러 들어오면 `review=PENDING` 이 붙은 채로
+                 * 도착하니, 그걸 잊고 "검수가 없다" 로 읽기 쉽습니다.
+                 */
+                <EmptyState
+                    filtered={hasFilter}
+                    onReset={() => {
+                        setAiInput('ALL');
+                        setReviewInput('ALL');
+                        setPeriodInput('ALL');
+                        applyFilters({ ai: 'ALL', review: 'ALL', period: 'ALL' });
+                    }}
+                >
+                    {hasFilter ? '조회 조건에 맞는 검수가 없습니다.' : '검수 내역이 없습니다.'}
+                </EmptyState>
             )}
 
             <div className="mt-[22px] flex items-center justify-between pr-2">

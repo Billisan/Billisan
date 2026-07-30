@@ -18,7 +18,7 @@ import {
 } from '@/features/history/types';
 import { Badge } from '@/shared/components/Badge';
 import { useRentals } from '@/features/history/hooks/useHistory';
-import { ErrorState, LoadingState } from '@/shared/components/PageState';
+import { EmptyState, ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
 import { PageTitle } from '@/shared/components/PageTitle';
 import { RefId } from '@/shared/components/RefId';
@@ -119,6 +119,13 @@ export function RentalListPage() {
         setSearchParams(params);
     };
 
+    /*
+     * 기간은 늘 걸려 있는 조건이라(기본 30일) 이것만으로는 '필터 중'으로 보지 않습니다.
+     * 기본값에서 벗어난 것만 셉니다.
+     */
+    const hasFilter = period !== '30D' || status !== 'ALL' || keyword !== '';
+    const resetFilters = () => patch({ period: '30D', status: 'ALL', q: '', page: '1' });
+
     return (
         <div>
             <PageBar className="mb-[18px]" meta={`${HISTORY_SYNCED_AT} 기준`} />
@@ -218,9 +225,15 @@ export function RentalListPage() {
                 ) : query.isError ? (
                     <ErrorState error={query.error} onRetry={() => query.refetch()} />
                 ) : (
-                    <div className="flex h-[200px] items-center justify-center text-[13px] font-medium text-brand-muted">
-                        조건에 맞는 대여가 없습니다.
-                    </div>
+                    /*
+                     * 조건 때문에 0건인 것과 데이터가 아예 없는 것을 갈라 말합니다.
+                     * 필터를 걸어 둔 걸 잊으면 "대여 이력이 없다" 로 읽힙니다.
+                     */
+                    <EmptyState filtered={hasFilter} onReset={resetFilters}>
+                        {hasFilter
+                            ? '조회 조건에 맞는 대여 이력이 없습니다.'
+                            : '대여 이력이 없습니다.'}
+                    </EmptyState>
                 )}
             </div>
 

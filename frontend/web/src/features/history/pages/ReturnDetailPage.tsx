@@ -106,8 +106,15 @@ export function ReturnDetailPage() {
                         <DetailLinkButton to={`/history/rentals/${item.rentalId}`}>
                             연결 대여 보기
                         </DetailLinkButton>
+                        {/*
+                         * 검수 상세로 보냅니다. 예전에는 `/slots/${item.slotId}` 였는데
+                         * 슬롯을 못 고른 실패 반납에서는 그 값이 `null` 이라 `/slots/null`
+                         * 로 링크돼 "존재하지 않는 슬롯" 이 떴습니다. 검수는 슬롯 없이도
+                         * 존재하고(ERD §9.2-2 가 슬롯 배정보다 먼저 저장), 이 버튼이 가려는
+                         * 곳도 슬롯이 아니라 검수입니다.
+                         */}
                         {item.inspectionId && (
-                            <DetailLinkButton to={`/slots/${item.slotId}`} primary>
+                            <DetailLinkButton to={`/inspections/${item.inspectionId}`} primary>
                                 파손 검수로 이동
                             </DetailLinkButton>
                         )}

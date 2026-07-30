@@ -18,7 +18,7 @@ import {
 } from '@/features/stations/types';
 import { Badge } from '@/shared/components/Badge';
 import { FilterSelect, type FilterOption } from '@/shared/components/FilterSelect';
-import { ErrorState, LoadingState } from '@/shared/components/PageState';
+import { EmptyState, ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
 import { SearchInput } from '@/shared/components/SearchInput';
 import { PageTitle } from '@/shared/components/PageTitle';
@@ -162,6 +162,9 @@ export function InventoryPage() {
         if (next.status !== 'ALL') params.set('status', next.status);
         setSearchParams(params);
     };
+
+    /** 확정된 조회 조건이 걸려 있는지 (대여소 선택은 전제라 세지 않습니다) */
+    const hasFilter = keyword !== '' || status !== 'ALL';
 
     const handleSubmit = (event: FormEvent) => {
         event.preventDefault();
@@ -393,9 +396,22 @@ export function InventoryPage() {
                 ) : slotsQuery.isError ? (
                     <ErrorState error={slotsQuery.error} onRetry={() => slotsQuery.refetch()} />
                 ) : (
-                    <div className="flex h-[200px] items-center justify-center text-[13px] font-medium text-brand-muted">
-                        조건에 맞는 슬롯이 없습니다.
-                    </div>
+                    /*
+                     * 대여소를 고르는 건 조회 조건이 아니라 이 화면의 전제입니다(P0 API 가
+                     * 대여소 단위). 그래서 '조건'에는 검색어·상태만 셉니다.
+                     */
+                    <EmptyState
+                        filtered={hasFilter}
+                        onReset={() => {
+                            setKeywordInput('');
+                            setStatusInput('ALL');
+                            applyQuery({ station: stationId, keyword: '', status: 'ALL' });
+                        }}
+                    >
+                        {hasFilter
+                            ? '조회 조건에 맞는 슬롯이 없습니다.'
+                            : '이 대여소에는 슬롯이 없습니다.'}
+                    </EmptyState>
                 )}
             </div>
 

@@ -1,4 +1,5 @@
 import { Panel, PanelHeader } from '@/features/dashboard/components/Panel';
+import { PanelState } from '@/features/dashboard/components/PanelState';
 import { useStations } from '@/features/stations/hooks/useStations';
 import {
     getStationStatus,
@@ -59,7 +60,7 @@ function StockRow({ station }: { station: Station }) {
 }
 
 export function StationStockCard({ className }: { className?: string }) {
-    const { data, isPending, isError } = useStations();
+    const { data, isPending, isError, refetch } = useStations();
     const stations = data ?? [];
     const ranked = sortByStock(stations);
     const shortageCount = ranked.filter((s) => getStationStatus(s) === 'SHORTAGE').length;
@@ -81,8 +82,14 @@ export function StationStockCard({ className }: { className?: string }) {
                     <StockRow key={station.stationId} station={station} />
                 ))}
                 {(isPending || isError) && (
-                    <li className="py-6 text-center text-[12px] font-medium text-brand-muted">
-                        {isPending ? '불러오는 중…' : '재고를 불러오지 못했습니다'}
+                    <li>
+                        {/* 실패하면 이 카드만 다시 조회합니다 (화면흐름 §16) */}
+                        <PanelState
+                            pending={isPending}
+                            failed={isError}
+                            message="재고를 불러오지 못했습니다"
+                            onRetry={() => void refetch()}
+                        />
                     </li>
                 )}
             </ul>

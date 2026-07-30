@@ -38,10 +38,36 @@ export function LoadingState({ label = '불러오는 중…' }: { label?: string
     );
 }
 
-export function EmptyState({ children }: { children: ReactNode }) {
+/**
+ * 결과가 0건일 때.
+ *
+ * **조건 때문에 0건인 것과 데이터가 아예 없는 것은 다릅니다.** 검색어를 넣어 둔 걸 잊고
+ * "대여소가 하나도 없네" 로 읽는 일이 실제로 생깁니다. 조건이 걸려 있으면 그렇다고 말하고
+ * 한 번에 풀 수 있는 길을 같이 둡니다.
+ */
+export function EmptyState({
+    children,
+    filtered = false,
+    onReset,
+}: {
+    children: ReactNode;
+    /** 조회 조건이 걸려 있어서 0건인지 */
+    filtered?: boolean;
+    /** 조건을 한 번에 지웁니다. 목록 화면이 URL Query 까지 비워야 합니다. */
+    onReset?: () => void;
+}) {
     return (
         <Frame>
             <p className="text-[13px] font-medium text-brand-muted">{children}</p>
+            {filtered && onReset && (
+                <button
+                    type="button"
+                    onClick={onReset}
+                    className="mt-[2px] h-[30px] rounded-[7px] border border-brand-border-soft px-[12px] text-[12px] font-bold text-brand-body transition-colors hover:bg-brand-surface"
+                >
+                    조회 조건 초기화
+                </button>
+            )}
         </Frame>
     );
 }
