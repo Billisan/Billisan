@@ -6,9 +6,12 @@ export interface PiStageMessage {
   message?: string
   status?: string
   resultCode?: string
+  eligible?: boolean
+  reasonCode?: string
 }
 
 interface FaceAuthStreamCallbacks {
+  onStarted: () => void
   onGuidance: (message: string) => void
   onSucceeded: () => void
   onFailed: (message?: string) => void
@@ -25,7 +28,7 @@ export function startFaceAuthStream(
   mode: 'RENT' | 'RETURN',
   callbacks: FaceAuthStreamCallbacks,
 ): () => void {
-  const socket = new WebSocket(PI_WS_RENT_URL)
+  const socket = new WebSocket(mode === 'RETURN' ? PI_WS_RETURN_URL : PI_WS_RENT_URL)
 
   socket.onopen = () => {
     console.log('[Pi WS] open', mode)
@@ -43,6 +46,7 @@ export function startFaceAuthStream(
 
     switch (data.stage) {
       case 'AUTH_STARTED':
+        callbacks.onStarted()
         break
 
       case 'GUIDANCE':

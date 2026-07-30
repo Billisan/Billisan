@@ -3,12 +3,14 @@ import { FaceGuideOverlay } from '../../components/common/FaceGuideOverlay'
 import type { StepFlow } from '../../components/layout/StepIndicator'
 import { useFaceAuthStore } from '../../store/faceAuthStore'
 import { AUTH_SCREEN_VARIANT } from '../../types/faceAuth'
+import type { RentalBlockReason } from '../../types/eligibility'
 import { CameraCaptureScreen } from '../common/CameraCaptureScreen'
 import { ErrorScreen } from '../common/ErrorScreen'
 import { LoadingScreen } from '../common/LoadingScreen'
 import { FaceAuthGuideScreen } from './FaceAuthGuideScreen'
 
 const FACE_STREAM_TOKEN = import.meta.env.VITE_FACE_STREAM_TOKEN
+const CAMERA_STREAM_BASE_URL = import.meta.env.VITE_CAMERA_STREAM_BASE_URL
 
 // AUTH_TIMEOUT(PROJECT_GUIDE.md §17) 대응 — 캠 화면 진입 후 인증이 오래 걸리면 입력을 폐기하고 홈으로 돌아간다.
 // 정확한 시간은 DEC-SF-010(09-screen-flow.md §6)이 아직 DECISION_REQUIRED라 임시값. 실서버가 GUIDANCE를
@@ -18,12 +20,14 @@ const AUTH_TIMEOUT_MS = 30_000
 interface AuthScreenProps {
   onBack: () => void
   onAuthenticated: () => void
+  onEligibilityBlocked: (reason: RentalBlockReason) => void
   mode?: StepFlow
 }
 
 export function AuthScreen({
   onBack,
   onAuthenticated,
+  onEligibilityBlocked,
   mode = 'RENT',
 }: AuthScreenProps) {
   const variant = useFaceAuthStore((state) => state.variant)
@@ -44,7 +48,9 @@ export function AuthScreen({
     case AUTH_SCREEN_VARIANT.GUIDE:
       return (
         <FaceAuthGuideScreen
-          onAction={() => startCapture(mode, onAuthenticated)}
+          onAction={() =>
+            startCapture(mode, onAuthenticated, onEligibilityBlocked)
+          }
           onBack={onBack}
           flow={mode}
         />
@@ -53,7 +59,7 @@ export function AuthScreen({
     case AUTH_SCREEN_VARIANT.FACE_CAPTURE:
       return (
         <CameraCaptureScreen
-          streamUrl={`http://127.0.0.1:8080/video?token=${encodeURIComponent(FACE_STREAM_TOKEN)}`}
+          streamUrl={`${CAMERA_STREAM_BASE_URL}?token=${encodeURIComponent(FACE_STREAM_TOKEN)}`}
           guide={<FaceGuideOverlay message={guidanceMessage} />}
           onBack={onBack}
           currentStep={2}
@@ -81,7 +87,7 @@ export function AuthScreen({
             '마스크를 잠시 벗어주세요.',
           ]}
           actionLabel="안면 인식 다시하기"
-          onAction={() => retry(mode, onAuthenticated)}
+          onAction={() => retry(mode, onAuthenticated, onEligibilityBlocked)}
           secondaryActionLabel="홈으로 돌아가기"
           onSecondaryAction={onBack}
           currentStep={2}
