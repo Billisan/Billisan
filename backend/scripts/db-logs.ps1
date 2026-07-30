@@ -12,10 +12,10 @@ $projectDirectory = Resolve-Path (Join-Path $PSScriptRoot '..')
 Push-Location $projectDirectory
 try {
     if ($Follow) {
-        docker compose -f compose.yaml logs --tail $Tail --follow mysql
+        docker compose -f docker-compose.yml logs --tail $Tail --follow db
     }
     else {
-        docker compose -f compose.yaml logs --tail $Tail mysql
+        docker compose -f docker-compose.yml logs --tail $Tail db
     }
 }
 finally {

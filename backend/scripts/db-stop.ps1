@@ -6,7 +6,7 @@ $projectDirectory = Resolve-Path (Join-Path $PSScriptRoot '..')
 
 Push-Location $projectDirectory
 try {
-    docker compose -f compose.yaml stop mysql
+    docker compose -f docker-compose.yml stop db
 }
 finally {
     Pop-Location
