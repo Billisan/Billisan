@@ -1,4 +1,5 @@
-const PI_WS_URL = import.meta.env.VITE_PI_WS_URL
+const PI_WS_RENT_URL = import.meta.env.VITE_PI_WS_RENT_URL
+const PI_WS_RETURN_URL = import.meta.env.VITE_PI_WS_RETURN_URL
 
 export interface PiStageMessage {
   stage: string
@@ -24,7 +25,7 @@ export function startFaceAuthStream(
   mode: 'RENT' | 'RETURN',
   callbacks: FaceAuthStreamCallbacks,
 ): () => void {
-  const socket = new WebSocket(PI_WS_URL)
+  const socket = new WebSocket(PI_WS_RENT_URL)
 
   socket.onopen = () => {
     console.log('[Pi WS] open', mode)
@@ -83,7 +84,7 @@ interface ReturnInspectionStreamCallbacks {
 export function startReturnInspectionStream(
   callbacks: ReturnInspectionStreamCallbacks,
 ): () => void {
-  const socket = new WebSocket(PI_WS_URL)
+  const socket = new WebSocket(PI_WS_RETURN_URL)
 
   socket.onopen = () => {
     console.log('[Pi WS] open (return inspection, TEMP 추정)')
