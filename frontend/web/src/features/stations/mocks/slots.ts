@@ -1,5 +1,5 @@
 import { MOCK_NS, mockSeq, mockUuid } from '@/features/stations/mocks/ids';
-import { isRecoverySlot } from '@/features/stations/mocks/recoveryScenario';
+import { pinnedShapeOf } from '@/features/stations/mocks/historyScenario';
 import { applyOverride } from '@/features/stations/mocks/slotOverrides';
 import type {
     LockStatus,
@@ -36,7 +36,7 @@ type SlotPreset =
     | 'ADMIN_REVIEW'
     /**
      * 물리 반납은 끝났는데 서버 반영이 깨져 격리된 슬롯.
-     * 반납 시도의 `RECOVERY_REQUIRED` 와 짝입니다 (`recoveryScenario.ts`).
+     * 반납 시도의 `RECOVERY_REQUIRED` 와 짝입니다 (`historyScenario.ts`).
      */
     | 'RECOVERY';
 
@@ -164,8 +164,20 @@ function stationSeq(station: Station): number {
     return mockSeq(station.stationId);
 }
 
-function presetOf(station: Station, slotNumber: number): SlotPreset {
-    return PATTERN[(stationSeq(station) + slotNumber - 1) % PATTERN.length];
+/**
+ * 이 슬롯이 어떤 모양인지.
+ *
+ * 이력 목업이 고정한 자리가 있으면 그게 이깁니다. 그래야 반납 이력에서 슬롯으로 넘어온
+ * 관리자가 실제로 그 상태의 슬롯을 봅니다 (`historyScenario.ts`).
+ *
+ * **`buildSlots` 뿐 아니라 검수 상태를 묻는 쪽도 이 함수를 거쳐야 합니다.** 예전에는
+ * 검수 상태만 순환 패턴을 직접 읽어서, 고정된 슬롯에 검수가 딸려 붙을 수 있었습니다.
+ */
+export function presetNameOf(station: Station, slotNumber: number): SlotPreset {
+    return (
+        pinnedShapeOf(station.name, slotNumber) ??
+        PATTERN[(stationSeq(station) + slotNumber - 1) % PATTERN.length]
+    );
 }
 
 /** 슬롯 번호 → 전역 목업 순번. 슬롯·검수 ID 가 대여소끼리 겹치지 않게 자리를 가릅니다. */
@@ -178,20 +190,13 @@ export function inspectionStateOf(
     station: Station,
     slotNumber: number,
 ): 'PENDING' | 'DECIDED' | null {
-    return PRESET[presetOf(station, slotNumber)].inspection;
+    return PRESET[presetNameOf(station, slotNumber)].inspection;
 }
 
 export function buildSlots(station: Station): SlotSummary[] {
     return Array.from({ length: station.slotCount }, (_, index) => {
         const slotNumber = index + 1;
-        /*
-         * 복구 대상 슬롯은 순환 패턴을 무시하고 격리 상태로 고정합니다. 반납 이력의
-         * `RECOVERY_REQUIRED` 건과 같은 슬롯이라, 관리자가 그 반납에서 슬롯으로 넘어오면
-         * 실제로 격리된 슬롯이 나옵니다.
-         */
-        const shape = isRecoverySlot(station.name, slotNumber)
-            ? PRESET.RECOVERY
-            : PRESET[presetOf(station, slotNumber)];
+        const shape = PRESET[presetNameOf(station, slotNumber)];
 
         // 관리자가 방금 바꾼 슬롯이면 그 결과로 덮어씁니다. 목업 전용이라 새로고침하면 사라집니다.
         return applyOverride({

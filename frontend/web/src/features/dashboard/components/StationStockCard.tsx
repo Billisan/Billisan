@@ -1,4 +1,5 @@
 import { Panel, PanelHeader } from '@/features/dashboard/components/Panel';
+import { PanelState } from '@/features/dashboard/components/PanelState';
 import { useStations } from '@/features/stations/hooks/useStations';
 import {
     getStationStatus,
@@ -59,7 +60,7 @@ function StockRow({ station }: { station: Station }) {
 }
 
 export function StationStockCard({ className }: { className?: string }) {
-    const { data, isPending, isError } = useStations();
+    const { data, isPending, isError, refetch } = useStations();
     const stations = data ?? [];
     const ranked = sortByStock(stations);
     const shortageCount = ranked.filter((s) => getStationStatus(s) === 'SHORTAGE').length;
@@ -81,16 +82,29 @@ export function StationStockCard({ className }: { className?: string }) {
                     <StockRow key={station.stationId} station={station} />
                 ))}
                 {(isPending || isError) && (
-                    <li className="py-6 text-center text-[12px] font-medium text-brand-muted">
-                        {isPending ? '불러오는 중…' : '재고를 불러오지 못했습니다'}
+                    <li>
+                        {/* 실패하면 이 카드만 다시 조회합니다 (화면흐름 §16) */}
+                        <PanelState
+                            pending={isPending}
+                            failed={isError}
+                            message="재고를 불러오지 못했습니다"
+                            onRetry={() => void refetch()}
+                        />
                     </li>
                 )}
             </ul>
 
             <div className="shrink-0 pt-[6px]">
                 <div className="h-px bg-brand-line-soft" />
+                {/*
+                 * 못 불러왔을 때 '부족 0개소' 라고 쓰면 안 됩니다. 관리자는 그걸 "부족한
+                 * 대여소가 없다" 로 읽는데, 실제로는 아무것도 모르는 상태입니다.
+                 * 틀린 숫자는 없는 숫자보다 나쁩니다.
+                 */}
                 <p className="pt-[9px] text-[10.5px] font-medium text-brand-muted">
-                    부족 {shortageCount}개소 · 오프라인 {offlineCount}개소
+                    {isPending || isError
+                        ? '부족·오프라인 집계 없음'
+                        : `부족 ${shortageCount}개소 · 오프라인 ${offlineCount}개소`}
                 </p>
             </div>
         </Panel>

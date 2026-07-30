@@ -1,8 +1,9 @@
-import { Bell, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 
+import { NotificationBell } from '@/components/layout/NotificationBell';
 import { authApi } from '@/features/auth/api/authApi';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { cn } from '@/lib/utils';
@@ -67,19 +68,7 @@ export function AppHeader() {
 
     return (
         <header className="relative z-10 flex h-[104px] shrink-0 items-center justify-end bg-brand-navy pr-9 shadow-[0_5px_0_0_rgba(11,18,32,0.05)]">
-            <button
-                type="button"
-                className="relative flex size-9 items-center justify-center rounded-lg text-brand-navy-label transition-colors hover:bg-brand-navy-hover"
-                // TODO: 알림 목록 팝오버 연결
-            >
-                <span className="sr-only">알림</span>
-                <Bell className="size-[19px]" aria-hidden />
-                {/* 시안의 점은 흰 테두리가 아니라 헤더 배경색으로 파낸 형태입니다. */}
-                <span
-                    className="absolute right-[7px] top-[6px] size-[9px] rounded-full border-2 border-brand-navy bg-status-shortage"
-                    aria-hidden
-                />
-            </button>
+            <NotificationBell />
 
             <span className="ml-[11px] h-9 w-px bg-brand-navy-badge" aria-hidden />
 

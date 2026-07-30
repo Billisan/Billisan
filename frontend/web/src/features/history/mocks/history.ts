@@ -1,4 +1,5 @@
 import {
+    inspectionRefOf,
     rentalUuid,
     returnUuid,
     settlementUuid,
@@ -6,13 +7,53 @@ import {
     slotUuidOf,
     stationUuid,
     userUuid,
+    type SlotShapeRequest,
 } from '@/features/history/mocks/refs';
 import type {
     Rental,
     ReturnAttempt,
+    ReturnReviewStatus,
     Settlement,
     UserTimelineEntry,
 } from '@/features/history/types';
+
+/**
+ * 목업 행이 실제 슬롯 대신 적는 것.
+ *
+ * `stationId`·`slotId`·`slotLabel`·`inspectionId`·`reviewStatus` 는 여기 적지 않습니다 —
+ * 아래 변환부에서 **슬롯 목업을 읽어 파생**시킵니다. 손으로 적던 시절에 없는 슬롯 번호와
+ * 실재하지 않는 검수 ID 가 들어갔고, 화면은 그려지는데 대상이 없어서 눌러 보기 전까지
+ * 아무도 몰랐습니다.
+ */
+type RawRow<T> = Omit<T, 'stationId' | 'slotId' | 'slotLabel'> & {
+    /** 이 행이 요구하는 슬롯 모양. 슬롯 목업에서 그 상태인 자리를 골라 씁니다. */
+    slotShape: SlotShapeRequest | null;
+};
+
+/**
+ * 반납 행. 검수(`inspectionId`·`reviewStatus`)도 적지 않습니다 — 반납이 들어간 슬롯에
+ * 걸린 검수가 곧 그 반납의 검수입니다.
+ */
+type RawReturn = Omit<
+    ReturnAttempt,
+    'stationId' | 'slotId' | 'slotLabel' | 'inspectionId' | 'reviewStatus'
+> & {
+    slotShape: SlotShapeRequest | null;
+    /**
+     * 슬롯이 없어 검수를 파생할 수 없는 행만 직접 적습니다.
+     *
+     * ERD §9.2-2 는 AI 결과를 슬롯 배정보다 **먼저** `DAMAGE_INSPECTION` 에 저장하므로
+     * 실제 서버에는 슬롯 없는 검수 행이 존재합니다. 이 목업의 검수는 슬롯에서 파생되어
+     * 그걸 표현할 수 없으니, 처리 상태만이라도 남겨 둡니다.
+     */
+    reviewStatus?: ReturnReviewStatus | null;
+};
+
+/**
+ * 정산 행. 대여소 이름조차 적지 않습니다 — 연결된 반납·대여가 알고 있습니다.
+ * 정산은 늘 대여 1건에 붙습니다 (ERD `SETTLEMENT.rental_id`).
+ */
+type RawSettlement = Omit<Settlement, 'slotId' | 'slotLabel'>;
 
 /**
  * 이력 화면 목업.
@@ -33,7 +74,26 @@ export const HISTORY_SYNCED_AT = '2026-07-24 09:20';
 export const RENTAL_LIST_NOTE =
     '대여 상태: 대여중 · 연체(기한 초과 미반납) · 반납완료 · 분실(장기 미반납) · 개별 우산 ID 없이 대여 ID로 추적합니다';
 
-const RAW_RENTALS: Omit<Rental, 'slotLabel'>[] = [
+const RAW_RENTALS: RawRow<Rental>[] = [
+    {
+        /*
+         * 반납 시도 `RT-87980` 의 대여.
+         *
+         * 예전에는 그 반납이 `R-87940`(연체 중인 ACTIVE 대여)을 가리키고 있었습니다.
+         * 완료된 반납이 아직 안 돌아온 대여에 붙어 있는 셈이라, 대여 상세에서는 '대여중'
+         * 인데 반납 이력에는 같은 대여의 '반납완료' 가 떴습니다. `R-87940` 의 실제 반납
+         * 시도는 실패한 `RT-88232` 입니다.
+         */
+        rentalId: 'R-87960',
+        userRef: 'u_9c02',
+        stationName: '경영관',
+        slotShape: 'EMPTY_SLOT',
+        rentedAt: '2026-07-23 18:05',
+        dueAt: '2026-07-25 18:05',
+        status: 'COMPLETED',
+        returnAttemptId: 'RT-87980',
+        settlementId: null,
+    },
     /*
      * 아래는 반납·정산이 가리키던 대여들입니다. 없으면 '연결 대여' 를 눌러도 빈 화면입니다 —
      * 실제로 그런 상태였습니다. 시각·대여소·사용자를 그 반납/정산과 앞뒤가 맞게 채웠습니다.
@@ -42,8 +102,7 @@ const RAW_RENTALS: Omit<Rental, 'slotLabel'>[] = [
         rentalId: 'R-88099',
         userRef: 'u_3a90',
         stationName: '중앙도서관',
-        stationId: 'ST-002',
-        slotId: 'SL-02-11',
+        slotShape: 'EMPTY_SLOT',
         rentedAt: '2026-07-23 08:58',
         dueAt: '2026-07-24 08:58',
         status: 'COMPLETED',
@@ -54,11 +113,10 @@ const RAW_RENTALS: Omit<Rental, 'slotLabel'>[] = [
         rentalId: 'R-88015',
         userRef: 'u_1f55',
         stationName: '제1공학관',
-        stationId: 'ST-003',
-        slotId: 'SL-03-06',
+        slotShape: 'EMPTY_SLOT',
         rentedAt: '2026-07-23 08:47',
         dueAt: '2026-07-24 08:47',
-        status: 'COMPLETED',
+        status: 'ACTIVE',
         returnAttemptId: null,
         settlementId: null,
     },
@@ -66,8 +124,7 @@ const RAW_RENTALS: Omit<Rental, 'slotLabel'>[] = [
         rentalId: 'R-88001',
         userRef: 'u_2b71',
         stationName: '정문 광장',
-        stationId: 'ST-001',
-        slotId: 'SL-01-08',
+        slotShape: 'EMPTY_SLOT',
         rentedAt: '2026-07-23 08:03',
         dueAt: '2026-07-24 08:03',
         status: 'COMPLETED',
@@ -78,8 +135,7 @@ const RAW_RENTALS: Omit<Rental, 'slotLabel'>[] = [
         rentalId: 'R-87988',
         userRef: 'u_4d10',
         stationName: '제1공학관',
-        stationId: 'ST-003',
-        slotId: 'SL-03-04',
+        slotShape: 'EMPTY_SLOT',
         rentedAt: '2026-07-23 07:30',
         dueAt: '2026-07-24 07:30',
         status: 'COMPLETED',
@@ -91,8 +147,7 @@ const RAW_RENTALS: Omit<Rental, 'slotLabel'>[] = [
         rentalId: 'R-87900',
         userRef: 'u_3a90',
         stationName: '중앙도서관',
-        stationId: 'ST-002',
-        slotId: 'SL-02-03',
+        slotShape: 'EMPTY_SLOT',
         rentedAt: '2026-07-21 10:10',
         dueAt: '2026-07-22 10:10',
         status: 'COMPLETED',
@@ -103,8 +158,7 @@ const RAW_RENTALS: Omit<Rental, 'slotLabel'>[] = [
         rentalId: 'R-87860',
         userRef: 'u_77a0',
         stationName: '자연과학관',
-        stationId: 'ST-006',
-        slotId: 'SL-06-04',
+        slotShape: 'EMPTY_SLOT',
         rentedAt: '2026-07-21 17:20',
         dueAt: '2026-07-22 17:20',
         status: 'COMPLETED',
@@ -115,8 +169,7 @@ const RAW_RENTALS: Omit<Rental, 'slotLabel'>[] = [
         rentalId: 'R-87801',
         userRef: 'u_0b3c',
         stationName: '생활관 A',
-        stationId: 'ST-007',
-        slotId: 'SL-07-01',
+        slotShape: 'EMPTY_SLOT',
         rentedAt: '2026-07-20 09:00',
         dueAt: '2026-07-21 09:00',
         status: 'LOST',
@@ -132,8 +185,7 @@ const RAW_RENTALS: Omit<Rental, 'slotLabel'>[] = [
         rentalId: 'R-87699',
         userRef: 'u_8f3a',
         stationName: '정문 광장',
-        stationId: 'ST-001',
-        slotId: 'SL-01-05',
+        slotShape: 'EMPTY_SLOT',
         rentedAt: '2026-07-20 08:15',
         dueAt: '2026-07-21 08:15',
         status: 'COMPLETED',
@@ -144,8 +196,7 @@ const RAW_RENTALS: Omit<Rental, 'slotLabel'>[] = [
         rentalId: 'R-87488',
         userRef: 'u_8f3a',
         stationName: '경영관',
-        stationId: 'ST-005',
-        slotId: 'SL-05-02',
+        slotShape: 'EMPTY_SLOT',
         rentedAt: '2026-07-18 17:02',
         dueAt: '2026-07-19 17:02',
         status: 'COMPLETED',
@@ -156,8 +207,7 @@ const RAW_RENTALS: Omit<Rental, 'slotLabel'>[] = [
         rentalId: 'R-88102',
         userRef: 'u_2210',
         stationName: '제1공학관',
-        stationId: 'ST-003',
-        slotId: 'SL-03-03',
+        slotShape: 'EMPTY_SLOT',
         rentedAt: '2026-07-24 09:05',
         dueAt: '2026-07-25 09:05',
         status: 'ACTIVE',
@@ -168,8 +218,7 @@ const RAW_RENTALS: Omit<Rental, 'slotLabel'>[] = [
         rentalId: 'R-88098',
         userRef: 'u_2b71',
         stationName: '중앙도서관',
-        stationId: 'ST-002',
-        slotId: 'SL-02-05',
+        slotShape: 'EMPTY_SLOT',
         rentedAt: '2026-07-24 08:40',
         dueAt: '2026-07-25 08:40',
         status: 'ACTIVE',
@@ -180,8 +229,7 @@ const RAW_RENTALS: Omit<Rental, 'slotLabel'>[] = [
         rentalId: 'R-88021',
         userRef: 'u_8f3a',
         stationName: '제1공학관',
-        stationId: 'ST-003',
-        slotId: 'SL-03-07',
+        slotShape: 'EMPTY_SLOT',
         rentedAt: '2026-07-23 14:05',
         dueAt: '2026-07-24 14:05',
         status: 'COMPLETED',
@@ -192,8 +240,7 @@ const RAW_RENTALS: Omit<Rental, 'slotLabel'>[] = [
         rentalId: 'R-87940',
         userRef: 'u_9c02',
         stationName: '경영관',
-        stationId: 'ST-005',
-        slotId: 'SL-05-03',
+        slotShape: 'EMPTY_SLOT',
         rentedAt: '2026-07-22 11:20',
         dueAt: '2026-07-23 11:20',
         status: 'ACTIVE',
@@ -204,8 +251,7 @@ const RAW_RENTALS: Omit<Rental, 'slotLabel'>[] = [
         rentalId: 'R-87731',
         userRef: 'u_4d10',
         stationName: '정문 광장',
-        stationId: 'ST-001',
-        slotId: 'SL-01-02',
+        slotShape: 'EMPTY_SLOT',
         rentedAt: '2026-07-21 15:40',
         dueAt: '2026-07-22 15:40',
         status: 'LOST',
@@ -216,8 +262,7 @@ const RAW_RENTALS: Omit<Rental, 'slotLabel'>[] = [
         rentalId: 'R-88010',
         userRef: 'u_77a0',
         stationName: '자연과학관',
-        stationId: 'ST-006',
-        slotId: 'SL-06-01',
+        slotShape: 'EMPTY_SLOT',
         rentedAt: '2026-07-23 19:33',
         dueAt: '2026-07-24 19:33',
         status: 'COMPLETED',
@@ -228,8 +273,7 @@ const RAW_RENTALS: Omit<Rental, 'slotLabel'>[] = [
         rentalId: 'R-87995',
         userRef: 'u_0b3c',
         stationName: '생활관 A',
-        stationId: 'ST-007',
-        slotId: 'SL-07-02',
+        slotShape: 'EMPTY_SLOT',
         rentedAt: '2026-07-23 18:02',
         dueAt: '2026-07-24 18:02',
         status: 'COMPLETED',
@@ -238,7 +282,7 @@ const RAW_RENTALS: Omit<Rental, 'slotLabel'>[] = [
     },
 ];
 
-const RAW_RETURNS: Omit<ReturnAttempt, 'slotLabel'>[] = [
+const RAW_RETURNS: RawReturn[] = [
     /*
      * ── 반납이 정상으로 끝나지 않은 세 건 ──────────────────────────────
      *
@@ -258,16 +302,13 @@ const RAW_RETURNS: Omit<ReturnAttempt, 'slotLabel'>[] = [
         rentalId: 'R-88098',
         userRef: 'u_2b71',
         stationName: '정문 광장',
-        stationId: 'ST-001',
-        slotId: 'SL-01-01',
+        slotShape: 'RECOVERY',
         attemptedAt: '2026-07-24 09:05',
         status: 'RECOVERY_REQUIRED',
         aiResult: 'NORMAL',
         aiScore: 0.05,
         modelVersion: 'v0.4',
         latencyMs: 274,
-        reviewStatus: null,
-        inspectionId: null,
         settlementId: null,
     },
     {
@@ -282,16 +323,13 @@ const RAW_RETURNS: Omit<ReturnAttempt, 'slotLabel'>[] = [
         rentalId: 'R-88102',
         userRef: 'u_2210',
         stationName: '경영관',
-        stationId: 'ST-005',
-        slotId: 'SL-05-04',
+        slotShape: 'NO_INSPECTION',
         attemptedAt: '2026-07-24 09:18',
         status: 'PHYSICAL_DONE',
         aiResult: 'NORMAL',
         aiScore: 0.07,
         modelVersion: 'v0.4',
         latencyMs: 269,
-        reviewStatus: null,
-        inspectionId: null,
         settlementId: null,
     },
     {
@@ -312,16 +350,15 @@ const RAW_RETURNS: Omit<ReturnAttempt, 'slotLabel'>[] = [
         rentalId: 'R-87940',
         userRef: 'u_9c02',
         stationName: '자연과학관',
-        stationId: 'ST-006',
-        slotId: null,
+        slotShape: null,
+        // 슬롯이 없어 검수를 파생할 수 없습니다. AI 가 판정을 못 냈으니 사람이 봐야 합니다.
+        reviewStatus: 'PENDING',
         attemptedAt: '2026-07-24 08:31',
         status: 'FAILED',
         aiResult: 'FAILED',
         aiScore: null,
         modelVersion: 'v0.4',
         latencyMs: 0,
-        reviewStatus: 'PENDING',
-        inspectionId: 'IN-0699',
         settlementId: null,
     },
     /* 결제까지 끝난 과거 정산(S-1024 · S-1018)이 가리키는 반납들. */
@@ -330,16 +367,13 @@ const RAW_RETURNS: Omit<ReturnAttempt, 'slotLabel'>[] = [
         rentalId: 'R-87900',
         userRef: 'u_3a90',
         stationName: '중앙도서관',
-        stationId: 'ST-002',
-        slotId: 'SL-02-03',
+        slotShape: 'NO_INSPECTION',
         attemptedAt: '2026-07-23 11:02',
         status: 'COMPLETED',
         aiResult: 'NORMAL',
         aiScore: 0.08,
         modelVersion: 'v0.4',
         latencyMs: 281,
-        reviewStatus: null,
-        inspectionId: null,
         settlementId: 'S-1024',
     },
     {
@@ -347,16 +381,13 @@ const RAW_RETURNS: Omit<ReturnAttempt, 'slotLabel'>[] = [
         rentalId: 'R-87860',
         userRef: 'u_77a0',
         stationName: '자연과학관',
-        stationId: 'ST-006',
-        slotId: 'SL-06-04',
+        slotShape: 'DAMAGED',
         attemptedAt: '2026-07-22 18:33',
         status: 'COMPLETED',
         aiResult: 'DAMAGED',
         aiScore: 0.94,
         modelVersion: 'v0.4',
         latencyMs: 305,
-        reviewStatus: 'DECIDED',
-        inspectionId: 'IN-0604',
         settlementId: 'S-1018',
     },
     /* 타임라인이 가리키는 반납 두 건. 위 대여 두 건과 짝입니다. */
@@ -365,16 +396,13 @@ const RAW_RETURNS: Omit<ReturnAttempt, 'slotLabel'>[] = [
         rentalId: 'R-87699',
         userRef: 'u_8f3a',
         stationName: '정문 광장',
-        stationId: 'ST-001',
-        slotId: 'SL-01-05',
+        slotShape: 'NO_INSPECTION',
         attemptedAt: '2026-07-20 10:30',
         status: 'COMPLETED',
         aiResult: 'NORMAL',
         aiScore: 0.06,
         modelVersion: 'v0.4',
         latencyMs: 288,
-        reviewStatus: null,
-        inspectionId: null,
         settlementId: null,
     },
     {
@@ -382,16 +410,13 @@ const RAW_RETURNS: Omit<ReturnAttempt, 'slotLabel'>[] = [
         rentalId: 'R-87488',
         userRef: 'u_8f3a',
         stationName: '경영관',
-        stationId: 'ST-005',
-        slotId: 'SL-05-02',
+        slotShape: 'NO_INSPECTION',
         attemptedAt: '2026-07-18 19:40',
         status: 'COMPLETED',
         aiResult: 'NORMAL',
         aiScore: 0.04,
         modelVersion: 'v0.4',
         latencyMs: 301,
-        reviewStatus: null,
-        inspectionId: null,
         settlementId: null,
     },
     {
@@ -399,16 +424,13 @@ const RAW_RETURNS: Omit<ReturnAttempt, 'slotLabel'>[] = [
         rentalId: 'R-88021',
         userRef: 'u_8f3a',
         stationName: '제1공학관',
-        stationId: 'ST-003',
-        slotId: 'SL-03-07',
+        slotShape: 'ADMIN_REVIEW',
         attemptedAt: '2026-07-24 09:12',
         status: 'COMPLETED',
         aiResult: 'DAMAGED',
         aiScore: 0.92,
         modelVersion: 'v0.4',
         latencyMs: 320,
-        reviewStatus: 'PENDING',
-        inspectionId: 'IN-0307',
         settlementId: null,
     },
     {
@@ -416,50 +438,41 @@ const RAW_RETURNS: Omit<ReturnAttempt, 'slotLabel'>[] = [
         rentalId: 'R-88099',
         userRef: 'u_3a90',
         stationName: '중앙도서관',
-        stationId: 'ST-002',
-        slotId: 'SL-02-11',
+        slotShape: 'ADMIN_REVIEW',
         attemptedAt: '2026-07-24 08:58',
         status: 'COMPLETED',
         aiResult: 'DAMAGED',
         aiScore: 0.88,
         modelVersion: 'v0.4',
         latencyMs: 296,
-        reviewStatus: 'PENDING',
-        inspectionId: 'IN-0211',
         settlementId: null,
     },
     {
         returnAttemptId: 'RT-88208',
-        rentalId: 'R-88015',
-        userRef: 'u_1f55',
-        stationName: '제1공학관',
-        stationId: 'ST-003',
-        slotId: 'SL-03-06',
+        rentalId: 'R-87995',
+        userRef: 'u_0b3c',
+        stationName: '생활관 A',
+        slotShape: 'DAMAGED',
         attemptedAt: '2026-07-24 08:47',
         status: 'COMPLETED',
         aiResult: 'DAMAGED',
         aiScore: 0.92,
         modelVersion: 'v0.4',
         latencyMs: 311,
-        reviewStatus: 'DECIDED',
-        inspectionId: 'IN-0306',
         settlementId: 'S-1043',
     },
     {
         returnAttemptId: 'RT-87980',
-        rentalId: 'R-87940',
+        rentalId: 'R-87960',
         userRef: 'u_9c02',
         stationName: '경영관',
-        stationId: 'ST-005',
-        slotId: 'SL-05-07',
+        slotShape: 'ADMIN_REVIEW',
         attemptedAt: '2026-07-24 08:20',
         status: 'COMPLETED',
         aiResult: 'UNCERTAIN',
         aiScore: 0.54,
         modelVersion: 'v0.4',
         latencyMs: 402,
-        reviewStatus: 'PENDING',
-        inspectionId: 'IN-0507',
         settlementId: null,
     },
     {
@@ -467,42 +480,38 @@ const RAW_RETURNS: Omit<ReturnAttempt, 'slotLabel'>[] = [
         rentalId: 'R-88001',
         userRef: 'u_2b71',
         stationName: '정문 광장',
-        stationId: 'ST-001',
-        slotId: 'SL-01-08',
+        slotShape: 'NO_INSPECTION',
         attemptedAt: '2026-07-24 08:03',
         status: 'COMPLETED',
         aiResult: 'NORMAL',
         aiScore: 0.97,
         modelVersion: 'v0.4',
         latencyMs: 274,
-        reviewStatus: null,
-        inspectionId: null,
         settlementId: null,
     },
     {
         returnAttemptId: 'RT-88180',
         rentalId: 'R-87988',
         userRef: 'u_4d10',
-        stationName: '제1공학관',
-        stationId: 'ST-003',
-        slotId: 'SL-03-19',
+        stationName: '빌리대역 출구',
+        slotShape: 'ADMIN_REVIEW',
         attemptedAt: '2026-07-24 07:46',
         status: 'COMPLETED',
         aiResult: 'DAMAGED',
         aiScore: 0.81,
         modelVersion: 'v0.4',
         latencyMs: 338,
-        reviewStatus: 'PENDING',
-        inspectionId: 'IN-0319',
         settlementId: null,
     },
     {
         returnAttemptId: 'RT-88055',
         rentalId: 'R-88010',
-        userRef: 'u_0b3c',
+        // 연결 대여(R-88010)와 같은 사람이어야 합니다. 어긋나 있어서 대여 상세와 반납
+        // 상세가 서로 다른 사용자를 보여 줬습니다.
+        userRef: 'u_77a0',
+        // 대여는 자연과학관, 반납은 생활관 A — 다른 대여소에 반납하는 정상 경로입니다.
         stationName: '생활관 A',
-        stationId: 'ST-007',
-        slotId: 'SL-07-02',
+        slotShape: 'REVIEWED_NORMAL',
         attemptedAt: '2026-07-23 21:03',
         status: 'COMPLETED',
         /*
@@ -514,16 +523,14 @@ const RAW_RETURNS: Omit<ReturnAttempt, 'slotLabel'>[] = [
         aiScore: 0.86,
         modelVersion: 'v0.4',
         latencyMs: 281,
-        reviewStatus: 'DECIDED',
-        inspectionId: 'IN-0702',
         settlementId: null,
     },
 ];
 
-const RAW_SETTLEMENTS: Omit<Settlement, 'slotLabel'>[] = [
+const RAW_SETTLEMENTS: RawSettlement[] = [
     {
         settlementId: 'S-1043',
-        userRef: 'u_8f3a',
+        userRef: 'u_0b3c',
         reason: 'DAMAGE',
         amount: 7000,
         paidAmount: 0,
@@ -532,7 +539,6 @@ const RAW_SETTLEMENTS: Omit<Settlement, 'slotLabel'>[] = [
         paidAt: null,
         rentalId: 'R-87995',
         returnAttemptId: 'RT-88208',
-        slotId: 'SL-03-06',
         decisionReason: '캐노피 찢어짐',
     },
     {
@@ -546,7 +552,6 @@ const RAW_SETTLEMENTS: Omit<Settlement, 'slotLabel'>[] = [
         paidAt: null,
         rentalId: 'R-87940',
         returnAttemptId: null,
-        slotId: null,
         decisionReason: null,
     },
     {
@@ -560,7 +565,6 @@ const RAW_SETTLEMENTS: Omit<Settlement, 'slotLabel'>[] = [
         paidAt: null,
         rentalId: 'R-87731',
         returnAttemptId: null,
-        slotId: 'SL-01-02',
         decisionReason: null,
     },
     {
@@ -574,7 +578,6 @@ const RAW_SETTLEMENTS: Omit<Settlement, 'slotLabel'>[] = [
         paidAt: '2026-07-23 11:40',
         rentalId: 'R-87900',
         returnAttemptId: 'RT-87905',
-        slotId: null,
         decisionReason: null,
     },
     {
@@ -588,7 +591,6 @@ const RAW_SETTLEMENTS: Omit<Settlement, 'slotLabel'>[] = [
         paidAt: '2026-07-22 19:02',
         rentalId: 'R-87860',
         returnAttemptId: 'RT-87866',
-        slotId: 'SL-06-04',
         decisionReason: '살대 파손',
     },
     {
@@ -602,7 +604,6 @@ const RAW_SETTLEMENTS: Omit<Settlement, 'slotLabel'>[] = [
         paidAt: '2026-07-22 10:31',
         rentalId: 'R-87801',
         returnAttemptId: null,
-        slotId: null,
         decisionReason: null,
     },
 ];
@@ -620,49 +621,81 @@ const RAW_SETTLEMENTS: Omit<Settlement, 'slotLabel'>[] = [
  * 사람이 읽던 코드는 버리지 않고 `slotLabel` 로 남깁니다 — 표에 UUID 만 깔면 어느 슬롯인지
  * 알 수 없습니다.
  */
-export const MOCK_RENTALS: Rental[] = RAW_RENTALS.map((item) => ({
-    ...item,
-    userRef: userUuid(item.userRef),
-    rentalId: rentalUuid(item.rentalId),
-    stationId: stationUuid(item.stationName),
-    slotLabel: slotLabelOf(item.stationName, item.slotId),
-    slotId: slotUuidOf(item.stationName, item.slotId),
-    returnAttemptId: item.returnAttemptId && returnUuid(item.returnAttemptId),
-    settlementId: item.settlementId && settlementUuid(item.settlementId),
-}));
-
-export const MOCK_RETURNS: ReturnAttempt[] = RAW_RETURNS.map((item) => ({
-    ...item,
-    userRef: userUuid(item.userRef),
-    returnAttemptId: returnUuid(item.returnAttemptId),
-    rentalId: rentalUuid(item.rentalId),
-    stationId: stationUuid(item.stationName),
-    slotLabel: item.slotId && slotLabelOf(item.stationName, item.slotId),
-    slotId: item.slotId && slotUuidOf(item.stationName, item.slotId),
-    settlementId: item.settlementId && settlementUuid(item.settlementId),
-}));
-
-/**
- * 정산 행에는 대여소 이름이 없습니다. 슬롯을 어느 대여소에서 찾을지는 **연결된 대여**가
- * 알고 있으므로 그쪽에서 가져옵니다. 정산은 늘 대여 1건에 붙습니다(ERD `SETTLEMENT.rental_id`).
- */
-function stationNameOfRental(rentalCode: string): string {
-    return RAW_RENTALS.find((item) => item.rentalId === rentalCode)?.stationName ?? '';
+/** 요청한 모양의 슬롯을 실제로 집어 UUID·표시 라벨을 함께 만듭니다. */
+function resolveSlot(stationName: string, shape: SlotShapeRequest | null) {
+    if (!shape) return { slotId: null, slotLabel: null };
+    return {
+        slotId: slotUuidOf(stationName, shape),
+        slotLabel: slotLabelOf(stationName, shape),
+    };
 }
 
-export const MOCK_SETTLEMENTS: Settlement[] = RAW_SETTLEMENTS.map((item) => {
-    const stationName = stationNameOfRental(item.rentalId);
+export const MOCK_RENTALS: Rental[] = RAW_RENTALS.map(({ slotShape, ...item }) => ({
+    ...item,
+    ...resolveSlot(item.stationName, slotShape),
+    userRef: userUuid(item.userRef),
+    rentalId: rentalUuid(item.rentalId),
+    stationId: stationUuid(item.stationName),
+    returnAttemptId: item.returnAttemptId && returnUuid(item.returnAttemptId),
+    settlementId: item.settlementId && settlementUuid(item.settlementId),
+})) as Rental[];
+
+/**
+ * 반납 행.
+ *
+ * **검수는 손으로 적지 않고 슬롯에서 파생합니다.** 반납이 들어간 슬롯에 걸린 검수가 곧
+ * 그 반납의 검수입니다 — 그래야 반납 상세에서 검수로 넘어갔을 때 실재하는 검수가 나오고,
+ * 검수 처리 상태도 슬롯 상태와 어긋나지 않습니다.
+ *
+ * 슬롯이 없는 반납(선정 전 실패)은 검수 ID 를 만들 수 없습니다. ERD §9.2-2 는 AI 결과를
+ * 슬롯 배정보다 먼저 저장하므로 실제 서버에는 슬롯 없는 검수 행이 존재하지만, 이 목업의
+ * 검수는 슬롯에서 파생되므로 표현할 수 없습니다. 그 대신 `reviewStatus` 는 행에 적힌
+ * 값을 그대로 씁니다 — AI 가 판정을 못 낸 건은 사람이 봐야 하는 게 맞습니다.
+ */
+export const MOCK_RETURNS: ReturnAttempt[] = RAW_RETURNS.map(({ slotShape, ...item }) => {
+    const inspection = slotShape && inspectionRefOf(item.stationName, slotShape);
 
     return {
         ...item,
+        ...resolveSlot(item.stationName, slotShape),
         userRef: userUuid(item.userRef),
-        settlementId: settlementUuid(item.settlementId),
+        returnAttemptId: returnUuid(item.returnAttemptId),
         rentalId: rentalUuid(item.rentalId),
-        returnAttemptId: item.returnAttemptId && returnUuid(item.returnAttemptId),
-        slotLabel: item.slotId && slotLabelOf(stationName, item.slotId),
-        slotId: item.slotId && slotUuidOf(stationName, item.slotId),
+        stationId: stationUuid(item.stationName),
+        inspectionId: inspection?.inspectionId ?? null,
+        reviewStatus: inspection?.reviewStatus ?? item.reviewStatus ?? null,
+        settlementId: item.settlementId && settlementUuid(item.settlementId),
     };
-});
+}) as ReturnAttempt[];
+
+/**
+ * 정산의 슬롯은 **연결된 반납·대여에서 가져옵니다.**
+ *
+ * 파손 정산의 슬롯은 파손이 발견된 자리, 즉 그 반납이 들어간 슬롯입니다. 분실 정산은
+ * 반납이 없으니 우산이 나간 자리, 즉 대여의 인출 슬롯입니다. 예전에는 정산 행에도 슬롯
+ * 코드를 따로 적어 뒀는데, 반납이 가리키는 슬롯과 다른 값이 되어 같은 사건의 슬롯이
+ * 화면마다 달랐습니다.
+ */
+function slotOfSettlement(item: RawSettlement) {
+    const attempt = item.returnAttemptId
+        ? RAW_RETURNS.find((row) => row.returnAttemptId === item.returnAttemptId)
+        : undefined;
+    const rental = RAW_RENTALS.find((row) => row.rentalId === item.rentalId);
+    const source = attempt ?? rental;
+
+    return source
+        ? resolveSlot(source.stationName, source.slotShape)
+        : { slotId: null, slotLabel: null };
+}
+
+export const MOCK_SETTLEMENTS: Settlement[] = RAW_SETTLEMENTS.map((item) => ({
+    ...item,
+    ...slotOfSettlement(item),
+    userRef: userUuid(item.userRef),
+    settlementId: settlementUuid(item.settlementId),
+    rentalId: rentalUuid(item.rentalId),
+    returnAttemptId: item.returnAttemptId && returnUuid(item.returnAttemptId),
+})) as Settlement[];
 
 export function findRental(id: string | undefined) {
     return MOCK_RENTALS.find((item) => item.rentalId === id);
