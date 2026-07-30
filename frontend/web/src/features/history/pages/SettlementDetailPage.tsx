@@ -118,8 +118,13 @@ export function SettlementDetailPage() {
                         </ValueLink>
                     </InfoRow>
                     <InfoRow label="최종 판정">
+                        {/*
+                         * 코드 원문(`DAMAGED`)을 찍고 있었습니다. 공용 라벨을 씁니다 —
+                         * 파손 정산은 관리자가 `DAMAGED` 로 판정했을 때만 생기므로,
+                         * 여기 표시는 '파손 확정' 이라는 뜻입니다 (ERD §2.4.1).
+                         */}
                         {item.reason === 'DAMAGE' ? (
-                            <Badge tone="red">DAMAGED</Badge>
+                            <Badge tone="red">파손 확정</Badge>
                         ) : (
                             <span className="text-brand-muted">해당 없음</span>
                         )}

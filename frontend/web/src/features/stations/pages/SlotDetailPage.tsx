@@ -63,7 +63,7 @@ export function SlotDetailPage() {
                         ...(station
                             ? [
                                   {
-                                      label: `${station.stationCode} ${station.name}`,
+                                      label: station.name,
                                       to: `/stations/${station.stationId}`,
                                   },
                               ]
@@ -78,7 +78,7 @@ export function SlotDetailPage() {
     }
 
     // 'SL-03-01' 은 station_code + slot_number 로 만드는 표시 라벨입니다. DB 컬럼이 아닙니다.
-    const slotLabel = formatSlotLabel(station.stationCode, slot.slotNumber);
+    const slotLabel = formatSlotLabel(slot.slotNumber);
     const display = deriveSlotDisplayStatus(slot);
     // 상세 응답의 latestInspection / latestReturnAttempt 를 그대로 씁니다 (12-R B-4).
     const inspection = slot.latestInspection;
@@ -91,7 +91,7 @@ export function SlotDetailPage() {
                 breadcrumb={[
                     { label: '대여소 관리', to: '/stations' },
                     {
-                        label: `${station.stationCode} ${station.name}`,
+                        label: station.name,
                         to: `/stations/${station.stationId}`,
                     },
                     { label: slotLabel },
@@ -108,7 +108,7 @@ export function SlotDetailPage() {
                     className="ml-[17px] !text-[16px] !font-bold"
                     documentTitle={`${slotLabel} 슬롯`}
                 >
-                    {`${slotLabel} · ${station.name}(${station.stationCode})`}
+                    {`${slotLabel} · ${station.name}`}
                 </PageTitle>
 
                 <div className="ml-auto flex items-center gap-2">
@@ -238,7 +238,7 @@ export function SlotDetailPage() {
             <SlotStatusDialog
                 open={dialogOpen}
                 slot={slot}
-                subtitle={`${slotLabel} · ${station.name}(${station.stationCode})`}
+                subtitle={`${slotLabel} · ${station.name}`}
                 onClose={() => {
                     changeStatus.reset();
                     setDialogOpen(false);

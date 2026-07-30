@@ -159,13 +159,20 @@ export const DECISION_EFFECT: Record<
     InspectionDecision,
     { slotState: string; settlement: string }
 > = {
-    NORMAL: { slotState: 'AVAILABLE + NORMAL', settlement: '파손 정산을 만들지 않습니다.' },
+    /*
+     * `slotState` 는 **화면에 보이는 문구**입니다. 그래서 한글로 적습니다 —
+     * ERD §2.4.1 "관리자 웹의 배지·표·상세 화면·안내 문구는 한글 명칭 우선",
+     * "API·DB·로그 값을 화면에 직접 노출하지 않는다".
+     * 예전에는 `'AVAILABLE + NORMAL'` 처럼 코드를 그대로 적어 검수 상세에서 새어 나갔습니다.
+     * 코드 대조가 필요하면 배지 마우스오버(`slotStatusHint`)에 이미 `한글 · CODE` 가 있습니다.
+     */
+    NORMAL: { slotState: '이용 가능 · 정상', settlement: '파손 정산을 만들지 않습니다.' },
     DAMAGED: {
-        slotState: 'OUT_OF_SERVICE + DAMAGED',
+        slotState: '이용 중지 · 파손',
         settlement: '해당 대여에 파손 정산을 멱등 생성합니다.',
     },
     KEEP_ADMIN_REVIEW: {
-        slotState: 'ADMIN_REVIEW + UNKNOWN',
+        slotState: '관리자 확인 · 확인 불가',
         settlement: '검수는 미처리로 남고 정산도 만들지 않습니다.',
     },
 };

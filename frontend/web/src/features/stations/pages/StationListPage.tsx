@@ -47,11 +47,10 @@ export function StationListPage() {
         const normalized = keyword.toLowerCase();
         if (!normalized) return stations;
 
-        return stations.filter(
-            (station) =>
-                station.name.toLowerCase().includes(normalized) ||
-                // 검색은 사람이 아는 표시 코드로 합니다. UUID 를 외워서 치는 사람은 없습니다.
-                station.stationCode.toLowerCase().includes(normalized),
+        return stations.filter((station) =>
+            // 대여소명으로만 찾습니다. UUID 를 외워서 치는 사람은 없고, 예전에 함께
+            // 검색하던 `stationCode` 는 ERD v3.0 에서 P0 필수 컬럼이 아닙니다.
+            station.name.toLowerCase().includes(normalized),
         );
     }, [keyword, stations]);
 
@@ -77,13 +76,17 @@ export function StationListPage() {
         <div>
             <PageBar className="mb-[18px]" meta={`${STATIONS_SYNCED_AT} 기준`} />
 
-            {/* 대여소 상세와 같은 리듬(21px 제목 + 아래 29px)으로 맞춥니다. */}
-            <PageTitle className="mb-[29px]">대여소 관리</PageTitle>
-
+            {/*
+             * 제목과 조회 줄을 한 줄에 놓고 조회 쪽을 오른쪽 끝에 붙입니다.
+             * 예전에는 제목이 위, 조회 줄이 아래 왼쪽이라 오른쪽이 500px 넘게 비었습니다.
+             * `mr-auto` 가 제목을 왼쪽에 고정하고 나머지를 오른쪽으로 밀어 줍니다.
+             */}
             <form onSubmit={handleSubmit} className="mb-9 flex items-center gap-3">
+                <PageTitle className="mr-auto">대여소 관리</PageTitle>
+
                 <SearchInput
                     label="대여소 검색"
-                    placeholder="대여소명 · 대여소ID 검색"
+                    placeholder="대여소명 검색"
                     value={keywordInput}
                     onChange={setKeywordInput}
                     onClear={() => {

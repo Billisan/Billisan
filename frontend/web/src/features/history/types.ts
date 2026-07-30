@@ -189,7 +189,12 @@ export interface ReturnAttempt {
      * 시안은 여기에 `ADMIN_REVIEW` 를 적어 놨는데 그건 슬롯 상태라 쓰지 않습니다.
      */
     aiResult: 'NORMAL' | 'DAMAGED' | 'UNCERTAIN' | 'FAILED';
-    aiScore: number;
+    /**
+     * AI 점수. **추론이 실패하면 `null`** 입니다 — 12-R 이 `Decimal|null` 로 정했고
+     * 검수 쪽 타입(`InspectionListItem.aiScore`)은 이미 `number | null` 이었습니다.
+     * 반납 쪽만 `number` 로 되어 있어서, `aiResult = FAILED` 인 건을 표현할 수 없었습니다.
+     */
+    aiScore: number | null;
     modelVersion: string;
     latencyMs: number;
     inspectionId: string | null;

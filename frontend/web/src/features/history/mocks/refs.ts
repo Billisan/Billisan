@@ -38,50 +38,47 @@ export function settlementUuid(code: string): string {
     return mockUuid(MOCK_NS.settlement, seqOf(code));
 }
 
-/** `'ST-003'` → 대여소 UUID. 없는 코드면 첫 대여소로 떨어집니다. */
-export function stationUuid(code: string): string {
-    const found = MOCK_STATIONS.find((station) => station.stationCode === code);
+/**
+ * 대여소 이름 → 대여소 UUID.
+ *
+ * 예전에는 `'ST-003'` 같은 표시 코드로 찾았는데, ERD v3.0 이 `station_code` 를 P0 필수
+ * 컬럼에서 뺐습니다. 목업 행에 `stationName` 이 이미 있어서 그걸로 찾습니다 — `name` 은
+ * NOT NULL 이라 서버가 붙어도 늘 옵니다.
+ */
+export function stationUuid(name: string): string {
+    const found = MOCK_STATIONS.find((station) => station.name === name);
     return (found ?? MOCK_STATIONS[0]).stationId;
 }
 
-/**
- * 슬롯 라벨의 가운데 두 자리 → 대여소.
- *
- * `formatSlotLabel` 이 `stationCode` 의 **뒤 두 자리**로 라벨을 만듭니다 (`ST-003` → `SL-03-…`).
- * 그래서 `ST-${두자리}` 로 찾으면 못 찾고 첫 대여소로 떨어집니다 — 화면 글자는 '제1공학관'인데
- * 링크는 '정문 광장' 으로 가는 사고가 여기서 났습니다. 같은 규칙으로 되짚습니다.
- */
-function stationOfLabel(twoDigits: string) {
-    const found = MOCK_STATIONS.find(
-        (item) => item.stationCode.replace(/\D/g, '').slice(-2).padStart(2, '0') === twoDigits,
-    );
-    return found ?? MOCK_STATIONS[0];
+function stationOfName(name: string) {
+    return MOCK_STATIONS.find((station) => station.name === name) ?? MOCK_STATIONS[0];
+}
+
+/** `'SL-03-03'` 의 마지막 토막이 슬롯 번호입니다. */
+function slotNumberOf(code: string): number {
+    return Number(code.split('-').pop()) || 1;
 }
 
 /**
- * `'SL-03-03'` → 그 대여소의 실제 슬롯 UUID.
+ * 그 대여소의 실재하는 슬롯을 고릅니다.
  *
- * 이력 목업에는 `SL-03-19` 처럼 **실제로 없는 슬롯 번호**가 섞여 있었습니다. 대여소당 슬롯은
- * 3~5개뿐이라 그런 링크는 눌러도 "존재하지 않는 슬롯"으로 떨어집니다. 그래서 번호를 그
- * 대여소가 가진 범위 안으로 접어서 항상 실재하는 슬롯을 가리키게 합니다.
+ * 이력 목업에는 `SL-03-19` 처럼 **없는 슬롯 번호**가 섞여 있었습니다. 대여소당 슬롯은
+ * 3~5개뿐이라 그런 링크는 눌러도 "존재하지 않는 슬롯" 으로 떨어집니다. 그래서 번호를 그
+ * 대여소가 가진 범위 안으로 접습니다.
  */
-export function slotUuidOf(code: string): string {
-    const [, stationPart, slotPart] = code.split('-');
-    const station = stationOfLabel(stationPart);
+function slotOf(stationName: string, code: string) {
+    const station = stationOfName(stationName);
     const slots = buildSlots(station);
-    const index = (Number(slotPart) - 1 + slots.length) % slots.length;
-
-    return slots[index].slotId;
+    return slots[(slotNumberOf(code) - 1 + slots.length) % slots.length];
 }
 
-/** 위 슬롯의 표시 라벨. 접힌 번호를 반영해야 화면 글자와 링크 대상이 일치합니다. */
-export function slotLabelOf(code: string): string {
-    const [, stationPart, slotPart] = code.split('-');
-    const station = stationOfLabel(stationPart);
-    const slots = buildSlots(station);
-    const index = (Number(slotPart) - 1 + slots.length) % slots.length;
+export function slotUuidOf(stationName: string, code: string): string {
+    return slotOf(stationName, code).slotId;
+}
 
-    return formatSlotLabel(station.stationCode, slots[index].slotNumber);
+/** 화면 글자. 접힌 번호를 반영해야 글자와 링크 대상이 일치합니다. */
+export function slotLabelOf(stationName: string, code: string): string {
+    return formatSlotLabel(slotOf(stationName, code).slotNumber);
 }
 
 /**

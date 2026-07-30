@@ -154,8 +154,8 @@ export function InspectionDetailPage() {
             </div>
 
             <p className="mt-[18px] text-[11px] font-medium leading-[1.6] text-brand-muted">
-                판정 저장은 검수·슬롯·정산을 한 트랜잭션으로 바꿉니다. `DAMAGED` 판정만 파손 정산을
-                만들고, 관리자가 결제 완료(`PAID`)로 직접 바꾸거나 금액을 손대지 않습니다.
+                판정 저장은 검수·슬롯·정산을 한 트랜잭션으로 바꿉니다. 파손 확정만 파손 정산을
+                만들고, 관리자가 정산완료로 직접 바꾸거나 금액을 손대지 않습니다.
             </p>
         </div>
     );

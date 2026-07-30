@@ -41,7 +41,7 @@ export function SlotTable({ station, slots }: SlotTableProps) {
                  * `ON`/`OFF` 라, 넓혀 뒀던 두 칸을 줄이고 남은 폭을 slotId·최근 갱신에 넘깁니다.
                  */}
                 <THead>
-                    <Th className="w-[20%]">slotId</Th>
+                    <Th className="w-[20%]">슬롯</Th>
                     <Th align="center" className="w-[18%]">
                         우산 상태
                     </Th>
@@ -86,7 +86,7 @@ export function SlotTable({ station, slots }: SlotTableProps) {
                                 onClick={() => navigate(slotPath)}
                             >
                                 <Td className="font-bold text-brand-ink">
-                                    {formatSlotLabel(station.stationCode, slot.slotNumber)}
+                                    {formatSlotLabel(slot.slotNumber)}
                                 </Td>
                                 <Td align="center">
                                     <Badge

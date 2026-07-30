@@ -9,27 +9,28 @@ import {
 /* ------------------------------------------------------------------ 대여소 */
 
 /**
- * ERD `STATION`.
+ * ERD v3.0 `STATION`.
  *
- * **신원은 `stationId`(UUID)입니다.** `stationCode`('ST-003')는 외부·장치 식별용 표시 코드라
- * 화면에만 씁니다. API 경로(`/stations/{stationId}/slots`)에는 UUID 가 들어갑니다.
+ * **신원은 `stationId`(UUID) 하나입니다.** ERD 가 "`station_id` 가 MQTT Topic·장치 설정·
+ * 인터페이스 상관의 권위 식별자" 라고 못 박았습니다.
  *
- * ERD 컬럼: `station_id CHAR(36) PK` · `station_code VARCHAR(50) UNIQUE` · `name` ·
- *           `location_text` · `service_status` · `device_status` · `current_boot_id` ·
- *           `boot_synced_at` · `last_seen_at` · `updated_at`
+ * **`stationCode`·`locationText` 는 쓰지 않습니다.** 같은 핵심 제약이 "`name` 은 표시용이며
+ * `station_code`·`location_text` 를 **P0 필수 컬럼으로 두지 않는다**" 라고 정했습니다
+ * (변경 이력 `DEC-047`). 필수가 아닌 값에 화면을 걸면 서버가 안 줘도 계약 위반이 아니라서
+ * 그대로 무너집니다. 표시는 `name`(NOT NULL)으로만 합니다.
+ *
+ * ERD v3.0 컬럼: `station_id CHAR(36) PK` · `name` · `service_status` · `device_status` ·
+ *                `current_boot_id` · `boot_synced_at` · `last_seen_at` · `created_at` ·
+ *                `updated_at`  — 위도·경도도 없습니다(지도 화면 보류 근거).
  */
 export type StationServiceStatus = 'AVAILABLE' | 'MAINTENANCE' | 'OFFLINE';
 export type DeviceStatus = 'ONLINE' | 'OFFLINE' | 'ERROR';
 
 export interface Station {
-    /** ERD PK. 라우트·API 에 쓰는 진짜 신원입니다. */
+    /** ERD PK. 라우트·API·표시 모두 이 값이 신원입니다. */
     stationId: string;
-    /** `station_code` — 'ST-003'. 표시·장치 식별용입니다. */
-    stationCode: string;
-    /** `name` — '제1공학관' */
+    /** `name` — '제1공학관'. NOT NULL 이라 표시는 항상 이걸로 합니다. */
     name: string;
-    /** `location_text` — MVP 간이 위치 표시. 좌표가 아닙니다. */
-    locationText: string | null;
     serviceStatus: StationServiceStatus;
     /**
      * `device_status`. 값이 셋이라 boolean 으로 접지 않습니다 —
@@ -148,7 +149,9 @@ export type SlotTargetItemCondition = 'EMPTY' | SlotItemCondition;
  * 활성 대여도, 검수 요약도 이 응답에 없습니다. 그래서 목록에서는 '대여 중'·'검수 대기'를
  * 표시할 수 없고, 그 정보는 `ADMIN-SLOT-DETAIL-001` 에만 있습니다.
  *
- * 'SL-03-01' 같은 코드 컬럼도 없습니다 — `stationCode` + `slotNumber` 로 만드는 표시 라벨입니다.
+ * 슬롯에도 코드 컬럼이 없습니다. 표기는 `slotNumber`(NOT NULL)로만 만듭니다 —
+ * 예전에는 `stationCode` 뒤 두 자리를 붙여 'SL-03-01' 을 만들었는데, 그 컬럼이 P0 필수가
+ * 아니라 서버가 안 주면 라벨부터 무너집니다.
  */
 export interface SlotSummary {
     /** UUID. 라우트·API 에 쓰는 신원입니다. */
@@ -199,13 +202,19 @@ export interface SlotDetail extends SlotSummary {
 }
 
 /**
- * 표시용 슬롯 라벨. 'ST-003' + 1 → 'SL-03-01'.
+ * 표시용 슬롯 표기. `1` → `'1번 슬롯'`.
  *
- * DB 에 이런 컬럼은 없습니다. 화면에서만 쓰고, 검색·라우팅에는 쓰지 마세요.
+ * `slot_number` 는 `UNIQUE(station_id, slot_number)` 라 **대여소 안에서만** 유일합니다.
+ * 그래서 어느 대여소인지 함께 보여야 하는 자리에서는 대여소 `name` 을 옆에 붙이세요.
+ *
+ * 예전 `'SL-03-01'` 은 `stationCode` 뒤 두 자리에 의존했는데, ERD v3.0 이 그 컬럼을
+ * P0 필수에서 뺐습니다. 검수 상세는 원래부터 `ADMIN-INSPECTION-002` 의 `slotNumber` 로
+ * `'1번 슬롯'` 을 쓰고 있었어서, 이제 앱 전체 표기가 하나로 맞습니다.
+ *
+ * DB 에 이런 문자열 컬럼은 없습니다. 화면에서만 쓰고 검색·라우팅에는 쓰지 마세요.
  */
-export function formatSlotLabel(stationCode: string, slotNumber: number): string {
-    const stationSeq = stationCode.replace(/\D/g, '').slice(-2).padStart(2, '0');
-    return `SL-${stationSeq}-${String(slotNumber).padStart(2, '0')}`;
+export function formatSlotLabel(slotNumber: number): string {
+    return `${slotNumber}번 슬롯`;
 }
 
 /** 표에 한 칸으로 보여줄 파생 상태. 저장되는 값이 아닙니다. */
