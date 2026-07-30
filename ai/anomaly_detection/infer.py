@@ -110,11 +110,33 @@ class UmbrellaInspector:
             avail = ort.get_available_providers()
             prefer = [p for p in ("TensorrtExecutionProvider", "CUDAExecutionProvider",
                                   "CPUExecutionProvider") if p in avail]
-            self.session = ort.InferenceSession(str(onnx_path), providers=prefer)
+
+            # ⚠️ TensorRT는 provider_options로 엔진 캐시를 켜지 않으면 세션을 만들 때마다
+            # 최적화 엔진을 처음부터 다시 빌드한다 — 이 모델(DINOv2 ViT 기반)은 이 빌드가
+            # 5분 가까이 걸리는 것으로 실측 확인됨(2026-07-30, Jetson Orin Nano). 캐시를
+            # 켜면 공식 문서 벤치마크 기준 384초 → 9초로 줄어든다. 반드시 켤 것.
+            cache_dir = Path(model_dir) / ".trt_cache"
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            trt_options = {
+                "trt_engine_cache_enable": True,
+                "trt_engine_cache_path": str(cache_dir),
+                "trt_timing_cache_enable": True,   # 커널 프로파일링 캐시 — 재빌드도 추가로 단축
+                "trt_timing_cache_path": str(cache_dir),
+            }
+            providers = [(p, trt_options) if p == "TensorrtExecutionProvider" else p
+                        for p in prefer]
+
+            self.session = ort.InferenceSession(str(onnx_path), providers=providers)
             self.input_name = self.session.get_inputs()[0].name
             self.output_names = [o.name for o in self.session.get_outputs()]
             print(f"[model] {self.contract!r}")
             print(f"[model] providers={self.session.get_providers()}")
+            if "TensorrtExecutionProvider" in self.session.get_providers():
+                print(f"[model] TensorRT 엔진 캐시: {cache_dir} "
+                      f"(첫 실행은 여전히 느림 — 엔진을 새로 빌드하는 중. 그 다음부터 빨라져야 정상)")
+                print("[model] ⚠️ 모델·ONNX Runtime·TensorRT 버전이나 하드웨어가 바뀌면 "
+                      f"{cache_dir} 안의 .engine/.profile 파일을 반드시 지우고 다시 빌드할 것 "
+                      "— 옛 캐시를 그대로 쓰면 로딩이 조용히 실패하거나 틀린 결과가 나올 수 있음")
             if self.contract.score_max_estimated:
                 print("  ⚠️ scoreMax가 추정치입니다 — DAMAGED 경계가 잠정입니다.")
 
