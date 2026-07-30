@@ -1,4 +1,5 @@
-import { MOCK_NS, mockUuid } from '@/features/stations/mocks/ids';
+import { MOCK_NS, mockSeq, mockUuid } from '@/features/stations/mocks/ids';
+import { isRecoverySlot } from '@/features/stations/mocks/recoveryScenario';
 import { applyOverride } from '@/features/stations/mocks/slotOverrides';
 import type {
     LockStatus,
@@ -32,7 +33,12 @@ type SlotPreset =
     | 'LENT_OUT'
     | 'EMPTY'
     | 'DAMAGED'
-    | 'ADMIN_REVIEW';
+    | 'ADMIN_REVIEW'
+    /**
+     * 물리 반납은 끝났는데 서버 반영이 깨져 격리된 슬롯.
+     * 반납 시도의 `RECOVERY_REQUIRED` 와 짝입니다 (`recoveryScenario.ts`).
+     */
+    | 'RECOVERY';
 
 interface PresetShape {
     occupancyStatus: SlotOccupancyStatus;
@@ -105,6 +111,24 @@ const PRESET: Record<SlotPreset, PresetShape> = {
         inspection: 'PENDING',
         time: '09:12',
     },
+    /**
+     * 복구 필요.
+     *
+     * 우산은 안에 들어가 잠겨 있는데 DB 가 그걸 확정하지 못한 상태입니다. 점유·잠금을
+     * `UNKNOWN` 으로 두는 건 "확정할 수 없다" 를 그대로 담는 것입니다 — 복구 규칙이
+     * "마지막 센서 저장값이나 마지막 잠금 명령을 현재 실물 상태로 간주하지 않는다" 고
+     * 못 박았습니다. 그래서 `itemCondition` 도 `UNKNOWN` 입니다.
+     *
+     * 서비스는 `OUT_OF_SERVICE` 로 격리합니다 (ERD §9.2-7).
+     */
+    RECOVERY: {
+        occupancyStatus: 'UNKNOWN',
+        serviceStatus: 'OUT_OF_SERVICE',
+        itemCondition: 'UNKNOWN',
+        lockStatus: 'UNKNOWN',
+        inspection: null,
+        time: '09:05',
+    },
 };
 
 /**
@@ -127,19 +151,17 @@ const PATTERN: SlotPreset[] = [
 const UPDATED_DATE = '2026-07-24';
 
 /**
- * 대여소 순번.
+ * 대여소별 목업 시드.
  *
- * 표시 코드(`ST-003`)에서 뽑습니다. 대여소 목록을 import 하면 순환 참조라 못 쓰고,
- * **UUID 에서 뽑아서도 안 됩니다.** 예전에 `stationId.slice(-4)` 로 꼬리 숫자를 읽었는데,
- * 목업 UUID 가 `…-000000000003` 모양일 때만 통하는 방식이었습니다. 실제 UUID 는 전 구간이
- * 무작위라 꼬리가 `61f3` 같은 16진값이고, `Number()` 가 `NaN` 을 내면서 모든 대여소가
- * 순번 1 로 뭉갰습니다. 그러면 대여소가 달라도 `1번 슬롯` 의 슬롯·검수 ID 가 전부 같아집니다.
+ * 슬롯 구성·검수 배치를 대여소마다 다르게 만들기 위한 값입니다. 업무 의미는 없습니다.
  *
- * UUID 는 불투명한 식별자입니다. 값에서 의미를 뽑아내면 안 됩니다.
- * `formatSlotLabel` 도 같은 이유로 `stationCode` 를 씁니다.
+ * 예전에는 `stationCode` 의 숫자를 썼는데 ERD v3.0 이 그 컬럼을 P0 필수에서 뺐고,
+ * 그 전에는 `stationId.slice(-4)` 로 UUID 꼬리를 읽다가 무작위 UUID 에서 전부 `NaN` 이
+ * 되어 모든 대여소가 같은 시드로 뭉갰습니다. 지금은 `stationId` 를 해시합니다 — 값에서
+ * 의미를 뽑는 게 아니라 흩뿌리는 것이라 UUID 모양이 바뀌어도 안전합니다.
  */
 function stationSeq(station: Station): number {
-    return Number(station.stationCode.replace(/\D/g, '')) || 1;
+    return mockSeq(station.stationId);
 }
 
 function presetOf(station: Station, slotNumber: number): SlotPreset {
@@ -162,7 +184,14 @@ export function inspectionStateOf(
 export function buildSlots(station: Station): SlotSummary[] {
     return Array.from({ length: station.slotCount }, (_, index) => {
         const slotNumber = index + 1;
-        const shape = PRESET[presetOf(station, slotNumber)];
+        /*
+         * 복구 대상 슬롯은 순환 패턴을 무시하고 격리 상태로 고정합니다. 반납 이력의
+         * `RECOVERY_REQUIRED` 건과 같은 슬롯이라, 관리자가 그 반납에서 슬롯으로 넘어오면
+         * 실제로 격리된 슬롯이 나옵니다.
+         */
+        const shape = isRecoverySlot(station.name, slotNumber)
+            ? PRESET.RECOVERY
+            : PRESET[presetOf(station, slotNumber)];
 
         // 관리자가 방금 바꾼 슬롯이면 그 결과로 덮어씁니다. 목업 전용이라 새로고침하면 사라집니다.
         return applyOverride({

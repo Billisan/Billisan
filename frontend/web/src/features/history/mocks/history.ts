@@ -239,6 +239,91 @@ const RAW_RENTALS: Omit<Rental, 'slotLabel'>[] = [
 ];
 
 const RAW_RETURNS: Omit<ReturnAttempt, 'slotLabel'>[] = [
+    /*
+     * ── 반납이 정상으로 끝나지 않은 세 건 ──────────────────────────────
+     *
+     * 계약 Enum 은 다섯 개인데(`PROCESSING|PHYSICAL_DONE|COMPLETED|RECOVERY_REQUIRED|FAILED`)
+     * 목업이 `COMPLETED` 하나만 쓰고 있어서 「반납 상태」 열이 상수였습니다. 관리자가
+     * 이 화면을 보는 이유가 바로 이 세 건이라 실제로 넣습니다.
+     */
+    {
+        /*
+         * 복구 필요 — 우산은 들어가 잠겼는데 서버 커밋이 깨진 건.
+         *
+         * `recoveryScenario.ts` 가 이 슬롯(정문 광장 1번)을 `OUT_OF_SERVICE` 로 격리하므로,
+         * 여기서 슬롯 상세로 넘어가면 실제로 격리된 슬롯이 나옵니다.
+         * `completedAt` 이 없다는 뜻이라 정산도 붙지 않습니다.
+         */
+        returnAttemptId: 'RT-88240',
+        rentalId: 'R-88098',
+        userRef: 'u_2b71',
+        stationName: '정문 광장',
+        stationId: 'ST-001',
+        slotId: 'SL-01-01',
+        attemptedAt: '2026-07-24 09:05',
+        status: 'RECOVERY_REQUIRED',
+        aiResult: 'NORMAL',
+        aiScore: 0.05,
+        modelVersion: 'v0.4',
+        latencyMs: 274,
+        reviewStatus: null,
+        inspectionId: null,
+        settlementId: null,
+    },
+    {
+        /*
+         * 물리 완료 — 삽입·잠금까지 확인됐고 최종 반영 대기.
+         *
+         * 정상 경로의 통과 지점이라 오류가 아닙니다. 다만 여기서 멈춰 있으면 봐야 합니다.
+         * ERD §9.2-3 이 "`SLOT.service_status` 는 진행 상태로 바꾸지 않는다" 고 해서
+         * 슬롯은 건드리지 않습니다.
+         */
+        returnAttemptId: 'RT-88238',
+        rentalId: 'R-88102',
+        userRef: 'u_2210',
+        stationName: '경영관',
+        stationId: 'ST-005',
+        slotId: 'SL-05-04',
+        attemptedAt: '2026-07-24 09:18',
+        status: 'PHYSICAL_DONE',
+        aiResult: 'NORMAL',
+        aiScore: 0.07,
+        modelVersion: 'v0.4',
+        latencyMs: 269,
+        reviewStatus: null,
+        inspectionId: null,
+        settlementId: null,
+    },
+    {
+        /*
+         * 실패 — 우산이 안 들어갔음. 사용자가 다시 시도할 수 있습니다.
+         *
+         * AI 는 이미 돌았고 **판정을 못 냈습니다**(`FAILED`). §9.2-2 가 AI 결과를 슬롯
+         * 배정보다 먼저 `DAMAGE_INSPECTION` 에 저장하므로 검수 행은 이미 존재하고,
+         * §8.0 이 "`DAMAGED|UNCERTAIN|FAILED` 추론은 ... `ADMIN_REVIEW + UNKNOWN` 로
+         * 격리한다" 고 해서 **관리자가 봐야 하는 건**입니다. 그래서 검수는 `PENDING` 입니다.
+         * AI 가 못 봤으면 더더욱 사람이 봐야 합니다.
+         *
+         * 슬롯 선정 전이라 `slotId` 가 `null` 입니다 — ERD §19.3 이 "슬롯 선정 전
+         * `PROCESSING`·`FAILED`·`RECOVERY_REQUIRED` 에서는 `return_slot_id` 가 NULL 일 수
+         * 있다" 고 허용합니다. AI 도 추론까지 못 가서 `FAILED`(판정 불가)입니다.
+         */
+        returnAttemptId: 'RT-88232',
+        rentalId: 'R-87940',
+        userRef: 'u_9c02',
+        stationName: '자연과학관',
+        stationId: 'ST-006',
+        slotId: null,
+        attemptedAt: '2026-07-24 08:31',
+        status: 'FAILED',
+        aiResult: 'FAILED',
+        aiScore: null,
+        modelVersion: 'v0.4',
+        latencyMs: 0,
+        reviewStatus: 'PENDING',
+        inspectionId: 'IN-0699',
+        settlementId: null,
+    },
     /* 결제까지 끝난 과거 정산(S-1024 · S-1018)이 가리키는 반납들. */
     {
         returnAttemptId: 'RT-87905',
@@ -420,8 +505,13 @@ const RAW_RETURNS: Omit<ReturnAttempt, 'slotLabel'>[] = [
         slotId: 'SL-07-02',
         attemptedAt: '2026-07-23 21:03',
         status: 'COMPLETED',
-        aiResult: 'NORMAL',
-        aiScore: 0.95,
+        /*
+         * AI 오탐 케이스. AI 는 파손을 의심했지만 관리자가 이상 없음으로 뒤집었습니다.
+         * 그래서 검수는 `DECIDED` 이고 정산은 붙지 않습니다. 슬롯 목업의
+         * `REVIEWED_NORMAL` 프리셋과 같은 상황입니다.
+         */
+        aiResult: 'DAMAGED',
+        aiScore: 0.86,
         modelVersion: 'v0.4',
         latencyMs: 281,
         reviewStatus: 'DECIDED',
@@ -534,9 +624,9 @@ export const MOCK_RENTALS: Rental[] = RAW_RENTALS.map((item) => ({
     ...item,
     userRef: userUuid(item.userRef),
     rentalId: rentalUuid(item.rentalId),
-    stationId: stationUuid(item.stationId),
-    slotLabel: slotLabelOf(item.slotId),
-    slotId: slotUuidOf(item.slotId),
+    stationId: stationUuid(item.stationName),
+    slotLabel: slotLabelOf(item.stationName, item.slotId),
+    slotId: slotUuidOf(item.stationName, item.slotId),
     returnAttemptId: item.returnAttemptId && returnUuid(item.returnAttemptId),
     settlementId: item.settlementId && settlementUuid(item.settlementId),
 }));
@@ -546,21 +636,33 @@ export const MOCK_RETURNS: ReturnAttempt[] = RAW_RETURNS.map((item) => ({
     userRef: userUuid(item.userRef),
     returnAttemptId: returnUuid(item.returnAttemptId),
     rentalId: rentalUuid(item.rentalId),
-    stationId: stationUuid(item.stationId),
-    slotLabel: item.slotId && slotLabelOf(item.slotId),
-    slotId: item.slotId && slotUuidOf(item.slotId),
+    stationId: stationUuid(item.stationName),
+    slotLabel: item.slotId && slotLabelOf(item.stationName, item.slotId),
+    slotId: item.slotId && slotUuidOf(item.stationName, item.slotId),
     settlementId: item.settlementId && settlementUuid(item.settlementId),
 }));
 
-export const MOCK_SETTLEMENTS: Settlement[] = RAW_SETTLEMENTS.map((item) => ({
-    ...item,
-    userRef: userUuid(item.userRef),
-    settlementId: settlementUuid(item.settlementId),
-    rentalId: rentalUuid(item.rentalId),
-    returnAttemptId: item.returnAttemptId && returnUuid(item.returnAttemptId),
-    slotLabel: item.slotId && slotLabelOf(item.slotId),
-    slotId: item.slotId && slotUuidOf(item.slotId),
-}));
+/**
+ * 정산 행에는 대여소 이름이 없습니다. 슬롯을 어느 대여소에서 찾을지는 **연결된 대여**가
+ * 알고 있으므로 그쪽에서 가져옵니다. 정산은 늘 대여 1건에 붙습니다(ERD `SETTLEMENT.rental_id`).
+ */
+function stationNameOfRental(rentalCode: string): string {
+    return RAW_RENTALS.find((item) => item.rentalId === rentalCode)?.stationName ?? '';
+}
+
+export const MOCK_SETTLEMENTS: Settlement[] = RAW_SETTLEMENTS.map((item) => {
+    const stationName = stationNameOfRental(item.rentalId);
+
+    return {
+        ...item,
+        userRef: userUuid(item.userRef),
+        settlementId: settlementUuid(item.settlementId),
+        rentalId: rentalUuid(item.rentalId),
+        returnAttemptId: item.returnAttemptId && returnUuid(item.returnAttemptId),
+        slotLabel: item.slotId && slotLabelOf(stationName, item.slotId),
+        slotId: item.slotId && slotUuidOf(stationName, item.slotId),
+    };
+});
 
 export function findRental(id: string | undefined) {
     return MOCK_RENTALS.find((item) => item.rentalId === id);

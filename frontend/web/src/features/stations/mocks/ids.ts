@@ -33,6 +33,21 @@ export const MOCK_NS = {
     user: 'user',
 } as const;
 
+/**
+ * 목업 전용 안정 시드.
+ *
+ * 같은 문자열이면 늘 같은 작은 수를 냅니다. 목업이 "대여소별로 다른 슬롯 구성" 같은 걸
+ * 만들 때 씁니다.
+ *
+ * **UUID 를 파싱해서 쓰지 마세요.** 예전에 `Number(stationId.slice(-4))` 로 꼬리 숫자를
+ * 읽었는데, 실제 UUID 는 전 구간이 무작위라 `NaN` 으로 떨어져 모든 대여소가 같은 시드로
+ * 뭉갰습니다. 해시는 값의 의미를 뽑는 게 아니라 흩뿌리는 것이라 그 함정이 없습니다.
+ */
+export function mockSeq(input: string): number {
+    // 1..9999 로 좁힙니다. 슬롯 시드(seq*100+번호)가 너무 커지지 않게요.
+    return (hash32(input, 0) % 9999) + 1;
+}
+
 /** FNV-1a 32비트. 암호용이 아니라 "같은 입력이면 같은 값" 만 보장하면 되는 자리입니다. */
 function hash32(input: string, salt: number): number {
     let hash = 0x811c9dc5 ^ salt;
