@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import userIcon from '../../assets/ai-scan-module-user.svg'
+import userIcon from '../../assets/ai-scan-user.svg'
 import { KioskLayout } from '../../components/layout/KioskLayout'
 
 interface LoadingScreenProps {
