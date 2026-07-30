@@ -28,7 +28,7 @@ function injectKeyframes() {
 
 export default function UmbrellaSlotAnimationIcon({
   direction = "rental",
-  speed = 5,
+  speed = 3,
   autoplay = true,
   slotColor = "yellow",
   className,

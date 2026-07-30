@@ -20,7 +20,7 @@ export function SlotActionCard({
   return (
     <div className="flex w-full flex-col items-center gap-14">
       <div className="flex flex-col items-center gap-10">
-        <UmbrellaSlotAnimationIcon direction={type} speed={4} />
+        <UmbrellaSlotAnimationIcon direction={type} speed={3} />
 
         <div className="flex flex-col items-center gap-2">
           <p className="text-tertiary-text text-lg">{label}</p>

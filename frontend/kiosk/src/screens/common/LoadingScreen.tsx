@@ -35,14 +35,14 @@ export function LoadingScreen({
 
   return (
     <KioskLayout currentStep={currentStep}>
-      <div className="flex w-full flex-col items-center gap-14">
+      <div className="flex w-full flex-col items-center gap-20">
         <div className="flex flex-col items-center gap-2">
           <h2 className="text-3xl font-bold text-black">{title}</h2>
           <p className="text-tertiary-text text-lg">{subtitle}</p>
         </div>
 
         <div className="relative">
-          <img src={userIcon} alt="" className="h-56 w-56" />
+          <img src={userIcon} alt="" className="h-72.75 w-72.75" />
           <span className="text-primary absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rounded-full bg-white px-4 py-1.5 text-sm font-bold shadow-sm">
             {progress}%
           </span>
