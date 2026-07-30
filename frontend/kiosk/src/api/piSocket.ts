@@ -18,12 +18,17 @@ interface FaceAuthStreamCallbacks {
 // 실서버 실측 프로토콜(2026-07-30, 팀 채팅 확인) — Envelope 없는 flat {stage, ...} JSON 스트림.
 // AUTH_STARTED → (GUIDANCE ×N) → AUTH_SUCCEEDED|AUTH_FAILED → (SLOT_REQUESTED~DONE, 이번 범위 밖)
 // 모르는 stage는 에러 처리하지 않고 무시한다(팀 확인 원칙) — onUnhandledStage로만 흘려보냄.
-export function startFaceAuthStream(callbacks: FaceAuthStreamCallbacks): () => void {
+// mode(RENT/RETURN)를 트리거 메시지에 같이 실어 보낸다 — 서버가 대여/반납 흐름을 구분할 수 있도록.
+// 서버가 이 필드를 실제로 사용하는지는 미확인(추가된 필드, 기존 type은 그대로 유지).
+export function startFaceAuthStream(
+  mode: 'RENT' | 'RETURN',
+  callbacks: FaceAuthStreamCallbacks,
+): () => void {
   const socket = new WebSocket(PI_WS_URL)
 
   socket.onopen = () => {
-    console.log('[Pi WS] open')
-    socket.send(JSON.stringify({ type: 'START_FACE_AUTH' }))
+    console.log('[Pi WS] open', mode)
+    socket.send(JSON.stringify({ type: 'START_FACE_AUTH', mode }))
   }
 
   socket.onmessage = (event) => {

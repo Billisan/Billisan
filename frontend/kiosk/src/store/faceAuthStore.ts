@@ -2,11 +2,13 @@ import { create } from 'zustand'
 import { startFaceAuthStream } from '../api/piSocket'
 import { AUTH_SCREEN_VARIANT, type AuthScreenVariant } from '../types/faceAuth'
 
+type FaceAuthMode = 'RENT' | 'RETURN'
+
 interface FaceAuthState {
   variant: AuthScreenVariant
   guidanceMessage: string | null
-  startCapture: (onAuthenticated: () => void) => void
-  retry: (onAuthenticated: () => void) => void
+  startCapture: (mode: FaceAuthMode, onAuthenticated: () => void) => void
+  retry: (mode: FaceAuthMode, onAuthenticated: () => void) => void
   reset: () => void
 }
 
@@ -19,11 +21,12 @@ export const useFaceAuthStore = create<FaceAuthState>((set, get) => ({
 
   // DEC-032 — Pi에 얼굴 인증을 요청하고, 실시간 stage 스트림(AUTH_STARTED/GUIDANCE/AUTH_SUCCEEDED/AUTH_FAILED)에
   // 따라 화면을 전환한다. 프로토콜은 Envelope 방식이 아니라 flat {stage,...} 방식(2026-07-30 팀 확인).
-  startCapture: (onAuthenticated) => {
+  // mode(RENT/RETURN)를 트리거 메시지에 실어 보내 대여/반납 흐름을 서버가 구분할 수 있게 한다.
+  startCapture: (mode, onAuthenticated) => {
     closeStream?.()
     set({ variant: AUTH_SCREEN_VARIANT.FACE_CAPTURE, guidanceMessage: null })
 
-    closeStream = startFaceAuthStream({
+    closeStream = startFaceAuthStream(mode, {
       onGuidance: (message) => set({ guidanceMessage: message }),
 
       // MATCHED는 다음 화면으로 넘어가는 지점이라 이 스토어의 variant를 바꾸지 않는다 —
@@ -42,7 +45,7 @@ export const useFaceAuthStore = create<FaceAuthState>((set, get) => ({
   },
 
   // 새 인증 시도이므로 startCapture와 동일하게 처음부터 다시 연결한다.
-  retry: (onAuthenticated) => get().startCapture(onAuthenticated),
+  retry: (mode, onAuthenticated) => get().startCapture(mode, onAuthenticated),
 
   reset: () => {
     closeStream?.()

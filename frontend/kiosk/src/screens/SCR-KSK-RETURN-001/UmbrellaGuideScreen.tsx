@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { GuideContent } from '../../components/common/GuideContent'
 import { ClockIcon } from '../../components/icons/ClockIcon'
 import { EyeIcon } from '../../components/icons/EyeIcon'
@@ -15,10 +16,26 @@ const UMBRELLA_GUIDE_STEPS = [
   { icon: ClockIcon, text: '③ 우산을 2~3초간 움직이지 말아주세요.' },
 ]
 
+const AUTO_ADVANCE_SECONDS = 5
+
 export function UmbrellaGuideScreen({
   onAction,
   onBack,
 }: UmbrellaGuideScreenProps) {
+  const [secondsLeft, setSecondsLeft] = useState(AUTO_ADVANCE_SECONDS)
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSecondsLeft((prev) => prev - 1)
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    if (secondsLeft <= 0) onAction()
+  }, [secondsLeft, onAction])
+
   return (
     <KioskLayout onBack={onBack} currentStep={3} flow="RETURN">
       <GuideContent
@@ -30,6 +47,18 @@ export function UmbrellaGuideScreen({
         steps={UMBRELLA_GUIDE_STEPS}
         actionLabel="준비되었습니다"
         onAction={onAction}
+        footer={
+          <div className="flex flex-col items-center gap-3">
+            <div className="bg-primary flex h-18 w-18 items-center justify-center rounded-full">
+              <span className="text-3xl font-bold text-white">
+                {secondsLeft}
+              </span>
+            </div>
+            <p className="text-tertiary-text text-base">
+              5초 후 자동으로 우산 인식 화면으로 이동합니다
+            </p>
+          </div>
+        }
       />
     </KioskLayout>
   )

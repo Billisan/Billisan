@@ -12,6 +12,7 @@ interface GuideContentProps {
   steps: GuideStep[]
   actionLabel: string
   onAction: () => void
+  footer?: ReactNode
 }
 
 export function GuideContent({
@@ -21,6 +22,7 @@ export function GuideContent({
   steps,
   actionLabel,
   onAction,
+  footer,
 }: GuideContentProps) {
   return (
     <div className="flex w-full flex-col items-center gap-14">
@@ -45,6 +47,8 @@ export function GuideContent({
           ))}
         </div>
       </div>
+
+      {footer}
 
       <button
         type="button"

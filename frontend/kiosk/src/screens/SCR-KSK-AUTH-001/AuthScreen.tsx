@@ -44,7 +44,7 @@ export function AuthScreen({
     case AUTH_SCREEN_VARIANT.GUIDE:
       return (
         <FaceAuthGuideScreen
-          onAction={() => startCapture(onAuthenticated)}
+          onAction={() => startCapture(mode, onAuthenticated)}
           onBack={onBack}
           flow={mode}
         />
@@ -81,7 +81,7 @@ export function AuthScreen({
             '마스크를 잠시 벗어주세요.',
           ]}
           actionLabel="안면 인식 다시하기"
-          onAction={() => retry(onAuthenticated)}
+          onAction={() => retry(mode, onAuthenticated)}
           secondaryActionLabel="홈으로 돌아가기"
           onSecondaryAction={onBack}
           currentStep={2}
