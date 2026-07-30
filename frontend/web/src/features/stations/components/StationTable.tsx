@@ -14,6 +14,14 @@ export function StationTable({ stations }: { stations: Station[] }) {
             <DataTable>
                 {/* 열 너비는 시안(1280px)의 헤더 x 좌표에서 역산한 값입니다. */}
                 <THead>
+                    {/*
+                     * 식별자와 이름을 **각각 다른 열**로 둡니다.
+                     *
+                     * 한 칸에 이름 + 그 아래 작은 UUID 로 합쳐 봤는데, 행 높이가 두 줄로
+                     * 늘어나면서 표가 길어지고 UUID 가 부속물처럼 흐려졌습니다. 로그에 찍힌
+                     * 값을 눈으로 훑어 내려가며 대조하려면 **한 열에 세로로 가지런히**
+                     * 놓이는 편이 낫습니다.
+                     */}
                     <Th className="w-[14%]">대여소ID</Th>
                     {/* 온라인 배지가 ON/OFF/ERR 로 짧아져서 시안 폭(9.12%)으로 되돌리고,
                         남은 자리는 이름이 긴 대여소가 있는 위치 칸에 넘겼습니다. */}
@@ -21,8 +29,20 @@ export function StationTable({ stations }: { stations: Station[] }) {
                     <Th align="center" className="w-[9.12%]">
                         온라인
                     </Th>
+                    {/*
+                     * `사용 가능 / 전체` 로 함께 보여 줍니다.
+                     *
+                     * 숫자 하나만 있으면 크기를 알 수 없습니다. `사용 가능 2` 가 슬롯 3개짜리
+                     * 대여소에서는 넉넉한 것이고 5개짜리에서는 부족한 것인데, 목록에서는
+                     * 구분이 안 됐습니다. 대시보드 재고 순위는 이미 `2 / 5` 로 쓰고 있어서
+                     * 두 화면의 읽는 법도 통일됩니다.
+                     *
+                     * 분모는 `ADMIN-INVENTORY-001` 의 `totalSlotCount`(전체 SLOT 수)입니다.
+                     * ERD 가 개별 우산을 식별하지 않으므로(DEC-ERD-011) '우산 총 개수' 라는
+                     * 값은 존재하지 않고, 셀 수 있는 건 슬롯 수뿐입니다.
+                     */}
                     <Th align="center" className="w-[14.87%]">
-                        사용 가능
+                        사용 가능 / 전체
                     </Th>
                     <Th align="center" className="w-[7.11%]">
                         파손
@@ -47,6 +67,10 @@ export function StationTable({ stations }: { stations: Station[] }) {
                              * 예전에는 `stationCode`('ST-003')를 깔았는데 ERD v3.0 이 그
                              * 컬럼을 P0 필수에서 뺐습니다. 신원은 `station_id` 뿐이라
                              * 다른 화면과 같은 축약 표기(앞 8자 + 복사)로 보여 줍니다.
+                             *
+                             * 앞 8자만 보면 대여소끼리 비슷해 보이지만, 이 열의 용도는
+                             * "눈으로 읽기"가 아니라 **로그에 찍힌 값과 대조하고 복사하기**
+                             * 입니다. 이름은 옆 칸이 맡습니다.
                              */}
                             <Td>
                                 <RefId id={station.stationId} label="대여소 ID" />
@@ -60,7 +84,10 @@ export function StationTable({ stations }: { stations: Station[] }) {
                                 <DeviceBadge status={station.deviceStatus} />
                             </Td>
                             <Td align="center" className="tabular-nums">
-                                {station.available}
+                                <span className="font-bold text-brand-ink">
+                                    {station.available}
+                                </span>
+                                <span className="text-brand-muted"> / {station.capacity}</span>
                             </Td>
                             <Td align="center" className="tabular-nums">
                                 {station.damaged}

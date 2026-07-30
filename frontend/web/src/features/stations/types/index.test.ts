@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+    SLOT_DISPLAY_TONE,
     deriveSlotDisplayStatus,
     formatSlotLabel,
     formatUpdatedAt,
@@ -163,5 +164,29 @@ describe('sortByStock', () => {
         expect(sortByStock(input).map((s) => s.stationId)).toEqual(['c', 'b', 'a']);
         // 목록 훅이 캐시된 배열을 넘기므로 제자리 정렬이면 캐시가 오염됩니다.
         expect(input.map((s) => s.stationId)).toEqual(['a', 'b', 'c']);
+    });
+});
+
+describe('슬롯 표시 색', () => {
+    it('여섯 상태가 서로 다른 색이다', () => {
+        /*
+         * 예전에는 `빈 슬롯`·`이용 중지`·`확인 필요` 셋이 모두 회색이라 표에서
+         * 구분되지 않았습니다. 성격이 전혀 다른 상태들입니다 — 빈 슬롯은 정상이고
+         * 이용 중지는 사람이 손대야 풀립니다.
+         */
+        const tones = Object.values(SLOT_DISPLAY_TONE);
+        expect(new Set(tones).size, `색 중복: ${JSON.stringify(SLOT_DISPLAY_TONE)}`).toBe(
+            tones.length,
+        );
+    });
+
+    it('정상 상태만 초록이고, 문제 상태는 회색이 아니다', () => {
+        expect(SLOT_DISPLAY_TONE.AVAILABLE).toBe('green');
+        // 회색은 '아무 일 없음'입니다. 빈 슬롯만 해당합니다.
+        expect(SLOT_DISPLAY_TONE.EMPTY).toBe('slate');
+        for (const status of ['DAMAGED', 'ADMIN_REVIEW', 'OUT_OF_SERVICE', 'UNKNOWN'] as const) {
+            expect(SLOT_DISPLAY_TONE[status], status).not.toBe('slate');
+            expect(SLOT_DISPLAY_TONE[status], status).not.toBe('green');
+        }
     });
 });

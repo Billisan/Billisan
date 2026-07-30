@@ -20,6 +20,15 @@ export const http: AxiosInstance = axios.create({
     timeout: 10_000,
     headers: {
         'Content-Type': 'application/json',
+        /*
+         * 계약이 **필수(O)** 로 정한 헤더입니다. `ADMIN-AUTH-001` 을 비롯한 10개 계약이
+         * 전부 `Accept: application/json` 을 요청 헤더에 명시합니다.
+         *
+         * axios 는 기본값으로 `application/json` 뒤에 `text/plain` 과 와일드카드를 덧붙여
+         * 보냅니다. 서버가 `Accept` 를 엄격히 보면 그 때문에 협상이 어긋날 수 있어서,
+         * 계약에 적힌 값만 그대로 보냅니다.
+         */
+        Accept: 'application/json',
     },
     /**
      * 세션 쿠키를 같이 보냅니다.

@@ -195,12 +195,24 @@ export function InventoryPage() {
                  * 검색어 몫으로 두고, `001 상태 탭 변경` 처럼 선택 자체가 액션인 것은
                  * 바로 적용합니다 (화면흐름 §7.5).
                  */}
+                {/*
+                 * 대여소를 바꾸면 **우산 상태 필터를 기본값으로 되돌립니다.**
+                 *
+                 * 상태 필터는 그 대여소에서 눈에 띈 것을 좁혀 보려고 거는 조건이라, 대여소가
+                 * 바뀌면 근거가 사라집니다. 예전에는 조건이 따라붙어서 `파손` 을 보다가
+                 * 다른 대여소로 옮기면 빈 표가 나왔고, 필터가 걸려 있는 줄 모르면 "이 대여소는
+                 * 슬롯이 없다" 로 읽혔습니다.
+                 *
+                 * 검색어(`keyword`)는 그대로 둡니다. 슬롯 번호는 대여소가 바뀌어도 같은 뜻이라
+                 * "3번 슬롯을 대여소별로 훑어보는" 사용이 성립합니다.
+                 */}
                 <FilterSelect
                     label="대여소"
                     value={stationInput}
                     onChange={(next) => {
                         setStationInput(next);
-                        applyQuery({ station: next, keyword, status });
+                        setStatusInput('ALL');
+                        applyQuery({ station: next, keyword, status: 'ALL' });
                     }}
                     options={STATION_OPTIONS}
                     className="w-[150px]"

@@ -1,6 +1,8 @@
 import { NavLink } from 'react-router-dom';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 
+import { DateRangeFilter } from '@/features/history/components/DateRangeFilter';
+import type { DateRange, PeriodPreset } from '@/features/history/lib/dateRange';
 import { FilterSelect, type FilterOption } from '@/shared/components/FilterSelect';
 import { SearchInput } from '@/shared/components/SearchInput';
 import { cn } from '@/lib/utils';
@@ -47,9 +49,13 @@ export function HistoryTabs() {
 }
 
 interface HistoryFiltersProps<S extends string> {
-    period: string;
-    onPeriodChange: (value: string) => void;
-    periodOptions: readonly FilterOption<string>[];
+    period: PeriodPreset;
+    onPeriodChange: (value: PeriodPreset) => void;
+    /** 지금 적용된 조회 범위. 사용자 지정일 때 달력 두 칸에 들어갑니다. */
+    range: DateRange;
+    onCustomRangeChange: (next: DateRange) => void;
+    /** 달력이 미래를 못 고르게 막는 기준일 `YYYY-MM-DD` */
+    maxDay: string;
     status: S;
     onStatusChange: (value: S) => void;
     statusOptions: readonly FilterOption<S>[];
@@ -71,7 +77,9 @@ interface HistoryFiltersProps<S extends string> {
 export function HistoryFilters<S extends string>({
     period,
     onPeriodChange,
-    periodOptions,
+    range,
+    onCustomRangeChange,
+    maxDay,
     status,
     onStatusChange,
     statusOptions,
@@ -93,12 +101,12 @@ export function HistoryFilters<S extends string>({
 
     return (
         <form onSubmit={submit} className="mb-[20px] flex items-center gap-3">
-            <FilterSelect
-                label="조회 기간"
-                value={period}
-                onChange={onPeriodChange}
-                options={periodOptions}
-                className="w-[190px]"
+            <DateRangeFilter
+                period={period}
+                onPeriodChange={onPeriodChange}
+                range={range}
+                onCustomChange={onCustomRangeChange}
+                maxDay={maxDay}
             />
             <FilterSelect
                 label="상태 필터"

@@ -4,6 +4,12 @@ import { useSearchParams } from 'react-router-dom';
 
 import { DetailLink } from '@/features/stations/components/DetailLink';
 import {
+    DEFAULT_PERIOD,
+    parsePeriod,
+    resolveRange,
+    withinRange,
+} from '@/features/history/lib/dateRange';
+import {
     HistoryFilters,
     HistoryTabs,
     ListFooter,
@@ -35,12 +41,6 @@ import { cn } from '@/lib/utils';
  * 신규 `RentalStatus` 를 추가하지 않습니다 (§8.1).
  */
 
-const PERIOD_OPTIONS: readonly FilterOption<string>[] = [
-    { value: '30D', label: '기간: 07.01 ~ 07.24' },
-    { value: '7D', label: '기간: 최근 7일' },
-    { value: 'TODAY', label: '기간: 오늘' },
-];
-
 type StatusFilter = 'ALL' | RentalDisplayStatus;
 
 /*
@@ -70,7 +70,20 @@ export function RentalListPage() {
     const [searchParams, setSearchParams] = useSearchParams();
     // 행 아무 데나 눌러도 상세로 (재고·대여소 표와 같은 규칙)
     const rowNavigate = useRowNavigate();
-    const period = searchParams.get('period') ?? '30D';
+    const period = parsePeriod(searchParams.get('period'));
+    /*
+     * 지금 적용된 조회 범위. 사용자 지정일 때만 `from`·`to` 를 읽고, 프리셋이면
+     * 기준일에서 계산합니다.
+     *
+     * `useMemo` 로 감싸는 건 아래 목록 필터가 이 값을 의존성으로 쓰기 때문입니다.
+     * 매 렌더마다 새 객체가 나오면 목록이 늘 다시 걸러집니다.
+     */
+    const customFrom = searchParams.get('from') ?? undefined;
+    const customTo = searchParams.get('to') ?? undefined;
+    const range = useMemo(
+        () => resolveRange(period, HISTORY_SYNCED_AT, { from: customFrom, to: customTo }),
+        [period, customFrom, customTo],
+    );
     const status = (searchParams.get('status') ?? 'ALL') as StatusFilter;
     const keyword = searchParams.get('q')?.trim() ?? '';
     const page = Math.max(1, Number(searchParams.get('page')) || 1);
@@ -84,9 +97,11 @@ export function RentalListPage() {
                 !normalized ||
                 rental.rentalId.toLowerCase().includes(normalized) ||
                 rental.userRef.toLowerCase().includes(normalized);
-            return matchesStatus && matchesKeyword;
+            // 대여 시각 기준입니다. 조회 기간은 '언제 빌려 갔나' 를 묻는 것입니다.
+            const matchesPeriod = withinRange(rental.rentedAt, range);
+            return matchesPeriod && matchesStatus && matchesKeyword;
         });
-    }, [status, keyword, rentals]);
+    }, [status, keyword, rentals, range]);
 
     const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
     const currentPage = Math.min(page, totalPages);
@@ -123,8 +138,9 @@ export function RentalListPage() {
      * 기간은 늘 걸려 있는 조건이라(기본 30일) 이것만으로는 '필터 중'으로 보지 않습니다.
      * 기본값에서 벗어난 것만 셉니다.
      */
-    const hasFilter = period !== '30D' || status !== 'ALL' || keyword !== '';
-    const resetFilters = () => patch({ period: '30D', status: 'ALL', q: '', page: '1' });
+    const hasFilter = period !== DEFAULT_PERIOD || status !== 'ALL' || keyword !== '';
+    const resetFilters = () =>
+        patch({ period: DEFAULT_PERIOD, status: 'ALL', q: '', from: '', to: '', page: '1' });
 
     return (
         <div>
@@ -136,7 +152,11 @@ export function RentalListPage() {
             <HistoryFilters
                 period={period}
                 onPeriodChange={(value) => patch({ period: value, page: '1' })}
-                periodOptions={PERIOD_OPTIONS}
+                range={range}
+                onCustomRangeChange={(next) =>
+                    patch({ period: 'CUSTOM', from: next.from, to: next.to, page: '1' })
+                }
+                maxDay={HISTORY_SYNCED_AT.slice(0, 10)}
                 status={status}
                 onStatusChange={(value) => patch({ status: value, page: '1' })}
                 statusOptions={STATUS_OPTIONS}
