@@ -16,10 +16,10 @@ public class UserAccount {
     @Column(name = "user_id", columnDefinition = "CHAR(9)", updatable = false, nullable = false)
     private String userId;
 
-    @Column(name = "user_ref", columnDefinition = "CHAR(36)", updatable = false, nullable = false)
+    @Column(name = "user_ref", columnDefinition = "CHAR(36)", updatable = false, nullable = false, unique = true)
     private UUID userRef;
 
-    @Column(name = "login_id", nullable = false, length = 254)
+    @Column(name = "login_id", nullable = false, length = 254, unique = true)
     private String loginId;
 
     @Column(name = "password_hash", nullable = false, length = 255)

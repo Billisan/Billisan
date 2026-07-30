@@ -16,7 +16,7 @@ public class AdminAccount {
     @Column(name = "admin_id", columnDefinition = "CHAR(36)", updatable = false, nullable = false)
     private UUID adminId;
 
-    @Column(name = "login_id", nullable = false, length = 100)
+    @Column(name = "login_id", nullable = false, length = 100, unique = true)
     private String loginId;
 
     @Column(name = "password_hash", nullable = false, length = 255)

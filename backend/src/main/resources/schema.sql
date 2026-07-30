@@ -7,7 +7,9 @@ CREATE TABLE IF NOT EXISTS `user_account` (
     `face_registered` BOOLEAN      NOT NULL DEFAULT FALSE,
     `created_at`      DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     `updated_at`      DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    PRIMARY KEY (`user_id`)
+    PRIMARY KEY (`user_id`),
+    UNIQUE KEY `uk_user_account_login_id` (`login_id`),
+    UNIQUE KEY `uk_user_account_user_ref` (`user_ref`)
 );
 
 CREATE TABLE IF NOT EXISTS `admin_account` (
@@ -17,5 +19,6 @@ CREATE TABLE IF NOT EXISTS `admin_account` (
     `name`          VARCHAR(100) NOT NULL,
     `created_at`    DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     `updated_at`    DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    PRIMARY KEY (`admin_id`)
+    PRIMARY KEY (`admin_id`),
+    UNIQUE KEY `uk_admin_account_login_id` (`login_id`)
     );
