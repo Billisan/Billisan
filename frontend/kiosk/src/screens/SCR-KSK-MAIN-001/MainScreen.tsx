@@ -16,6 +16,7 @@ import { MAIN_SCREEN_VARIANT } from "../../types/slot";
 
 interface MainScreenProps {
   onRent?: () => void;
+  onReturn?: () => void;
 }
 
 const INFO_NOTICE_ITEMS = [
@@ -36,7 +37,7 @@ const INFO_NOTICE_ITEMS = [
   },
 ];
 
-export function MainScreen({ onRent }: MainScreenProps) {
+export function MainScreen({ onRent, onReturn }: MainScreenProps) {
   const usableSlotCount = useKioskMainStore((state) => state.usableSlotCount);
   const returnableSlotCount = useKioskMainStore(
     (state) => state.returnableSlotCount,
@@ -96,6 +97,7 @@ export function MainScreen({ onRent }: MainScreenProps) {
               icon={ReturnIcon}
               title="반납"
               subtitle="대여한 우산을 반납합니다"
+              onClick={onReturn}
               className="flex-1"
             />
           </div>
