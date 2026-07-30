@@ -18,18 +18,18 @@ export function SlotActionCard({
   onAction,
 }: SlotActionCardProps) {
   return (
-    <div className="flex w-full flex-col items-center gap-14">
-      <div className="flex flex-col items-center gap-10">
-        <UmbrellaSlotAnimationIcon direction={type} speed={3} />
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col items-center justify-evenly">
+      <div className="flex flex-col items-center gap-12">
+        <UmbrellaSlotAnimationIcon direction={type} speed={3} scale={1.4} />
 
-        <div className="flex flex-col items-center gap-2">
-          <p className="text-tertiary-text text-lg">{label}</p>
+        <div className="flex flex-col items-center">
+          <p className="text-tertiary-text text-xl">{label}</p>
           <p className="text-8xl font-bold text-black">
             {String(slotNumber).padStart(2, '0')}
           </p>
         </div>
 
-        <p className="text-xl font-medium text-black">{message}</p>
+        <p className="text-2xl font-medium text-black">{message}</p>
       </div>
 
       <button

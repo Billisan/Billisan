@@ -16,7 +16,7 @@ export function ReturnSlotScreen({
     <KioskLayout onBack={onBack} currentStep={4} flow="RETURN">
       <SlotActionCard
         slotNumber={slotNumber}
-        label="반납 우산함 번호"
+        label="우산함 번호"
         message={`${slotNumber}번 우산함에 우산을 넣어주세요`}
         actionLabel="넣었어요"
         type="return"

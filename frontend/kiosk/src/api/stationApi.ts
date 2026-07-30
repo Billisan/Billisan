@@ -7,7 +7,7 @@ type StockScenario = Pick<
 
 // 수동 테스트 시나리오 — MOCK_SCENARIO를 아래 중 하나로 바꿔서 화면 분기를 확인한다.
 const SCENARIOS: Record<'AVAILABLE' | 'EMPTY' | 'STALE', StockScenario> = {
-  AVAILABLE: { usableSlotCount: 3, returnableSlotCount: 2, stale: false },
+  AVAILABLE: { usableSlotCount: 2, returnableSlotCount: 3, stale: false },
   EMPTY: { usableSlotCount: 0, returnableSlotCount: 2, stale: false },
   STALE: { usableSlotCount: 3, returnableSlotCount: 2, stale: true },
 }
