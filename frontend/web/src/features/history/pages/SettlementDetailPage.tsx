@@ -113,8 +113,8 @@ export function SettlementDetailPage() {
 
                 <InfoCard title="대상 · 근거">
                     <InfoRow label="사용자">
-                        <ValueLink to={`/users/${item.userId}/history`}>
-                            {shortId(item.userId)}
+                        <ValueLink to={`/users/${item.userRef}/history`}>
+                            {shortId(item.userRef)}
                         </ValueLink>
                     </InfoRow>
                     <InfoRow label="최종 판정">

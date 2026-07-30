@@ -29,7 +29,7 @@ export const MOCK_NS = {
     returnAttempt: 'return-attempt',
     rental: 'rental',
     settlement: 'settlement',
-    /** `USER_ACCOUNT.user_id` (ERD 7장). 학번·`login_id` 에서 파생되지 않는 가명 식별자입니다. */
+    /** `USER_ACCOUNT.user_ref` (ERD v3.0 §7.1). 학번에서 유도하지 않는 가명 UUID 입니다. */
     user: 'user',
 } as const;
 

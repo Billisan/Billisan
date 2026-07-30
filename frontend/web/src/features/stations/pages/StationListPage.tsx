@@ -1,4 +1,3 @@
-import { Search } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
@@ -7,6 +6,7 @@ import { useStations } from '@/features/stations/hooks/useStations';
 import { STATIONS_SYNCED_AT } from '@/features/stations/mocks/stations';
 import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
+import { SearchInput } from '@/shared/components/SearchInput';
 import { PageTitle } from '@/shared/components/PageTitle';
 import { Pagination } from '@/shared/components/Pagination';
 
@@ -81,19 +81,17 @@ export function StationListPage() {
             <PageTitle className="mb-[29px]">대여소 관리</PageTitle>
 
             <form onSubmit={handleSubmit} className="mb-9 flex items-center gap-3">
-                <label className="relative block">
-                    <span className="sr-only">대여소 검색</span>
-                    <Search
-                        className="pointer-events-none absolute left-[14px] top-1/2 size-[13px] -translate-y-1/2 text-brand-muted"
-                        aria-hidden
-                    />
-                    <input
-                        value={keywordInput}
-                        onChange={(event) => setKeywordInput(event.target.value)}
-                        placeholder="대여소명 · 대여소ID 검색"
-                        className="h-[38px] w-[320px] rounded-lg bg-brand-surface pl-[38px] pr-3 text-[12.5px] font-medium text-brand-ink outline-none transition-shadow placeholder:text-brand-muted focus-visible:ring-2 focus-visible:ring-brand-blue/40"
-                    />
-                </label>
+                <SearchInput
+                    label="대여소 검색"
+                    placeholder="대여소명 · 대여소ID 검색"
+                    value={keywordInput}
+                    onChange={setKeywordInput}
+                    onClear={() => {
+                        setKeywordInput('');
+                        applyQuery({ keyword: '', page: 1 });
+                    }}
+                    className="w-[320px]"
+                />
 
                 <button
                     type="submit"

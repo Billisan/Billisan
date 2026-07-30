@@ -1,5 +1,5 @@
 import { shortId } from '@/shared/lib/shortId';
-import { useMemo, type FormEvent } from 'react';
+import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import { DetailLink } from '@/features/stations/components/DetailLink';
@@ -77,7 +77,7 @@ export function SettlementListPage() {
             const matchesKeyword =
                 !normalized ||
                 item.settlementId.toLowerCase().includes(normalized) ||
-                item.userId.toLowerCase().includes(normalized);
+                item.userRef.toLowerCase().includes(normalized);
             return matchesStatus && matchesKeyword;
         });
     }, [status, keyword, settlements]);
@@ -107,11 +107,6 @@ export function SettlementListPage() {
         setSearchParams(params);
     };
 
-    const handleSubmit = (event: FormEvent) => {
-        event.preventDefault();
-        patch({ page: '1' });
-    };
-
     return (
         <div>
             <PageBar className="mb-[18px]" meta={`${HISTORY_SYNCED_AT} 기준`} />
@@ -127,9 +122,8 @@ export function SettlementListPage() {
                 onStatusChange={(value) => patch({ status: value, page: '1' })}
                 statusOptions={STATUS_OPTIONS}
                 keyword={keyword}
-                onKeywordChange={(value) => patch({ q: value })}
+                onSearch={(value) => patch({ q: value, page: '1' })}
                 keywordPlaceholder="사용자 · 정산 ID 검색"
-                onSubmit={handleSubmit}
             />
 
             <StatStrip
@@ -183,7 +177,7 @@ export function SettlementListPage() {
                                 {item.createdAt.slice(5)}
                             </span>
                             <span className="font-medium text-brand-ink-soft">
-                                {shortId(item.userId)}
+                                {shortId(item.userRef)}
                             </span>
                             <RefId id={item.settlementId} label="정산 ID" />
                             <span className="flex items-center gap-[10px]">

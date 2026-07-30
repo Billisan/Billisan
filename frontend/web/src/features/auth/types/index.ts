@@ -14,7 +14,13 @@ export type AdminRole = 'ADMIN';
 
 /** 인증된 관리자 신원. 세 API 가 같은 필드를 돌려줍니다. */
 export interface AdminIdentity {
-    /** `adminId` — UUID. ERD `USER_ACCOUNT.user_id` 에 대응합니다. */
+    /**
+     * `adminId` — `ADMIN_ACCOUNT.admin_id` (`CHAR(36)`).
+     *
+     * 일반 사용자와 **다른 테이블**입니다. ERD v3.0 이 `ADMIN_ACCOUNT` 를 분리하고
+     * `USER_ACCOUNT.role` 을 제거했습니다 (변경 이력 `DEC-047`). 그래서 관리자 신원을
+     * 사용자 테이블에서 찾으면 안 됩니다.
+     */
     adminId: string;
     /** 대학 계정 형식 식별자. 화면에 보여줄 수 있는 유일한 관리자 표시값입니다. */
     loginId: string;

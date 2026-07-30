@@ -1,5 +1,5 @@
 import { shortId } from '@/shared/lib/shortId';
-import { useMemo, type FormEvent } from 'react';
+import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import { DetailLink } from '@/features/stations/components/DetailLink';
@@ -13,7 +13,8 @@ import { HISTORY_SYNCED_AT } from '@/features/history/mocks/history';
 import {
     RETURN_STATUS_LABEL,
     RETURN_STATUS_TONE,
-    type ReturnDisplayStatus,
+    REVIEW_STATUS_LABEL,
+    REVIEW_STATUS_TONE,
 } from '@/features/history/types';
 import { Badge } from '@/shared/components/Badge';
 import { useReturns } from '@/features/history/hooks/useHistory';
@@ -39,18 +40,28 @@ const PERIOD_OPTIONS: readonly FilterOption<string>[] = [
     { value: 'TODAY', label: '기간: 오늘' },
 ];
 
-type StatusFilter = 'ALL' | ReturnDisplayStatus;
+/*
+ * 걸러 보는 축은 **검수 처리 상태**입니다.
+ *
+ * 화면흐름 §9.1 의 조회 조건은 `ReturnAttemptStatus`·AI 결과·관리자 처리 상태 셋 다지만,
+ * 반납 상태는 실제로 거의 전부 `COMPLETED` 라 걸러도 남는 게 그대로입니다. 관리자가
+ * 찾는 건 "아직 판정 안 한 것"이라 그 축을 드롭다운에 둡니다. 반납 상태는 옆 열에
+ * 그대로 보이니 정보가 사라지지는 않습니다.
+ *
+ * TODO: 반납 상태·AI 결과 필터도 계약에 있습니다. 드롭다운을 더 붙이려면 HistoryFilters
+ *       에 선택 축을 추가해야 해서 이력 3종을 함께 손봐야 합니다.
+ */
+type StatusFilter = 'ALL' | 'PENDING' | 'DECIDED' | 'NONE';
 
 const STATUS_OPTIONS: readonly FilterOption<StatusFilter>[] = [
-    { value: 'ALL', label: '상태 · 전체' },
-    { value: 'REVIEW_PENDING', label: '검수 대기' },
-    { value: 'REVIEW_DONE', label: '검수 완료' },
-    { value: 'COMPLETED', label: '반납완료' },
-    { value: 'RECOVERY', label: '복구 필요' },
+    { value: 'ALL', label: '검수 · 전체' },
+    { value: 'PENDING', label: REVIEW_STATUS_LABEL.PENDING },
+    { value: 'DECIDED', label: REVIEW_STATUS_LABEL.DECIDED },
+    { value: 'NONE', label: '검수 없음' },
 ];
 
 const PAGE_SIZE = 7;
-const COLS = 'grid-cols-[153px_124px_163px_298px_136px_1fr]';
+const COLS = 'grid-cols-[140px_112px_150px_232px_112px_104px_1fr]';
 
 export function ReturnListPage() {
     // 확정 API 가 없어 목업이 뒤에 있습니다. 화면은 그 사실을 모릅니다.
@@ -69,11 +80,13 @@ export function ReturnListPage() {
     const rows = useMemo(() => {
         const normalized = keyword.toLowerCase();
         return returns.filter((item) => {
-            const matchesStatus = status === 'ALL' || item.status === status;
+            const matchesStatus =
+                status === 'ALL' ||
+                (status === 'NONE' ? item.reviewStatus === null : item.reviewStatus === status);
             const matchesKeyword =
                 !normalized ||
                 item.returnAttemptId.toLowerCase().includes(normalized) ||
-                item.userId.toLowerCase().includes(normalized);
+                item.userRef.toLowerCase().includes(normalized);
             return matchesStatus && matchesKeyword;
         });
     }, [status, keyword, returns]);
@@ -83,7 +96,7 @@ export function ReturnListPage() {
     const start = (currentPage - 1) * PAGE_SIZE;
     const visible = rows.slice(start, start + PAGE_SIZE);
 
-    const pending = returns.filter((item) => item.status === 'REVIEW_PENDING').length;
+    const pending = returns.filter((item) => item.reviewStatus === 'PENDING').length;
     const today = returns.filter((item) => item.attemptedAt.startsWith('2026-07-24')).length;
 
     const patch = (next: Record<string, string>) => {
@@ -93,11 +106,6 @@ export function ReturnListPage() {
             else params.set(key, value);
         });
         setSearchParams(params);
-    };
-
-    const handleSubmit = (event: FormEvent) => {
-        event.preventDefault();
-        patch({ page: '1' });
     };
 
     return (
@@ -115,9 +123,8 @@ export function ReturnListPage() {
                 onStatusChange={(value) => patch({ status: value, page: '1' })}
                 statusOptions={STATUS_OPTIONS}
                 keyword={keyword}
-                onKeywordChange={(value) => patch({ q: value })}
+                onSearch={(value) => patch({ q: value, page: '1' })}
                 keywordPlaceholder="사용자 · 반납 ID 검색"
-                onSubmit={handleSubmit}
             />
 
             <StatStrip
@@ -138,7 +145,8 @@ export function ReturnListPage() {
                     <span>사용자</span>
                     <span>반납 ID</span>
                     <span>반납 위치</span>
-                    <span>반납 처리</span>
+                    <span>반납 상태</span>
+                    <span>관리자 검수</span>
                     <span className="text-center">상세</span>
                 </div>
 
@@ -163,7 +171,7 @@ export function ReturnListPage() {
                                 {item.attemptedAt.slice(5)}
                             </span>
                             <span className="font-medium text-brand-ink-soft">
-                                {shortId(item.userId)}
+                                {shortId(item.userRef)}
                             </span>
                             <RefId id={item.returnAttemptId} label="반납 시도 ID" />
                             <span className="truncate font-medium text-brand-ink-soft">
@@ -176,6 +184,16 @@ export function ReturnListPage() {
                                 <Badge tone={RETURN_STATUS_TONE[item.status]}>
                                     {RETURN_STATUS_LABEL[item.status]}
                                 </Badge>
+                            </span>
+                            {/* 검수가 안 걸린 반납은 비웁니다 — AI 가 정상으로 본 건은 넘어오지 않습니다. */}
+                            <span>
+                                {item.reviewStatus ? (
+                                    <Badge tone={REVIEW_STATUS_TONE[item.reviewStatus]}>
+                                        {REVIEW_STATUS_LABEL[item.reviewStatus]}
+                                    </Badge>
+                                ) : (
+                                    <span className="text-brand-muted">—</span>
+                                )}
                             </span>
                             <span className="flex justify-center">
                                 <DetailLink to={`/history/returns/${item.returnAttemptId}`} />

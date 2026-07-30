@@ -1,4 +1,3 @@
-import { Search } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 
@@ -13,6 +12,7 @@ import {
 } from '@/features/stations/types';
 import { FilterSelect, type FilterOption } from '@/shared/components/FilterSelect';
 import { PageBar } from '@/shared/components/PageBar';
+import { SearchInput } from '@/shared/components/SearchInput';
 import { PageTitle } from '@/shared/components/PageTitle';
 import { SLOT_DISPLAY_LABEL } from '@/shared/constants/statusLabels';
 
@@ -157,19 +157,17 @@ export function StationDetailPage() {
                     className="w-[150px]"
                 />
 
-                <label className="relative block">
-                    <span className="sr-only">슬롯 번호·대여소 검색</span>
-                    <Search
-                        className="pointer-events-none absolute left-[14px] top-1/2 size-[13px] -translate-y-1/2 text-brand-muted"
-                        aria-hidden
-                    />
-                    <input
-                        value={keywordInput}
-                        onChange={(event) => setKeywordInput(event.target.value)}
-                        placeholder="슬롯 번호 · 대여소 검색"
-                        className="h-[38px] w-[320px] rounded-lg bg-brand-surface pl-[38px] pr-3 text-[12.5px] font-medium text-brand-ink outline-none transition-shadow placeholder:text-brand-muted focus-visible:ring-2 focus-visible:ring-brand-blue/40"
-                    />
-                </label>
+                <SearchInput
+                    label="슬롯 번호·대여소 검색"
+                    placeholder="슬롯 번호 · 대여소 검색"
+                    value={keywordInput}
+                    onChange={setKeywordInput}
+                    onClear={() => {
+                        setKeywordInput('');
+                        applyQuery({ keyword: '', status });
+                    }}
+                    className="w-[320px]"
+                />
 
                 <button
                     type="submit"

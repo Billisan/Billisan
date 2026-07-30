@@ -14,6 +14,8 @@ import {
     RENTAL_STATUS_LABEL,
     RENTAL_STATUS_TONE,
     rentalDisplayStatus,
+    REVIEW_STATUS_LABEL,
+    SETTLEMENT_STATUS_LABEL,
 } from '@/features/history/types';
 import { Badge } from '@/shared/components/Badge';
 import { useRental } from '@/features/history/hooks/useHistory';
@@ -71,7 +73,7 @@ export function RentalDetailPage() {
                 id={rental.rentalId}
                 actions={
                     <>
-                        <DetailLinkButton to={`/users/${rental.userId}/history`}>
+                        <DetailLinkButton to={`/users/${rental.userRef}/history`}>
                             사용자 이력
                         </DetailLinkButton>
                         {rental.returnAttemptId && (
@@ -92,8 +94,8 @@ export function RentalDetailPage() {
                         <RefId id={rental.rentalId} label="대여 ID" />
                     </InfoRow>
                     <InfoRow label="사용자">
-                        <ValueLink to={`/users/${rental.userId}/history`}>
-                            {shortId(rental.userId)}
+                        <ValueLink to={`/users/${rental.userRef}/history`}>
+                            {shortId(rental.userRef)}
                         </ValueLink>
                     </InfoRow>
                     <InfoRow label="대여 대여소">
@@ -125,7 +127,12 @@ export function RentalDetailPage() {
                             <InfoRow label="반납 슬롯">
                                 {linkedReturn.slotLabel ?? '슬롯 미선정'}
                             </InfoRow>
-                            <InfoRow label="반납 처리">
+                            {/*
+                             * 예전 이름이 '반납 처리' 였는데, 아래 타임라인의 '반납 처리'
+                             * 단계(관리자 검수 판정)와 이름이 겹쳐서 한 화면에서 같은 말이
+                             * 두 가지를 가리켰습니다. 이 행의 값은 반납 시도 ID 입니다.
+                             */}
+                            <InfoRow label="반납 시도 ID">
                                 <ValueLink to={`/history/returns/${linkedReturn.returnAttemptId}`}>
                                     {shortId(linkedReturn.returnAttemptId)}
                                 </ValueLink>
@@ -159,15 +166,34 @@ export function RentalDetailPage() {
                             at: linkedReturn?.attemptedAt.slice(5) ?? '—',
                             done: Boolean(linkedReturn),
                         },
+                        /*
+                         * 관리자 검수 판정 단계입니다. 예전 이름 '반납 처리' 는 위 '대여 상태
+                         * = 반납완료' 와 나란히 놓이면 "반납완료인데 반납 처리가 미처리" 라는
+                         * 모순처럼 읽혔습니다. 반납(우산이 돌아온 것)과 검수(파손 판정)는
+                         * 다른 일이라 이름으로 갈라 둡니다.
+                         *
+                         * 검수가 걸리지 않은 반납(AI 정상)은 판정할 게 없어 완료로 봅니다.
+                         */
                         {
-                            label: '반납 처리',
-                            at: linkedReturn?.attemptedAt.slice(11) ?? '—',
-                            done: Boolean(linkedReturn),
+                            label: '관리자 검수',
+                            at: linkedReturn
+                                ? linkedReturn.reviewStatus === null
+                                    ? '해당 없음'
+                                    : REVIEW_STATUS_LABEL[linkedReturn.reviewStatus]
+                                : '—',
+                            done: Boolean(linkedReturn) && linkedReturn?.reviewStatus !== 'PENDING',
                         },
+                        /*
+                         * 정산 단계는 **결제까지 끝났을 때만** 완료입니다. 정산 행이 있으면
+                         * 체크를 찍던 예전 코드는 미정산(PENDING)인데 돈을 받은 것처럼
+                         * 보이게 했습니다. 정산 자체가 없는 건(무료 반납)은 '없음' 입니다.
+                         */
                         {
                             label: '정산',
-                            at: linkedSettlement?.createdAt.slice(11) ?? '—',
-                            done: Boolean(linkedSettlement),
+                            at: linkedSettlement
+                                ? SETTLEMENT_STATUS_LABEL[linkedSettlement.status]
+                                : '없음',
+                            done: linkedSettlement?.status === 'PAID',
                         },
                     ]}
                 />

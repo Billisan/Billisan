@@ -19,7 +19,7 @@ import type {
  *   GET  /api/v1/admin/auth/me
  *
  * 인증 실패는 계정 존재 여부를 구분하지 않고 `401 INVALID_ADMIN_CREDENTIALS` 하나입니다.
- * 역할이 `ADMIN` 이 아니면 `403 ADMIN_ROLE_REQUIRED` 이고 화면에서 401 과 구분해 처리합니다.
+ * 관리자 계정이 아니면 `403 ADMIN_ACCOUNT_REQUIRED` 이고 화면에서 401 과 구분해 처리합니다.
  */
 
 /** 목업 관리자. 응답에 이름 필드가 없으므로 loginId 만 있습니다. */
