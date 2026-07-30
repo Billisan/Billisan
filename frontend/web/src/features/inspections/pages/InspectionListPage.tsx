@@ -221,7 +221,7 @@ export function InspectionListPage() {
                                 AI 결과
                             </Th>
                             <Th align="center" className="w-[13.6%]">
-                                추론 점수
+                                신뢰도
                             </Th>
                             <Th align="center" className="w-[16%]">
                                 처리

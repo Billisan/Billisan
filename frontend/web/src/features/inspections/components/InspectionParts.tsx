@@ -6,7 +6,7 @@ import {
     aiResultText,
     type AiInspectionResult,
 } from '@/features/stations/types';
-import { Badge } from '@/shared/components/Badge';
+import { Badge, type BadgeTone } from '@/shared/components/Badge';
 import { codeHint, REVIEW_STATUS_LABEL } from '@/shared/constants/statusLabels';
 import { cn } from '@/lib/utils';
 
@@ -48,19 +48,34 @@ export function ReviewStatusBadge({ status }: { status: InspectionReviewStatus }
     );
 }
 
-/** 배지 톤 → 막대 색. 문자열 리터럴이어야 Tailwind JIT 가 클래스를 뽑아냅니다. */
-const BAR_CLASS = {
+/**
+ * 배지 톤 → 막대 색. 문자열 리터럴이어야 Tailwind JIT 가 클래스를 뽑아냅니다.
+ *
+ * `BadgeTone` 전체를 덮어야 합니다. 색을 하나 추가하고 여기를 빠뜨리면 타입 오류로
+ * 바로 잡힙니다 — `Record<BadgeTone, string>` 으로 못 박아 둔 이유입니다.
+ */
+const BAR_CLASS: Record<BadgeTone, string> = {
     green: 'bg-tone-green-fg',
     blue: 'bg-tone-blue-fg',
     amber: 'bg-tone-amber-fg',
     red: 'bg-tone-red-fg',
     slate: 'bg-tone-slate-fg',
-} as const;
+    violet: 'bg-tone-violet-fg',
+};
 
 /**
- * 추론 점수 + 막대.
+ * 신뢰도 + 막대.
  *
- * `FAILED` 는 점수 자체가 없어서 막대를 그리지 않습니다. 0.00 으로 채우면
+ * **화면 표기는 「신뢰도」로 통일합니다.** 예전에는 같은 값을 화면마다 다르게 불렀습니다 —
+ * 반납 상세는 「신뢰도」, 검수 목록·상세는 「추론 점수」, 슬롯 상세는 「점수」. 관리자가
+ * 서로 다른 값으로 오해할 여지가 있습니다.
+ *
+ * 기준은 ERD 입니다. `DAMAGE_INSPECTION.confidence DECIMAL(5,4) CHECK 0..1` 의 설명이
+ * 「신뢰도」이고, "`COMPLETED` 에는 유효 결과·**신뢰도**·모델 버전이 필수이며 `FAILED` 에는
+ * 결과·**신뢰도**가 NULL", "관리자는 AI 결과, **신뢰도**, 모델 버전 ... 을 기준으로 판정한다"
+ * 로 일관됩니다. 12-R 의 필드명만 `aiScore` 이고 화면 표기는 신뢰도입니다.
+ *
+ * `FAILED` 는 값 자체가 없어서 막대를 그리지 않습니다. 0.00 으로 채우면
  * '아주 확실하게 정상'처럼 읽혀 반대로 오해됩니다.
  */
 export function ScoreBar({
@@ -75,7 +90,7 @@ export function ScoreBar({
     if (score === null) {
         return (
             <span className={cn('block text-[11.5px] font-medium text-brand-muted', className)}>
-                점수 없음
+                신뢰도 없음
             </span>
         );
     }
@@ -114,7 +129,7 @@ export function NoImageNotice({ className }: { className?: string }) {
                 검수 이미지는 제공되지 않습니다
             </p>
             <p className="mt-[9px] text-[11.5px] font-medium leading-[1.6] text-brand-muted">
-                AI 는 판정 여부와 점수만 전달합니다.
+                AI 는 판정 여부와 신뢰도만 전달합니다.
                 <br />
                 현장에서 실물을 확인한 뒤 판정하세요.
             </p>

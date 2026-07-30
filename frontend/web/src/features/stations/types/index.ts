@@ -313,13 +313,31 @@ export function decisionHint(decision: InspectionDecision): string {
     return codeHint(DECISION_LABEL, decision);
 }
 
+/**
+ * 표시 상태 → 배지 색.
+ *
+ * **여섯 상태가 서로 다른 색을 갖습니다.** 예전에는 `빈 슬롯`·`이용 중지`·`확인 필요`
+ * 셋이 모두 회색이라 표에서 구분되지 않았습니다. 셋의 성격은 전혀 다릅니다.
+ *
+ *   빈 슬롯     정상. 우산이 나가 있을 뿐이고 관리자가 할 일이 없습니다.
+ *   이용 중지   운영에서 빠진 상태. 사람이 손대야 풀립니다.
+ *   확인 필요   4축이 모순이라 무엇인지 확정할 수 없는 상태.
+ *
+ * 그래서 아무 일 없는 `빈 슬롯` 만 회색으로 두고 나머지를 갈랐습니다.
+ */
 export const SLOT_DISPLAY_TONE: Record<SlotDisplayStatus, BadgeTone> = {
+    /** 대여 가능 — 4축이 모두 맞은 상태 */
     AVAILABLE: 'green',
+    /** 우산이 나가 있음. 정상이라 눈에 띌 이유가 없습니다. */
     EMPTY: 'slate',
+    /** 파손 확정 */
     DAMAGED: 'red',
+    /** 관리자 판정 대기 */
     ADMIN_REVIEW: 'amber',
-    OUT_OF_SERVICE: 'slate',
-    UNKNOWN: 'slate',
+    /** 운영 제외. 빨강은 파손이 쓰고 있어 보라로 갈랐습니다. */
+    OUT_OF_SERVICE: 'violet',
+    /** 확정 불가. 파란색은 '진행 중'을 뜻해 오해가 없습니다. */
+    UNKNOWN: 'blue',
 };
 
 /**

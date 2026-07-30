@@ -175,13 +175,13 @@ export function SlotDetailPage() {
                     {inspection ? (
                         <>
                             {/* AI·관리자·슬롯은 값 집합이 셋 다 다릅니다. 라벨로도 구분해 둡니다. */}
-                            <InfoRow label="AI 판정 (참고) / 점수">
+                            <InfoRow label="AI 판정 (참고) / 신뢰도">
                                 <span className="flex items-center gap-[7px]">
                                     <Badge tone={AI_RESULT_TONE[inspection.aiResult]}>
                                         {aiResultText(inspection.aiResult)}
                                     </Badge>
                                     <span className="text-brand-muted">/</span>
-                                    {/* FAILED 는 점수가 없습니다. 0.00 으로 채우지 않습니다. */}
+                                    {/* FAILED 는 신뢰도가 없습니다. 0.00 으로 채우지 않습니다. */}
                                     <span className="text-[13px] font-semibold tabular-nums text-brand-ink">
                                         {formatScore(inspection.aiScore)}
                                     </span>
