@@ -1,5 +1,5 @@
 import { shortId } from '@/shared/lib/shortId';
-import { useMemo, type FormEvent } from 'react';
+import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import { DetailLink } from '@/features/stations/components/DetailLink';
@@ -83,7 +83,7 @@ export function RentalListPage() {
             const matchesKeyword =
                 !normalized ||
                 rental.rentalId.toLowerCase().includes(normalized) ||
-                rental.userId.toLowerCase().includes(normalized);
+                rental.userRef.toLowerCase().includes(normalized);
             return matchesStatus && matchesKeyword;
         });
     }, [status, keyword, rentals]);
@@ -119,11 +119,6 @@ export function RentalListPage() {
         setSearchParams(params);
     };
 
-    const handleSubmit = (event: FormEvent) => {
-        event.preventDefault();
-        patch({ page: '1' });
-    };
-
     return (
         <div>
             <PageBar className="mb-[18px]" meta={`${HISTORY_SYNCED_AT} 기준`} />
@@ -139,9 +134,8 @@ export function RentalListPage() {
                 onStatusChange={(value) => patch({ status: value, page: '1' })}
                 statusOptions={STATUS_OPTIONS}
                 keyword={keyword}
-                onKeywordChange={(value) => patch({ q: value })}
+                onSearch={(value) => patch({ q: value, page: '1' })}
                 keywordPlaceholder="사용자 · 대여 ID 검색"
-                onSubmit={handleSubmit}
             />
 
             <StatStrip
@@ -192,7 +186,7 @@ export function RentalListPage() {
                                     {rental.rentedAt.slice(5)}
                                 </span>
                                 <span className="font-medium text-brand-ink-soft">
-                                    {shortId(rental.userId)}
+                                    {shortId(rental.userRef)}
                                 </span>
                                 <RefId id={rental.rentalId} label="대여 ID" />
                                 <span className="truncate font-medium text-brand-ink-soft">

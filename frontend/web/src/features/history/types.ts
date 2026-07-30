@@ -84,16 +84,24 @@ export interface Rental {
     /** 개별 우산 ID 는 쓰지 않습니다. 대여 ID 로만 추적합니다 (§3.1 · DEC-028). */
     rentalId: string;
     /**
-     * `USER_ACCOUNT.user_id` (ERD 7장) — `CHAR(36)` UUID.
+     * `USER_ACCOUNT.user_ref` (ERD v3.0 §7.1) — `CHAR(36)` **가명 UUID**.
      *
-     * 필드명이 `userRef` 가 아닙니다. 12-R 에서 `userRef` 는 "Kiosk 응답에 포함·표시하지
-     * 않는다"는 금지 문장에만 나오고, ERD 의 `user_ref` 는 PostgreSQL `FACE_PROFILE` 쪽
-     * 컬럼입니다. 관리자 화면 문서는 `userId` 로 씁니다 (화면흐름 §8.2 · §9.2 · §12).
+     * **`user_id` 를 쓰면 안 됩니다.** v3.0 에서 두 컬럼이 갈렸습니다.
+     * ```
+     * user_id   CHAR(9)   PK · CHECK 9 DIGITS    정확히 9자리 숫자 학번
+     * user_ref  CHAR(36)  UNIQUE · UUID CHECK    Spring 생성 무작위 가명 UUID.
+     *                                            학번에서 유도 금지
+     * ```
+     * 학번은 그 자체로 직접 식별 정보입니다. 화면흐름 §6.3 이 마스킹하라고 한
+     * "대학 계정 식별자" 가 이것이라, 관리자 화면에는 가명키만 올립니다.
      *
-     * 화면에는 축약해서 보여 줍니다 — §12 "내부 userId 의 축약 표시".
-     * 이름·연락처·학번은 담지 않습니다 (§6.3).
+     * v2.1 ERD 에서는 `user_id` 가 `CHAR(36)` UUID 였습니다. 그 기준으로 이 필드를 한때
+     * `userId` 로 바꿨다가 v3.0 을 보고 되돌렸습니다 — 그대로 뒀으면 서버를 붙이는 순간
+     * 학번이 화면으로 올라옵니다.
+     *
+     * 화면에는 축약해서 보여 줍니다 (화면흐름 §12).
      */
-    userId: string;
+    userRef: string;
     stationName: string;
     stationId: string;
     /** 대여가 나간 슬롯 (`checkoutSlotId`) — UUID */
@@ -111,26 +119,62 @@ export interface Rental {
 
 /* ------------------------------------------------------------------ 반납 */
 
-export type ReturnDisplayStatus = 'REVIEW_PENDING' | 'REVIEW_DONE' | 'COMPLETED' | 'RECOVERY';
+/**
+ * 반납 시도 상태. ERD §8.0 「업무 DB Enum」 그대로입니다.
+ *
+ * ```
+ * ReturnAttemptStatus: PROCESSING | PHYSICAL_DONE | COMPLETED | RECOVERY_REQUIRED | FAILED
+ * ```
+ *
+ * **`REVIEW_PENDING`·`REVIEW_DONE` 은 없는 값이었습니다.** 그건 반납 상태가 아니라
+ * **검수 처리 상태**(`ReviewStatus: PENDING | DECIDED`)인데 한 칸에 섞여 있었습니다.
+ * `RECOVERY` 도 계약 값은 `RECOVERY_REQUIRED` 입니다.
+ *
+ * 화면흐름 §9.1 도 `status` · `InspectionResult` · `검수 처리 상태` 를 **세 개 따로**
+ * 표시하라고 합니다. 섞으면 "반납은 끝났고 검수만 남았다"와 "반납 자체가 안 끝났다"를
+ * 구분할 수 없습니다.
+ */
+export type ReturnAttemptStatus =
+    'PROCESSING' | 'PHYSICAL_DONE' | 'COMPLETED' | 'RECOVERY_REQUIRED' | 'FAILED';
 
-export const RETURN_STATUS_LABEL: Record<ReturnDisplayStatus, string> = {
-    REVIEW_PENDING: '검수 대기',
-    REVIEW_DONE: '검수 완료',
+export const RETURN_STATUS_LABEL: Record<ReturnAttemptStatus, string> = {
+    PROCESSING: '처리 중',
+    // 우산 삽입과 실제 잠금까지 끝난 물리 완료. 서버 반영은 아직입니다 (ERD §8.0).
+    PHYSICAL_DONE: '물리 완료',
     COMPLETED: '반납완료',
-    RECOVERY: '복구 필요',
+    RECOVERY_REQUIRED: '복구 필요',
+    FAILED: '실패',
 };
 
-export const RETURN_STATUS_TONE: Record<ReturnDisplayStatus, BadgeTone> = {
-    REVIEW_PENDING: 'amber',
-    REVIEW_DONE: 'blue',
+export const RETURN_STATUS_TONE: Record<ReturnAttemptStatus, BadgeTone> = {
+    PROCESSING: 'blue',
+    PHYSICAL_DONE: 'blue',
     COMPLETED: 'green',
-    RECOVERY: 'red',
+    RECOVERY_REQUIRED: 'red',
+    FAILED: 'red',
+};
+
+/**
+ * 관리자 검수 처리 상태. 반납 상태와 **다른 축**입니다 (`ADMIN-INSPECTION-001` 의
+ * `reviewStatus`). 검수가 걸리지 않은 반납은 `null` 입니다 — AI 가 정상으로 본 반납은
+ * 관리자 검수로 넘어오지 않습니다.
+ */
+export type ReturnReviewStatus = 'PENDING' | 'DECIDED';
+
+export const REVIEW_STATUS_LABEL: Record<ReturnReviewStatus, string> = {
+    PENDING: '미처리',
+    DECIDED: '처리 완료',
+};
+
+export const REVIEW_STATUS_TONE: Record<ReturnReviewStatus, BadgeTone> = {
+    PENDING: 'amber',
+    DECIDED: 'blue',
 };
 
 export interface ReturnAttempt {
     returnAttemptId: string;
     rentalId: string;
-    userId: string;
+    userRef: string;
     stationName: string;
     stationId: string;
     /** `returnSlotId` — UUID. 슬롯 미선정이면 null 입니다. */
@@ -138,7 +182,8 @@ export interface ReturnAttempt {
     /** 그 슬롯의 표시 라벨. 슬롯 미선정이면 null 입니다. */
     slotLabel: string | null;
     attemptedAt: string;
-    status: ReturnDisplayStatus;
+    /** 반납 자체가 어디까지 갔는지. 검수와 섞지 않습니다. */
+    status: ReturnAttemptStatus;
     /**
      * AI 보조 결과. 값 집합은 `NORMAL|DAMAGED|UNCERTAIN|FAILED` 입니다 (§17).
      * 시안은 여기에 `ADMIN_REVIEW` 를 적어 놨는데 그건 슬롯 상태라 쓰지 않습니다.
@@ -148,6 +193,17 @@ export interface ReturnAttempt {
     modelVersion: string;
     latencyMs: number;
     inspectionId: string | null;
+    /** 검수가 걸린 반납만 값이 있습니다. 반납 상태와 별개 축입니다. */
+    reviewStatus: ReturnReviewStatus | null;
+    /**
+     * 파손 정산.
+     *
+     * **검수가 `PENDING` 이면 반드시 `null` 입니다.** ERD §8.0 이
+     * "`DAMAGED | UNCERTAIN | FAILED` 추론은 자동 파손 확정이나 **자동 과금이 아니다**",
+     * `EDGE-INSPECT-001` 이 "메타데이터만 저장; **자동 과금 금지**" 라고 못 박았고,
+     * 파손 정산은 `ADMIN-INSPECTION-003` 이 `DAMAGED` 로 판정할 때 생깁니다.
+     * AI 점수만으로 돈을 물리면 계약 위반입니다.
+     */
     settlementId: string | null;
 }
 
@@ -184,7 +240,7 @@ export const SETTLEMENT_STATUS_TONE: Record<SettlementStatus, BadgeTone> = {
 
 export interface Settlement {
     settlementId: string;
-    userId: string;
+    userRef: string;
     reason: SettlementReason;
     /** 서버가 계산한 금액입니다. 클라이언트가 다시 계산하지 않습니다 (§17). */
     amount: number;

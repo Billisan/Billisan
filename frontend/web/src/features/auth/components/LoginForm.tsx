@@ -17,14 +17,14 @@ import { cn } from '@/lib/utils';
 /**
  * 실패 사유 → 화면 문구.
  *
- * `403 ADMIN_ROLE_REQUIRED` 를 반드시 갈라야 합니다. 자격은 맞는데 역할이 `ADMIN` 이 아닌
- * 경우라, 여기에 "비밀번호가 올바르지 않습니다"를 띄우면 사용자가 맞는 비밀번호를 계속
- * 다시 칩니다. 반대로 자격 실패는 계정 존재 여부를 드러내지 않게 한 문장으로 고정합니다.
+ * `403 ADMIN_ACCOUNT_REQUIRED` 를 반드시 갈라야 합니다. 자격은 맞는데 **관리자 계정이
+ * 아닌** 경우라, 여기에 "비밀번호가 올바르지 않습니다"를 띄우면 사용자가 맞는 비밀번호를
+ * 계속 다시 칩니다. 반대로 자격 실패는 계정 존재 여부를 드러내지 않게 한 문장으로 고정합니다.
  */
 function loginErrorMessage(error: unknown): string {
     switch (errorCodeOf(error)) {
-        case 'ADMIN_ROLE_REQUIRED':
-            return '관리자 권한이 없는 계정입니다.';
+        case 'ADMIN_ACCOUNT_REQUIRED':
+            return '관리자 계정이 아닙니다.';
         case 'ADMIN_SESSION_EXPIRED':
             return '세션이 만료되었습니다. 다시 로그인해 주세요.';
         default:
@@ -64,6 +64,14 @@ export function LoginForm() {
                 value={loginId}
                 onChange={(event) => setLoginId(event.target.value)}
                 autoComplete="username"
+                /*
+                 * 이 화면에 입력칸 말고는 할 일이 없습니다. 관리자가 마우스로 칸을 한 번
+                 * 짚고 시작해야 할 이유가 없어서 커서를 미리 넣어 둡니다.
+                 *
+                 * 화면 안에 폼이 하나뿐이라 autoFocus 의 흔한 부작용(여러 폼이 서로
+                 * 포커스를 빼앗음, 스크롤이 갑자기 튐)이 없습니다.
+                 */
+                autoFocus
                 className={cn(FIELD, 'mt-[9px] bg-brand-surface')}
             />
 

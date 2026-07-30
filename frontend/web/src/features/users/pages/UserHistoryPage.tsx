@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils';
  * 유사도는 금지. 필요성이 승인되면 `등록 여부`만 비생체 메타데이터로 표시"라고 했고,
  * `DEC-WEB-008` 권장안이 아예 `제거` 입니다. 얼굴 프로필 표시는 Orin 직접 조회를 유도합니다(§12).
  *
- * 표시 식별자는 내부 userId 축약뿐입니다. 이름·연락처·대학 계정 식별자는 근거와 권한이
+ * 표시 식별자는 가명 UUID(`user_ref`) 축약뿐입니다. 학번(`user_id CHAR(9)`)은 쓰지 않습니다. 이름·연락처·대학 계정 식별자는 근거와 권한이
  * 확정될 때만 마스킹 제공하고, `password_hash` 는 어떤 관리자 조회에도 제공하지 않습니다.
  */
 
@@ -32,8 +32,8 @@ const KIND_TONE = {
 const COLS = 'grid-cols-[162px_115px_153px_386px_1fr]';
 
 export function UserHistoryPage() {
-    const { userId } = useParams();
-    const query = useUserHistory(userId);
+    const { userRef } = useParams();
+    const query = useUserHistory(userRef);
     // 행 아무 데나 눌러도 연결된 상세로
     const rowNavigate = useRowNavigate();
     const user = query.data;
@@ -43,7 +43,7 @@ export function UserHistoryPage() {
     if (!user) {
         return (
             <div className="flex h-[200px] items-center justify-center rounded-lg bg-white text-[13px] font-medium text-brand-muted">
-                존재하지 않는 사용자입니다. ({userId})
+                존재하지 않는 사용자입니다. ({userRef})
             </div>
         );
     }
@@ -52,7 +52,7 @@ export function UserHistoryPage() {
         <div>
             <PageBar
                 className="mb-[18px]"
-                breadcrumb={[{ label: '사용자 이력' }, { label: shortId(userId ?? user.userId) }]}
+                breadcrumb={[{ label: '사용자 이력' }, { label: shortId(userRef ?? user.userRef) }]}
                 /*
                  * 사용자 목록 화면이 없어서 빵부스러기에 걸 링크가 없습니다. 이 화면은
                  * 대여·반납 상세에서만 들어오므로, 링크로 바로 들어온 사람은 이력 쪽으로 보냅니다.
@@ -69,7 +69,7 @@ export function UserHistoryPage() {
                     u
                 </span>
                 <PageTitle className="ml-[14px] !text-[17px]" documentTitle="사용자 이력">
-                    {shortId(userId ?? user.userId)}
+                    {shortId(userRef ?? user.userRef)}
                 </PageTitle>
                 <span className="ml-[10px] text-[11.5px] font-medium text-brand-muted">
                     내부 식별자 축약 표시

@@ -128,9 +128,17 @@ export function AppHeader() {
                             <p className="truncate text-[12.5px] font-bold text-brand-ink">
                                 {displayName}
                             </p>
-                            {/* 표시할 수 있는 건 역할까지입니다. 그 밖의 개인정보는 두지 않습니다. */}
+                            {/*
+                             * 표시할 수 있는 건 역할까지입니다. 그 밖의 개인정보는 두지 않습니다.
+                             *
+                             * 분기를 걷어냈습니다. 계약 DB v3.0 의 `ADMIN-AUTH-001` 이
+                             * "응답의 `role=ADMIN` 은 DB 컬럼이 아니라 인증 채널에서 파생한
+                             * 고정 주체 표시" 라고 못 박았습니다. 관리자 채널로 로그인했으면
+                             * 항상 `ADMIN` 이라 `'-'` 는 나올 수 없는 값이었습니다.
+                             * 관리자가 아닌 주체는 로그인 자체가 403 ADMIN_ACCOUNT_REQUIRED 입니다.
+                             */}
                             <p className="mt-[3px] truncate text-[11.5px] font-medium text-brand-muted">
-                                {admin?.role === 'ADMIN' ? '관리자' : '-'}
+                                관리자
                             </p>
                         </div>
 

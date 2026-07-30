@@ -58,11 +58,11 @@ export function useSettlement(id: string | undefined) {
     });
 }
 
-export function useUserHistory(userId: string | undefined) {
+export function useUserHistory(userRef: string | undefined) {
     return useQuery({
-        queryKey: qk.user(userId ?? ''),
-        queryFn: () => historyApi.user(userId!),
-        enabled: Boolean(userId),
+        queryKey: qk.user(userRef ?? ''),
+        queryFn: () => historyApi.user(userRef!),
+        enabled: Boolean(userRef),
         retry: false,
     });
 }

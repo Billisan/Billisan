@@ -81,15 +81,31 @@ export const router = createBrowserRouter([
                         path: 'history/settlements/:settlementId',
                         element: <SettlementDetailPage />,
                     },
-                    { path: 'users/:userId/history', element: <UserHistoryPage /> },
+                    { path: 'users/:userRef/history', element: <UserHistoryPage /> },
                     // 파손 검수 2종 — P0 계약(ADMIN-INSPECTION-001~003)이 있는 화면입니다.
                     { path: 'inspections', element: <InspectionListPage /> },
                     { path: 'inspections/:inspectionId', element: <InspectionDetailPage /> },
+                    /*
+                     * 지도는 자리만 잡아 둡니다. 사이드바 메뉴가 있어서 라우트가 없으면
+                     * 404 로 떨어집니다. 좌표 출처가 없어 아직 못 만듭니다 —
+                     * ERD `STATION` 컬럼은 `station_id`·`name`·`service_status`·
+                     * `device_status`·`current_boot_id`·`boot_synced_at`·`last_seen_at`
+                     * 뿐이고 위도·경도가 없습니다. 후보 표(`WEB-API-CAND-008`)의 선행
+                     * 검토도 "집계·위치정보 정책" 이라 정책이 정해진 뒤에 착수합니다.
+                     */
                     { path: 'map', element: <PlaceholderPage title="지도·분포도" /> },
-                    {
-                        path: 'settlements',
-                        element: <PlaceholderPage title="미정산 처리" />,
-                    },
+                    /*
+                     * `settlements` 는 지웠습니다.
+                     *
+                     * 사이드바에 없고, 대시보드 바로가기 하나만 이 빈 자리 화면을 가리켰습니다.
+                     * 그 바로가기는 이미 있는 정산 이력(`/history/settlements?status=PENDING`)
+                     * 으로 돌렸습니다 — 관리자가 하려던 일은 거기서 됩니다.
+                     *
+                     * 정산 관리 화면 자체는 `WEB-API-CAND-005 · P1` 미계약이고 화면흐름
+                     * §11.2 의 수동 처리도 `DEFERRED_NOT_CONTRACTED` 입니다. 빈 자리를
+                     * 남겨 두면 "있는데 아직 안 만든 것"처럼 보여서, 계약이 정해질 때
+                     * 화면과 함께 되살리는 쪽이 맞습니다. 주소로 들어오면 404 입니다.
+                     */
                 ],
             },
         ],

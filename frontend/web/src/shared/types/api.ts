@@ -56,12 +56,17 @@ export type ApiResponse<T> = ContractSuccess<T> | ContractFailure | TeamEnvelope
  * 관리자 오류 코드 (API명세 B-5). 전부 `retryable=false` 라 자동 재시도하지 않습니다.
  *
  * 401 이 두 종류라는 게 중요합니다. 자격이 틀린 것과 세션이 끊긴 것은 화면 처리가 다릅니다.
- * 403 은 인증은 됐는데 역할이 `ADMIN` 이 아닌 경우라, "비밀번호가 틀렸다"고 하면 안 됩니다.
+ * 403 은 **관리자 계정이 아닌 주체**가 부른 경우라, "비밀번호가 틀렸다"고 하면 안 됩니다.
+ *
+ * `ADMIN_ROLE_REQUIRED` → `ADMIN_ACCOUNT_REQUIRED` 로 바뀌었습니다. 계약 DB v3.0 의
+ * `ADMIN-AUTH-001` 이 "관리자는 별도 `ADMIN_ACCOUNT` 에서 인증한다. User 채널 토큰 또는
+ * 관리자 계정·세션이 아닌 주체는 `403 ADMIN_ACCOUNT_REQUIRED`" 로 고쳤습니다. 역할
+ * 컬럼을 보는 게 아니라 **계정·인증 채널 자체**가 다르다는 뜻입니다.
  */
 export type AdminErrorCode =
     | 'INVALID_ADMIN_CREDENTIALS'
     | 'ADMIN_SESSION_EXPIRED'
-    | 'ADMIN_ROLE_REQUIRED'
+    | 'ADMIN_ACCOUNT_REQUIRED'
     | 'ADMIN_REASON_REQUIRED'
     | 'INSPECTION_ALREADY_DECIDED'
     | 'INVALID_INSPECTION_DECISION'

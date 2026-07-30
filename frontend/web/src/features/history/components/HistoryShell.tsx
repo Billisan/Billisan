@@ -1,8 +1,8 @@
-import { Search } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
-import type { FormEvent, ReactNode } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 
 import { FilterSelect, type FilterOption } from '@/shared/components/FilterSelect';
+import { SearchInput } from '@/shared/components/SearchInput';
 import { cn } from '@/lib/utils';
 
 /**
@@ -53,13 +53,21 @@ interface HistoryFiltersProps<S extends string> {
     status: S;
     onStatusChange: (value: S) => void;
     statusOptions: readonly FilterOption<S>[];
+    /** URL 에 확정된 검색어. 입력 중인 값이 아니라 조회에 실제로 쓰인 값입니다. */
     keyword: string;
-    onKeywordChange: (value: string) => void;
+    /** '조회' 를 눌렀을 때 확정할 검색어. */
+    onSearch: (keyword: string) => void;
     keywordPlaceholder: string;
-    onSubmit: (event: FormEvent) => void;
 }
 
-/** 기간 · 상태 · 검색 · 조회. 확정된 조회 조건은 URL Query 에만 둡니다 (§6.2). */
+/**
+ * 기간 · 상태 · 검색 · 조회. 확정된 조회 조건은 URL Query 에만 둡니다 (§6.2).
+ *
+ * **드롭다운은 고르는 즉시, 검색어는 `조회` 를 눌러야 확정됩니다.** 예전에는 검색어도
+ * 글자마다 URL 에 바로 썼는데, `setSearchParams` 가 기록을 쌓아서 다섯 글자를 치면
+ * 히스토리가 다섯 칸 늘었습니다. 뒤로가기를 누르면 한 글자씩 되돌아갔습니다.
+ * 그래서 입력 중인 값은 이 컴포넌트가 들고 있다가 제출할 때 한 번만 올립니다.
+ */
 export function HistoryFilters<S extends string>({
     period,
     onPeriodChange,
@@ -68,12 +76,23 @@ export function HistoryFilters<S extends string>({
     onStatusChange,
     statusOptions,
     keyword,
-    onKeywordChange,
+    onSearch,
     keywordPlaceholder,
-    onSubmit,
 }: HistoryFiltersProps<S>) {
+    const [input, setInput] = useState(keyword);
+
+    // 뒤로가기·주소 직접 입력으로 URL 이 바뀌면 입력칸도 따라가야 합니다.
+    useEffect(() => {
+        setInput(keyword);
+    }, [keyword]);
+
+    const submit = (event: FormEvent) => {
+        event.preventDefault();
+        onSearch(input.trim());
+    };
+
     return (
-        <form onSubmit={onSubmit} className="mb-[20px] flex items-center gap-3">
+        <form onSubmit={submit} className="mb-[20px] flex items-center gap-3">
             <FilterSelect
                 label="조회 기간"
                 value={period}
@@ -88,19 +107,19 @@ export function HistoryFilters<S extends string>({
                 options={statusOptions}
                 className="w-[140px]"
             />
-            <label className="relative block">
-                <span className="sr-only">검색</span>
-                <Search
-                    className="pointer-events-none absolute left-[14px] top-1/2 size-[13px] -translate-y-1/2 text-brand-muted"
-                    aria-hidden
-                />
-                <input
-                    value={keyword}
-                    onChange={(event) => onKeywordChange(event.target.value)}
-                    placeholder={keywordPlaceholder}
-                    className="h-[38px] w-[280px] rounded-lg bg-brand-surface pl-[38px] pr-3 text-[12.5px] font-medium text-brand-ink outline-none transition-shadow placeholder:text-brand-muted focus-visible:ring-2 focus-visible:ring-brand-blue/40"
-                />
-            </label>
+            <SearchInput
+                label="검색"
+                placeholder={keywordPlaceholder}
+                value={input}
+                onChange={setInput}
+                // 지우기는 입력과 조회를 함께 비웁니다. 입력만 비우면 주소에 검색어가
+                // 남아 목록이 그대로여서, 지웠는데 결과가 안 바뀌는 것처럼 보입니다.
+                onClear={() => {
+                    setInput('');
+                    onSearch('');
+                }}
+                className="w-[280px]"
+            />
             <button
                 type="submit"
                 className="h-[38px] w-[74px] rounded-[7px] bg-brand-blue text-[13px] font-bold text-white transition-colors hover:bg-brand-blue/90"

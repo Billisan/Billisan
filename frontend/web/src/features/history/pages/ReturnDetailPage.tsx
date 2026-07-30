@@ -10,7 +10,12 @@ import {
     ValueLink,
 } from '@/features/history/components/DetailShell';
 import { findSettlement } from '@/features/history/mocks/history';
-import { RETURN_STATUS_LABEL, RETURN_STATUS_TONE } from '@/features/history/types';
+import {
+    RETURN_STATUS_LABEL,
+    RETURN_STATUS_TONE,
+    REVIEW_STATUS_LABEL,
+    SETTLEMENT_STATUS_LABEL,
+} from '@/features/history/types';
 import { AI_RESULT_TONE } from '@/features/stations/types';
 import { Badge } from '@/shared/components/Badge';
 import { useReturnAttempt } from '@/features/history/hooks/useHistory';
@@ -51,7 +56,15 @@ export function ReturnDetailPage() {
     }
 
     const settlement = item.settlementId ? findSettlement(item.settlementId) : undefined;
-    const reviewDone = item.status === 'REVIEW_DONE' || item.status === 'COMPLETED';
+    /*
+     * 관리자 판정이 끝났는지. **반납 상태로 판단하면 안 됩니다** — 예전에는
+     * `status === 'COMPLETED'` 를 판정 완료로 읽어서, 검수가 미처리인 반납도 '완료' 로
+     * 보였습니다. 두 축은 서로 다릅니다(ERD §8.0). 검수가 안 걸린 반납은 `null` 이고
+     * 그건 '판정할 게 없음' 이라 완료로 봅니다.
+     */
+    const reviewPending = item.reviewStatus === 'PENDING';
+    const reviewLabel =
+        item.reviewStatus === null ? '해당 없음' : REVIEW_STATUS_LABEL[item.reviewStatus];
 
     return (
         <div>
@@ -102,8 +115,8 @@ export function ReturnDetailPage() {
                         )}
                     </InfoRow>
                     <InfoRow label="반납 사용자">
-                        <ValueLink to={`/users/${item.userId}/history`}>
-                            {shortId(item.userId)}
+                        <ValueLink to={`/users/${item.userRef}/history`}>
+                            {shortId(item.userRef)}
                         </ValueLink>
                     </InfoRow>
                     <InfoRow label="연결 대여">
@@ -122,8 +135,12 @@ export function ReturnDetailPage() {
                     <InfoRow label="추론 지연">{item.latencyMs}ms</InfoRow>
                     {/* 이미지 존재 여부·장수 대신 '처리했고 원본은 남기지 않았다'만 남깁니다. */}
                     <InfoRow label="촬영 처리">촬영·추론 완료 / 원본 미저장</InfoRow>
-                    <InfoRow label="관리자 판정">
-                        {reviewDone ? '완료' : <span className="text-tone-amber-fg">대기 중</span>}
+                    <InfoRow label="관리자 검수">
+                        {reviewPending ? (
+                            <span className="text-tone-amber-fg">{reviewLabel}</span>
+                        ) : (
+                            reviewLabel
+                        )}
                     </InfoRow>
                 </InfoCard>
             </div>
@@ -134,14 +151,23 @@ export function ReturnDetailPage() {
                         { label: '반납 접수', at: item.attemptedAt.slice(11), done: true },
                         { label: 'AI 검수', at: item.attemptedAt.slice(11), done: true },
                         {
-                            label: '관리자 판정',
-                            at: reviewDone ? '완료' : '대기 중',
-                            done: reviewDone,
+                            label: '관리자 검수',
+                            at: reviewLabel,
+                            done: !reviewPending,
                         },
+                        /*
+                         * 정산 단계는 **정산이 실제로 생겼고 결제까지 끝났을 때만** 완료입니다.
+                         * 예전에는 정산 행이 있으면 체크가 찍혀서, 미정산(PENDING)인데 돈을
+                         * 받은 것처럼 보였습니다.
+                         *
+                         * 검수가 미처리면 파손 정산은 아직 없는 게 정상입니다 — ERD §8.0 이
+                         * "AI 추론은 자동 파손 확정이나 자동 과금이 아니다" 라고 못 박았고,
+                         * 파손 정산은 ADMIN-INSPECTION-003 판정에서 생깁니다.
+                         */
                         {
                             label: '정산',
-                            at: settlement?.createdAt.slice(11) ?? '—',
-                            done: Boolean(settlement),
+                            at: settlement ? SETTLEMENT_STATUS_LABEL[settlement.status] : '없음',
+                            done: settlement?.status === 'PAID',
                         },
                     ]}
                 />
