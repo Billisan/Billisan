@@ -41,7 +41,8 @@ class BootSnapshotReconciliationServiceTests {
 
 	private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-	private static final String USER_ID =
+	private static final String USER_ID = "100000010";
+	private static final String USER_REF =
 		"10000000-0000-0000-0000-000000000010";
 	private static final String STATION_ID =
 		"20000000-0000-0000-0000-000000000001";
@@ -62,7 +63,8 @@ class BootSnapshotReconciliationServiceTests {
 		.withCommand(
 			"--character-set-server=utf8mb4",
 			"--collation-server=utf8mb4_0900_ai_ci",
-			"--default-time-zone=+09:00"
+			"--default-time-zone=+00:00",
+			"--log-bin-trust-function-creators=1"
 		);
 
 	@DynamicPropertySource
@@ -80,66 +82,60 @@ class BootSnapshotReconciliationServiceTests {
 
 	@BeforeEach
 	void resetBusinessData() {
-		jdbcTemplate.update("DELETE FROM payment_attempt");
-		jdbcTemplate.update("DELETE FROM settlement");
-		jdbcTemplate.update("DELETE FROM device_operation");
-		jdbcTemplate.update("DELETE FROM damage_inspection");
-		jdbcTemplate.update("DELETE FROM return_attempt");
-		jdbcTemplate.update("DELETE FROM rental");
-		jdbcTemplate.update("DELETE FROM slot");
-		jdbcTemplate.update("DELETE FROM station");
-		jdbcTemplate.update("DELETE FROM face_profile_sync_operation");
-		jdbcTemplate.update("DELETE FROM user_account");
+		truncateBusinessData();
 
 		LocalDateTime baseline = LocalDateTime.of(2026, 7, 26, 9, 0);
 		jdbcTemplate.update("""
 			INSERT INTO user_account (
-				user_id, login_id, password_hash, name, role,
+				user_id, user_ref, login_id, password_hash, name,
 				face_registered, created_at, updated_at
 			) VALUES (
-				?, 'step10-user', '{noop}step10-password', 'STEP-10 User',
-				'USER', FALSE, ?, ?
+				?, ?, 'step10-user@example.com', '{noop}step10-password',
+				'STEP-10 User', FALSE, ?, ?
 			)
 			""",
 			USER_ID,
+			USER_REF,
 			baseline,
 			baseline
 		);
 		jdbcTemplate.update("""
 			INSERT INTO station (
-				station_id, station_code, name, service_status,
-				device_status, updated_at
-			) VALUES (?, 'STEP10-STATION', 'STEP-10 Test Station',
-				'AVAILABLE', 'ONLINE', ?)
+				station_id, name, service_status, device_status,
+				created_at, updated_at
+			) VALUES (?, 'STEP-10 Test Station', 'AVAILABLE', 'ONLINE', ?, ?)
 			""",
 			STATION_ID,
+			baseline,
 			baseline
 		);
 		jdbcTemplate.update("""
 			INSERT INTO slot (
 				slot_id, station_id, slot_number, item_condition,
-				service_status, occupancy_status, lock_status, updated_at
-			) VALUES (?, ?, 1, 'EMPTY', 'AVAILABLE', 'EMPTY', 'LOCKED', ?)
+				service_status, occupancy_status, lock_status, created_at, updated_at
+			) VALUES (?, ?, 1, 'EMPTY', 'AVAILABLE', 'EMPTY', 'LOCKED', ?, ?)
 			""",
 			SLOT_ONE_ID,
 			STATION_ID,
+			baseline,
 			baseline
 		);
 		jdbcTemplate.update("""
 			INSERT INTO slot (
 				slot_id, station_id, slot_number, item_condition,
-				service_status, occupancy_status, lock_status, updated_at
-			) VALUES (?, ?, 2, 'NORMAL', 'AVAILABLE', 'OCCUPIED', 'LOCKED', ?)
+				service_status, occupancy_status, lock_status, created_at, updated_at
+			) VALUES (?, ?, 2, 'NORMAL', 'AVAILABLE', 'OCCUPIED', 'LOCKED', ?, ?)
 			""",
 			SLOT_TWO_ID,
 			STATION_ID,
+			baseline,
 			baseline
 		);
 		jdbcTemplate.update("""
 			INSERT INTO rental (
 				rental_id, user_id, checkout_slot_id, rental_request_id, status,
 				requested_at, rented_at, due_at
-			) VALUES (?, ?, ?, 'step10-rental-request', 'ACTIVE', ?, ?, ?)
+			) VALUES (?, ?, ?, 'step10-rental-request', 'RETURNING', ?, ?, ?)
 			""",
 			RENTAL_ID,
 			USER_ID,
@@ -461,6 +457,30 @@ class BootSnapshotReconciliationServiceTests {
 			throw new IllegalStateException("COUNT query returned null");
 		}
 		return value;
+	}
+
+	private void truncateBusinessData() {
+		jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 0");
+		try {
+			for (String table : List.of(
+				"settlement_payment_mutation_guard",
+				"payment_attempt",
+				"settlement",
+				"device_operation",
+				"damage_inspection",
+				"return_attempt",
+				"rental",
+				"slot",
+				"station",
+				"face_profile_sync_operation",
+				"admin_account",
+				"user_account"
+			)) {
+				jdbcTemplate.execute("TRUNCATE TABLE " + table);
+			}
+		} finally {
+			jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 1");
+		}
 	}
 
 	private String text(String sql, Object... arguments) {

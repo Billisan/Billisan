@@ -1,6 +1,9 @@
 spring:
   application:
     name: billisan
+  datasource:
+    hikari:
+      connection-init-sql: "SET time_zone = '+00:00'"
   jpa:
     open-in-view: false
     hibernate:

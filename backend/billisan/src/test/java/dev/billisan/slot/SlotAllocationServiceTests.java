@@ -1,7 +1,6 @@
 package dev.billisan.slot;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -42,8 +41,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest
 class SlotAllocationServiceTests {
 
-	private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Seoul");
-	private static final String USER_ID = "10000000-0000-0000-0000-000000000009";
+	private static final String USER_ID = "100000009";
+	private static final String USER_REF = "10000000-0000-0000-0000-000000000009";
 	private static final String STATION_ID = "20000000-0000-0000-0000-000000000009";
 	private static final String CHECKOUT_SLOT_ID =
 		"30000000-0000-0000-0000-000000000009";
@@ -57,7 +56,8 @@ class SlotAllocationServiceTests {
 		.withCommand(
 			"--character-set-server=utf8mb4",
 			"--collation-server=utf8mb4_0900_ai_ci",
-			"--default-time-zone=+09:00"
+			"--default-time-zone=+00:00",
+			"--log-bin-trust-function-creators=1"
 		);
 
 	@DynamicPropertySource
@@ -75,54 +75,36 @@ class SlotAllocationServiceTests {
 
 	@BeforeEach
 	void resetBusinessData() {
-		jdbcTemplate.update("DELETE FROM payment_attempt");
-		jdbcTemplate.update("DELETE FROM settlement");
-		jdbcTemplate.update("DELETE FROM device_operation");
-		jdbcTemplate.update("DELETE FROM damage_inspection");
-		jdbcTemplate.update("DELETE FROM return_attempt");
-		jdbcTemplate.update("DELETE FROM rental");
-		jdbcTemplate.update("DELETE FROM slot");
-		jdbcTemplate.update("DELETE FROM station");
-		jdbcTemplate.update("DELETE FROM face_profile_sync_operation");
-		jdbcTemplate.update("DELETE FROM user_account");
+		truncateBusinessData();
 
 		LocalDateTime baseline = LocalDateTime.of(2026, 7, 26, 9, 0);
-		jdbcTemplate.update("""
-			INSERT INTO user_account (
-				user_id, login_id, password_hash, name, role,
-				face_registered, created_at, updated_at
-			) VALUES (
-				?, 'step09-user', '{noop}step09-password', 'STEP-09 User',
-				'USER', FALSE, ?, ?
-			)
-			""",
-			USER_ID,
-			baseline,
-			baseline
-		);
+		insertUser(USER_ID, USER_REF, "step09-user@example.com", baseline);
 		jdbcTemplate.update("""
 			INSERT INTO station (
-				station_id, station_code, name, service_status, device_status, updated_at
-			) VALUES (?, 'STEP09-STATION', 'STEP-09 Test Station', 'AVAILABLE', 'ONLINE', ?)
+				station_id, name, service_status, device_status,
+				created_at, updated_at
+			) VALUES (?, 'STEP-09 Test Station', 'AVAILABLE', 'ONLINE', ?, ?)
 			""",
 			STATION_ID,
+			baseline,
 			baseline
 		);
 		jdbcTemplate.update("""
 			INSERT INTO slot (
 				slot_id, station_id, slot_number, item_condition,
-				service_status, occupancy_status, lock_status, updated_at
-			) VALUES (?, ?, 99, 'EMPTY', 'OUT_OF_SERVICE', 'EMPTY', 'LOCKED', ?)
+				service_status, occupancy_status, lock_status, created_at, updated_at
+			) VALUES (?, ?, 99, 'EMPTY', 'OUT_OF_SERVICE', 'EMPTY', 'LOCKED', ?, ?)
 			""",
 			CHECKOUT_SLOT_ID,
 			STATION_ID,
+			baseline,
 			baseline
 		);
 		jdbcTemplate.update("""
 			INSERT INTO rental (
 				rental_id, user_id, checkout_slot_id, rental_request_id, status,
 				requested_at, rented_at, due_at
-			) VALUES (?, ?, ?, 'step09-existing-rental', 'ACTIVE', ?, ?, ?)
+			) VALUES (?, ?, ?, 'step09-existing-rental', 'RETURNING', ?, ?, ?)
 			""",
 			RENTAL_ID,
 			USER_ID,
@@ -221,7 +203,7 @@ class SlotAllocationServiceTests {
 		String slotId = insertRentalCandidate(1);
 		RentalAllocationCommand invalidOwner = new RentalAllocationCommand(
 			"rental-rollback-invalid-owner",
-			"10000000-0000-0000-0000-000000009999",
+			"999999999",
 			STATION_ID
 		);
 
@@ -238,10 +220,17 @@ class SlotAllocationServiceTests {
 			WHERE rental_request_id = 'rental-rollback-invalid-owner'
 			"""));
 
+		String retryUserId = testUserId(999);
+		insertUser(
+			retryUserId,
+			testUserRef(999),
+			"step09-retry@example.com",
+			LocalDateTime.of(2026, 7, 26, 9, 0)
+		);
 		RentalAllocationResult retried = service.allocateRentalSlot(
 			new RentalAllocationCommand(
 				"rental-after-rollback",
-				USER_ID,
+				retryUserId,
 				STATION_ID
 			)
 		);
@@ -285,39 +274,43 @@ class SlotAllocationServiceTests {
 	}
 
 	@Test
-	void allocationCandidateIndexMatchesTheLockPredicate() {
+	void databaseGuardsPreventDuplicateActiveOwners() {
 		List<String> columns = jdbcTemplate.queryForList("""
 			SELECT column_name
 			FROM information_schema.statistics
 			WHERE table_schema = DATABASE()
-			  AND table_name = 'slot'
-			  AND index_name = 'idx_slot_station_allocation_candidate'
+			  AND table_name = 'rental'
+			  AND index_name = 'UK_RENTAL_REQUESTED_SLOT_GUARD'
 			ORDER BY seq_in_index
 			""",
 			String.class
 		);
-
-		assertEquals(
-			List.of(
-				"station_id",
-				"service_status",
-				"occupancy_status",
-				"lock_status",
-				"item_condition",
-				"slot_number"
-			),
-			columns
-		);
+		assertEquals(List.of("requested_slot_guard"), columns);
+		assertEquals(List.of("active_user_guard"), indexColumns(
+			"rental",
+			"UK_RENTAL_ACTIVE_USER_GUARD"
+		));
+		assertEquals(List.of("assigned_return_slot_guard"), indexColumns(
+			"return_attempt",
+			"UK_RETURN_ATTEMPT_ASSIGNED_SLOT_GUARD"
+		));
 	}
 
 	private List<Object> runRentalAllocations(int requestCount) throws Exception {
 		List<Callable<Object>> operations = new ArrayList<>();
 		for (int number = 1; number <= requestCount; number++) {
 			int requestNumber = number;
+			String userId = testUserId(requestNumber);
+			insertUser(
+				userId,
+				testUserRef(requestNumber),
+				"step09-concurrent-" + requestNumber + "@example.com",
+				LocalDateTime.of(2026, 7, 26, 9, 0)
+			);
 			operations.add(() -> capture(() -> service.allocateRentalSlot(
 				new RentalAllocationCommand(
 					"rental-concurrent-" + requestNumber,
-					USER_ID,
+					userId,
 					STATION_ID
 				)
 			)));
@@ -346,16 +339,84 @@ class SlotAllocationServiceTests {
 		jdbcTemplate.update("""
 			INSERT INTO slot (
 				slot_id, station_id, slot_number, item_condition,
-				service_status, occupancy_status, lock_status, updated_at
-			) VALUES (?, ?, ?, ?, 'AVAILABLE', ?, 'LOCKED', ?)
+				service_status, occupancy_status, lock_status, created_at, updated_at
+			) VALUES (?, ?, ?, ?, 'AVAILABLE', ?, 'LOCKED', ?, ?)
 			""",
 			slotId,
 			STATION_ID,
 			slotNumber,
 			itemCondition,
 			occupancyStatus,
+			LocalDateTime.of(2026, 7, 26, 9, 0),
 			LocalDateTime.of(2026, 7, 26, 9, 0)
 		);
+	}
+
+	private void insertUser(
+		String userId,
+		String userRef,
+		String loginId,
+		LocalDateTime baseline
+	) {
+		jdbcTemplate.update("""
+			INSERT INTO user_account (
+				user_id, user_ref, login_id, password_hash, name,
+				face_registered, created_at, updated_at
+			) VALUES (?, ?, ?, '{noop}step09-password', 'STEP-09 User', FALSE, ?, ?)
+			""",
+			userId,
+			userRef,
+			loginId,
+			baseline,
+			baseline
+		);
+	}
+
+	private String testUserId(int number) {
+		return "200%06d".formatted(number);
+	}
+
+	private String testUserRef(int number) {
+		return "11000000-0000-0000-0000-%012d".formatted(number);
+	}
+
+	private List<String> indexColumns(String tableName, String indexName) {
+		return jdbcTemplate.queryForList("""
+			SELECT column_name
+			FROM information_schema.statistics
+			WHERE table_schema = DATABASE()
+			  AND table_name = ?
+			  AND index_name = ?
+			ORDER BY seq_in_index
+			""",
+			String.class,
+			tableName,
+			indexName
+		);
+	}
+
+	private void truncateBusinessData() {
+		jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 0");
+		try {
+			for (String table : List.of(
+				"settlement_payment_mutation_guard",
+				"payment_attempt",
+				"settlement",
+				"device_operation",
+				"damage_inspection",
+				"return_attempt",
+				"rental",
+				"slot",
+				"station",
+				"face_profile_sync_operation",
+				"admin_account",
+				"user_account"
+			)) {
+				jdbcTemplate.execute("TRUNCATE TABLE " + table);
+			}
+		} finally {
+			jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 1");
+		}
 	}
 
 	private void assertNoDuplicateActiveSlotOwners() {

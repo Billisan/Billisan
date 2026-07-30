@@ -1,13 +1,12 @@
 package dev.billisan.faceprofilesync;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
@@ -19,34 +18,39 @@ import org.hibernate.type.SqlTypes;
 public class FaceProfileSyncOperationEntity {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
+	@Column(
+		name = "sync_operation_id",
+		nullable = false,
+		length = 36,
+		columnDefinition = "char(36)"
+	)
+	private String syncOperationId;
 
 	@Column(name = "request_id", nullable = false, unique = true, length = 100)
 	private String requestId;
 
 	@Column(
-		name = "user_id",
+		name = "user_ref",
 		nullable = false,
 		length = 36,
 		columnDefinition = "char(36)"
 	)
-	private String userId;
+	private String userRef;
 
 	@Enumerated(EnumType.STRING)
 	@JdbcTypeCode(SqlTypes.VARCHAR)
-	@Column(name = "operation_type", nullable = false, length = 20)
+	@Column(name = "operation_type", nullable = false, length = 50)
 	private OperationType operationType;
 
-	@Column(name = "template_version")
+	@Column(name = "template_version", nullable = false)
 	private Integer templateVersion;
 
 	@Enumerated(EnumType.STRING)
 	@JdbcTypeCode(SqlTypes.VARCHAR)
-	@Column(name = "sync_status", nullable = false, length = 40)
+	@Column(name = "sync_status", nullable = false, length = 30)
 	private SyncStatus syncStatus;
 
-	@Column(name = "last_error_code", length = 80)
+	@Column(name = "last_error_code", length = 100)
 	private String lastErrorCode;
 
 	@Column(name = "requested_at", nullable = false)
@@ -66,15 +70,23 @@ public class FaceProfileSyncOperationEntity {
 
 	static FaceProfileSyncOperationEntity requested(
 		String requestId,
-		String userId,
+		String userRef,
 		OperationType operationType,
+		Integer templateVersion,
 		LocalDateTime now
 	) {
+		if (templateVersion == null || templateVersion < 1) {
+			throw new IllegalArgumentException(
+				"templateVersion must be positive"
+			);
+		}
 		FaceProfileSyncOperationEntity operation =
 			new FaceProfileSyncOperationEntity();
+		operation.syncOperationId = UUID.randomUUID().toString();
 		operation.requestId = requestId;
-		operation.userId = userId;
+		operation.userRef = userRef;
 		operation.operationType = operationType;
+		operation.templateVersion = templateVersion;
 		operation.syncStatus = SyncStatus.REQUESTED;
 		operation.requestedAt = now;
 		operation.createdAt = now;
@@ -105,16 +117,13 @@ public class FaceProfileSyncOperationEntity {
 				"Operation is not awaiting an Orin result"
 			);
 		}
-		if (operationType != OperationType.DELETE
-			&& (confirmedTemplateVersion == null
-				|| confirmedTemplateVersion < 1)) {
+		if (confirmedTemplateVersion == null
+			|| confirmedTemplateVersion < 1) {
 			throw new IllegalArgumentException(
-				"Successful registration requires templateVersion"
+				"Successful synchronization requires templateVersion"
 			);
 		}
-		templateVersion = operationType == OperationType.DELETE
-			? null
-			: confirmedTemplateVersion;
+		templateVersion = confirmedTemplateVersion;
 		syncStatus = SyncStatus.SUCCEEDED;
 		lastErrorCode = null;
 		completedAt = now;
@@ -159,16 +168,16 @@ public class FaceProfileSyncOperationEntity {
 		updatedAt = now;
 	}
 
-	public Long getId() {
-		return id;
+	public String getSyncOperationId() {
+		return syncOperationId;
 	}
 
 	public String getRequestId() {
 		return requestId;
 	}
 
-	public String getUserId() {
-		return userId;
+	public String getUserRef() {
+		return userRef;
 	}
 
 	public OperationType getOperationType() {

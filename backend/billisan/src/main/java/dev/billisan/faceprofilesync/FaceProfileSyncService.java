@@ -1,7 +1,7 @@
 package dev.billisan.faceprofilesync;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Objects;
 
@@ -14,8 +14,6 @@ import dev.billisan.faceprofilesync.FaceProfileSyncOperationEntity.SyncStatus;
 
 @Service
 public class FaceProfileSyncService {
-
-	private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Seoul");
 
 	private final FaceProfileSyncOperationRepository repository;
 	private final JdbcTemplate jdbcTemplate;
@@ -31,7 +29,7 @@ public class FaceProfileSyncService {
 	@Transactional
 	public SyncResult request(SyncRequest request) {
 		validate(request);
-		lockUser(request.userId());
+		lockUserRef(request.userRef());
 		FaceProfileSyncOperationEntity existing = repository
 			.findByRequestId(request.requestId())
 			.orElse(null);
@@ -43,8 +41,9 @@ public class FaceProfileSyncService {
 		FaceProfileSyncOperationEntity created = repository.saveAndFlush(
 			FaceProfileSyncOperationEntity.requested(
 				request.requestId(),
-				request.userId(),
+				request.userRef(),
 				request.operationType(),
+				request.templateVersion(),
 				now()
 			)
 		);
@@ -74,11 +73,11 @@ public class FaceProfileSyncService {
 				UPDATE user_account
 				SET face_registered = ?,
 				    updated_at = ?
-				WHERE user_id = ?
+				WHERE user_ref = ?
 				""",
 				registered,
 				confirmedAt,
-				operation.getUserId()
+				operation.getUserRef()
 			) != 1) {
 				throw new IllegalStateException(
 					"Face registration projection user does not exist"
@@ -116,15 +115,15 @@ public class FaceProfileSyncService {
 			));
 	}
 
-	private void lockUser(String userId) {
+	private void lockUserRef(String userRef) {
 		List<String> users = jdbcTemplate.queryForList("""
-			SELECT user_id
+			SELECT user_ref
 			FROM user_account
-			WHERE user_id = ?
+			WHERE user_ref = ?
 			FOR UPDATE
-			""", String.class, userId);
+			""", String.class, userRef);
 		if (users.size() != 1) {
-			throw new IllegalArgumentException("Unknown userId");
+			throw new IllegalArgumentException("Unknown userRef");
 		}
 	}
 
@@ -132,8 +131,9 @@ public class FaceProfileSyncService {
 		FaceProfileSyncOperationEntity existing,
 		SyncRequest request
 	) {
-		if (!existing.getUserId().equals(request.userId())
-			|| existing.getOperationType() != request.operationType()) {
+		if (!existing.getUserRef().equals(request.userRef())
+			|| existing.getOperationType() != request.operationType()
+			|| !existing.getTemplateVersion().equals(request.templateVersion())) {
 			throw new IllegalStateException(
 				"IDEMPOTENCY_KEY_CONFLICT: " + request.requestId()
 			);
@@ -143,8 +143,14 @@ public class FaceProfileSyncService {
 	private static void validate(SyncRequest request) {
 		Objects.requireNonNull(request, "request");
 		requireText(request.requestId(), "requestId");
-		requireText(request.userId(), "userId");
+		requireText(request.userRef(), "userRef");
 		Objects.requireNonNull(request.operationType(), "operationType");
+		if (request.templateVersion() == null
+			|| request.templateVersion() < 1) {
+			throw new IllegalArgumentException(
+				"templateVersion must be positive"
+			);
+		}
 	}
 
 	private static void requireText(String value, String field) {
@@ -158,9 +164,9 @@ public class FaceProfileSyncService {
 		Outcome outcome
 	) {
 		return new SyncResult(
-			operation.getId(),
+			operation.getSyncOperationId(),
 			operation.getRequestId(),
-			operation.getUserId(),
+			operation.getUserRef(),
 			operation.getOperationType(),
 			operation.getSyncStatus(),
 			operation.getTemplateVersion(),
@@ -170,7 +176,7 @@ public class FaceProfileSyncService {
 	}
 
 	private static LocalDateTime now() {
-		LocalDateTime current = LocalDateTime.now(BUSINESS_ZONE);
+		LocalDateTime current = LocalDateTime.now(ZoneOffset.UTC);
 		return current.withNano(current.getNano() / 1_000 * 1_000);
 	}
 
@@ -181,15 +187,16 @@ public class FaceProfileSyncService {
 
 	public record SyncRequest(
 		String requestId,
-		String userId,
-		OperationType operationType
+		String userRef,
+		OperationType operationType,
+		Integer templateVersion
 	) {
 	}
 
 	public record SyncResult(
-		Long id,
+		String syncOperationId,
 		String requestId,
-		String userId,
+		String userRef,
 		OperationType operationType,
 		SyncStatus syncStatus,
 		Integer templateVersion,

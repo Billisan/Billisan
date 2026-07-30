@@ -43,7 +43,8 @@ class InventoryQueryRepositoryTests {
 		.withCommand(
 			"--character-set-server=utf8mb4",
 			"--collation-server=utf8mb4_0900_ai_ci",
-			"--default-time-zone=+09:00"
+			"--default-time-zone=+00:00",
+			"--log-bin-trust-function-creators=1"
 		);
 
 	@DynamicPropertySource
@@ -72,7 +73,7 @@ class InventoryQueryRepositoryTests {
 
 	@Test
 	void fixtureContainsOnlyTheRequestedSyntheticScenario() {
-		assertEquals(2, count("SELECT COUNT(*) FROM user_account"));
+		assertEquals(4, count("SELECT COUNT(*) FROM user_account"));
 		assertEquals(1, count("SELECT COUNT(*) FROM station"));
 		assertEquals(5, count("SELECT COUNT(*) FROM slot"));
 		assertEquals(4, count("SELECT COUNT(*) FROM rental"));
@@ -96,7 +97,7 @@ class InventoryQueryRepositoryTests {
 	void fixtureCanBeLoadedTwiceWithoutAccumulatingRows() {
 		fixture.resetAndLoad();
 
-		assertEquals(2, count("SELECT COUNT(*) FROM user_account"));
+		assertEquals(4, count("SELECT COUNT(*) FROM user_account"));
 		assertEquals(1, count("SELECT COUNT(*) FROM station"));
 		assertEquals(5, count("SELECT COUNT(*) FROM slot"));
 		assertEquals(4, count("SELECT COUNT(*) FROM rental"));
@@ -181,7 +182,7 @@ class InventoryQueryRepositoryTests {
 
 	@Test
 	void resolvedReturnAttemptQueryReturnsFailureAndCompletionOnly() {
-		assertEquals("+09:00", text("SELECT @@session.time_zone"));
+		assertEquals("+00:00", text("SELECT @@session.time_zone"));
 		List<ReturnAttemptView> attempts =
 			repository.findResolvedReturnAttempts(STATION_ID);
 
@@ -225,11 +226,11 @@ class InventoryQueryRepositoryTests {
 		);
 		assertIndexPrefix(
 			"rental",
-			List.of("checkout_slot_id", "status")
+			List.of("checkout_slot_id")
 		);
 		assertIndexPrefix(
 			"return_attempt",
-			List.of("return_slot_id", "status")
+			List.of("return_slot_id")
 		);
 		assertTrue(hasIndexStartingWith("device_operation", "station_id"));
 	}

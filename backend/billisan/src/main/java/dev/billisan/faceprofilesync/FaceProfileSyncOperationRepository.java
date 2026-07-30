@@ -10,7 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface FaceProfileSyncOperationRepository
-	extends JpaRepository<FaceProfileSyncOperationEntity, Long> {
+	extends JpaRepository<FaceProfileSyncOperationEntity, String> {
 
 	Optional<FaceProfileSyncOperationEntity> findByRequestId(String requestId);
 

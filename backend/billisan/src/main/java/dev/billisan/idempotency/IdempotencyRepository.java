@@ -86,8 +86,6 @@ class IdempotencyRepository {
 		String operationId,
 		String stationId,
 		String slotId,
-		String rentalId,
-		String returnAttemptId,
 		String commandId,
 		String issuedBootId,
 		String operationType,
@@ -98,21 +96,17 @@ class IdempotencyRepository {
 				operation_id,
 				station_id,
 				slot_id,
-				rental_id,
-				return_attempt_id,
 				command_id,
 				issued_boot_id,
 				operation_type,
 				status,
 				requested_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'REQUESTED', ?)
+			) VALUES (?, ?, ?, ?, ?, ?, 'REQUESTED', ?)
 			ON DUPLICATE KEY UPDATE command_id = device_operation.command_id
 			""",
 			operationId,
 			stationId,
 			slotId,
-			rentalId,
-			returnAttemptId,
 			commandId,
 			issuedBootId,
 			operationType,
@@ -194,7 +188,6 @@ class IdempotencyRepository {
 		String slotId,
 		String occupancyStatus,
 		String lockStatus,
-		boolean returnOperation,
 		LocalDateTime updatedAt
 	) {
 		return jdbcTemplate.update("""
@@ -204,7 +197,7 @@ class IdempotencyRepository {
 			    service_status = CASE
 			        WHEN ? = 'UNKNOWN' THEN 'ADMIN_REVIEW'
 			        WHEN ? = 'OCCUPIED'
-			             AND (? OR item_condition = 'EMPTY')
+			             AND item_condition = 'EMPTY'
 			            THEN 'ADMIN_REVIEW'
 			        WHEN ? = 'EMPTY'
 			             AND service_status = 'ADMIN_REVIEW'
@@ -218,7 +211,7 @@ class IdempotencyRepository {
 			             AND service_status = 'OUT_OF_SERVICE'
 			            THEN 'REPAIRABLE'
 			        WHEN ? = 'OCCUPIED'
-			             AND (? OR item_condition = 'EMPTY')
+			             AND item_condition = 'EMPTY'
 			            THEN 'UNKNOWN'
 			        ELSE item_condition
 			    END,
@@ -229,13 +222,11 @@ class IdempotencyRepository {
 			lockStatus,
 			occupancyStatus,
 			occupancyStatus,
-			returnOperation,
 			occupancyStatus,
 			occupancyStatus,
 			occupancyStatus,
 			occupancyStatus,
 			occupancyStatus,
-			returnOperation,
 			updatedAt,
 			slotId
 		);
@@ -345,20 +336,6 @@ class IdempotencyRepository {
 		);
 	}
 
-	int markSettlementPaid(String settlementId, LocalDateTime paidAt) {
-		return jdbcTemplate.update("""
-			UPDATE settlement
-			SET paid_amount = amount,
-			    status = 'PAID',
-			    paid_at = ?
-			WHERE settlement_id = ?
-			  AND status = 'PENDING'
-			""",
-			paidAt,
-			settlementId
-		);
-	}
-
 	private Optional<DeviceOperationRow> findDeviceOperation(
 		String condition,
 		Object argument
@@ -368,8 +345,6 @@ class IdempotencyRepository {
 				operation_id,
 				station_id,
 				slot_id,
-				rental_id,
-				return_attempt_id,
 				command_id,
 				event_id,
 				issued_boot_id,
@@ -387,8 +362,6 @@ class IdempotencyRepository {
 				rs.getString("operation_id"),
 				rs.getString("station_id"),
 				rs.getString("slot_id"),
-				rs.getString("rental_id"),
-				rs.getString("return_attempt_id"),
 				rs.getString("command_id"),
 				rs.getString("event_id"),
 				rs.getString("issued_boot_id"),
@@ -431,8 +404,6 @@ class IdempotencyRepository {
 		String operationId,
 		String stationId,
 		String slotId,
-		String rentalId,
-		String returnAttemptId,
 		String commandId,
 		String eventId,
 		String issuedBootId,

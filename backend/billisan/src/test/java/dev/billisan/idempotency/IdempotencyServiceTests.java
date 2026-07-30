@@ -1,6 +1,7 @@
 package dev.billisan.idempotency;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -41,7 +42,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest
 class IdempotencyServiceTests {
 
-	private static final String USER_ID = "10000000-0000-0000-0000-000000000008";
+	private static final String USER_ID = "100000008";
+	private static final String USER_REF =
+		"10000000-0000-0000-0000-000000000008";
+	private static final String USER_ID_2 = "100000009";
+	private static final String USER_REF_2 =
+		"10000000-0000-0000-0000-000000000009";
 	private static final String STATION_ID = "20000000-0000-0000-0000-000000000008";
 	private static final String SLOT_1 = "30000000-0000-0000-0000-000000000081";
 	private static final String SLOT_2 = "30000000-0000-0000-0000-000000000082";
@@ -57,7 +63,9 @@ class IdempotencyServiceTests {
 	private static final String ORDER_2 = "ORDER-STEP08-2";
 	private static final String BOOT_ID = "90000000-0000-0000-0000-000000000008";
 	private static final LocalDateTime EVENT_TIME =
-		LocalDateTime.of(2026, 7, 26, 14, 30, 0, 123_456_000);
+		LocalDateTime.now(ZoneOffset.UTC)
+			.plusDays(1)
+			.withNano(123_456_000);
 
 	@Container
 	private static final MySQLContainer MYSQL = new MySQLContainer("mysql:8.0")
@@ -67,7 +75,8 @@ class IdempotencyServiceTests {
 		.withCommand(
 			"--character-set-server=utf8mb4",
 			"--collation-server=utf8mb4_0900_ai_ci",
-			"--default-time-zone=+09:00"
+			"--default-time-zone=+00:00",
+			"--log-bin-trust-function-creators=1"
 		);
 
 	@DynamicPropertySource
@@ -85,63 +94,73 @@ class IdempotencyServiceTests {
 
 	@BeforeEach
 	void resetBusinessData() {
-		jdbcTemplate.update("DELETE FROM payment_attempt");
-		jdbcTemplate.update("DELETE FROM settlement");
-		jdbcTemplate.update("DELETE FROM device_operation");
-		jdbcTemplate.update("DELETE FROM damage_inspection");
-		jdbcTemplate.update("DELETE FROM return_attempt");
-		jdbcTemplate.update("DELETE FROM rental");
-		jdbcTemplate.update("DELETE FROM slot");
-		jdbcTemplate.update("DELETE FROM station");
-		jdbcTemplate.update("DELETE FROM face_profile_sync_operation");
-		jdbcTemplate.update("DELETE FROM user_account");
+		truncateBusinessData();
 
 		LocalDateTime baseline = LocalDateTime.of(2026, 7, 26, 9, 0);
 		jdbcTemplate.update("""
 			INSERT INTO user_account (
-				user_id, login_id, password_hash, name, role,
+				user_id, user_ref, login_id, password_hash, name,
 				face_registered, created_at, updated_at
 			) VALUES (
-				?, 'step08-user', '{noop}step08-password', 'STEP-08 User',
-				'USER', FALSE, ?, ?
+				?, ?, 'step08-user@example.com', '{noop}step08-password',
+				'STEP-08 User', FALSE, ?, ?
 			)
 			""",
 			USER_ID,
+			USER_REF,
+			baseline,
+			baseline
+		);
+		jdbcTemplate.update("""
+			INSERT INTO user_account (
+				user_id, user_ref, login_id, password_hash, name,
+				face_registered, created_at, updated_at
+			) VALUES (
+				?, ?, 'step08-user2@example.com', '{noop}step08-password',
+				'STEP-08 User 2', FALSE, ?, ?
+			)
+			""",
+			USER_ID_2,
+			USER_REF_2,
 			baseline,
 			baseline
 		);
 		jdbcTemplate.update("""
 			INSERT INTO station (
-				station_id, station_code, name, service_status, device_status,
-				current_boot_id, boot_synced_at, updated_at
+				station_id, name, service_status, device_status,
+				current_boot_id, boot_synced_at, created_at, updated_at
 			) VALUES (
-				?, 'STEP08-STATION', 'STEP-08 Test Station',
-				'AVAILABLE', 'ONLINE', ?, ?, ?
+				?, 'STEP-08 Test Station',
+				'AVAILABLE', 'ONLINE', ?, ?, ?, ?
 			)
 			""",
 			STATION_ID,
 			BOOT_ID,
+			baseline,
 			baseline,
 			baseline
 		);
 		jdbcTemplate.batchUpdate("""
 			INSERT INTO slot (
 				slot_id, station_id, slot_number, item_condition,
-				service_status, occupancy_status, lock_status, updated_at
-			) VALUES (?, ?, ?, 'EMPTY', 'AVAILABLE', 'EMPTY', 'LOCKED', ?)
+				service_status, occupancy_status, lock_status,
+				created_at, updated_at
+			) VALUES (
+				?, ?, ?, 'EMPTY', 'AVAILABLE', 'EMPTY', 'LOCKED', ?, ?
+			)
 			""",
 			List.of(
-				new Object[] { SLOT_1, STATION_ID, 1, baseline },
-				new Object[] { SLOT_2, STATION_ID, 2, baseline },
-				new Object[] { SLOT_3, STATION_ID, 3, baseline },
-				new Object[] { SLOT_4, STATION_ID, 4, baseline }
+				new Object[] { SLOT_1, STATION_ID, 1, baseline, baseline },
+				new Object[] { SLOT_2, STATION_ID, 2, baseline, baseline },
+				new Object[] { SLOT_3, STATION_ID, 3, baseline, baseline },
+				new Object[] { SLOT_4, STATION_ID, 4, baseline, baseline }
 			)
 		);
 		jdbcTemplate.update("""
 			INSERT INTO rental (
 				rental_id, user_id, checkout_slot_id, rental_request_id, status,
 				requested_at, rented_at, due_at
-			) VALUES (?, ?, ?, 'step08-rental-request-1', 'ACTIVE', ?, ?, ?)
+			) VALUES (?, ?, ?, 'step08-rental-request-1', 'RETURNING', ?, ?, ?)
 			""",
 			RENTAL_1,
 			USER_ID,
@@ -153,16 +172,15 @@ class IdempotencyServiceTests {
 		jdbcTemplate.update("""
 			INSERT INTO rental (
 				rental_id, user_id, checkout_slot_id, rental_request_id, status,
-				requested_at, rented_at, due_at, ended_at
-			) VALUES (?, ?, ?, 'step08-rental-request-2', 'COMPLETED', ?, ?, ?, ?)
+				requested_at, rented_at, due_at
+			) VALUES (?, ?, ?, 'step08-rental-request-2', 'RETURNING', ?, ?, ?)
 			""",
 			RENTAL_2,
-			USER_ID,
+			USER_ID_2,
 			SLOT_4,
 			baseline,
 			baseline,
-			baseline.plusDays(1),
-			baseline.plusHours(1)
+			baseline.plusDays(1)
 		);
 		jdbcTemplate.update("""
 			INSERT INTO settlement (
@@ -177,34 +195,44 @@ class IdempotencyServiceTests {
 		jdbcTemplate.update("""
 			INSERT INTO settlement (
 				settlement_id, user_id, rental_id, reason, amount, status, created_at
-			) VALUES (?, ?, ?, 'DAMAGE', 2000, 'PENDING', ?)
+			) VALUES (?, ?, ?, 'OVERDUE', 2000, 'PENDING', ?)
 			""",
 			SETTLEMENT_2,
-			USER_ID,
+			USER_ID_2,
 			RENTAL_2,
 			baseline
 		);
 		jdbcTemplate.update("""
 			INSERT INTO payment_attempt (
 				payment_attempt_id, settlement_id, creation_request_id,
-				toss_order_id, amount, provider, status, requested_at, updated_at
-			) VALUES (?, ?, 'payment-create-step08-1', ?, 1000, 'MOCK', 'REQUESTED', ?, ?)
+				toss_order_id, amount, provider, status, requested_at,
+				created_at, updated_at
+			) VALUES (
+				?, ?, 'payment-create-step08-1', ?, 1000,
+				'TOSS_SANDBOX', 'REQUESTED', ?, ?, ?
+			)
 			""",
 			PAYMENT_1,
 			SETTLEMENT_1,
 			ORDER_1,
+			baseline,
 			baseline,
 			baseline
 		);
 		jdbcTemplate.update("""
 			INSERT INTO payment_attempt (
 				payment_attempt_id, settlement_id, creation_request_id,
-				toss_order_id, amount, provider, status, requested_at, updated_at
-			) VALUES (?, ?, 'payment-create-step08-2', ?, 2000, 'MOCK', 'REQUESTED', ?, ?)
+				toss_order_id, amount, provider, status, requested_at,
+				created_at, updated_at
+			) VALUES (
+				?, ?, 'payment-create-step08-2', ?, 2000,
+				'TOSS_SANDBOX', 'REQUESTED', ?, ?, ?
+			)
 			""",
 			PAYMENT_2,
 			SETTLEMENT_2,
 			ORDER_2,
+			baseline,
 			baseline,
 			baseline
 		);
@@ -263,8 +291,7 @@ class IdempotencyServiceTests {
 	void sameCommandIdReturnsStoredCommandWithoutSecondIssue() {
 		DeviceCommand command =
 			new DeviceCommand(
-				"command-retry-1", STATION_ID, SLOT_2, RENTAL_1,
-				null, BOOT_ID, "LOCK"
+				"command-retry-1", STATION_ID, SLOT_2, BOOT_ID, "LOCK"
 			);
 
 		DeviceCommandResult first = service.registerDeviceCommand(command);
@@ -282,8 +309,7 @@ class IdempotencyServiceTests {
 	void sameCommandIdConcurrentlyCreatesOneOperation() throws Exception {
 		DeviceCommand command =
 			new DeviceCommand(
-				"command-concurrent-1", STATION_ID, SLOT_2, RENTAL_1,
-				null, BOOT_ID, "LOCK"
+				"command-concurrent-1", STATION_ID, SLOT_2, BOOT_ID, "LOCK"
 			);
 
 		List<DeviceCommandResult> results =
@@ -303,8 +329,7 @@ class IdempotencyServiceTests {
 	void sameEventIdAppliesSlotStateOnce() {
 		DeviceCommand command =
 			new DeviceCommand(
-				"command-event-1", STATION_ID, SLOT_2, RENTAL_1,
-				null, BOOT_ID, "LOCK"
+				"command-event-1", STATION_ID, SLOT_2, BOOT_ID, "LOCK"
 			);
 		service.registerDeviceCommand(command);
 		DeviceEvent event = successfulEvent("event-retry-1", command.commandId(), SLOT_2);
@@ -324,8 +349,7 @@ class IdempotencyServiceTests {
 
 		DeviceCommand laterCommand =
 			new DeviceCommand(
-				"command-event-2", STATION_ID, SLOT_2, RENTAL_1,
-				null, BOOT_ID, "UNLOCK"
+				"command-event-2", STATION_ID, SLOT_2, BOOT_ID, "UNLOCK"
 			);
 		service.registerDeviceCommand(laterCommand);
 		service.applyDeviceEvent(new DeviceEvent(
@@ -364,8 +388,7 @@ class IdempotencyServiceTests {
 	void sameEventIdConcurrentlyAppliesSlotStateOnce() throws Exception {
 		DeviceCommand command =
 			new DeviceCommand(
-				"command-event-concurrent", STATION_ID, SLOT_2, RENTAL_1,
-				null, BOOT_ID, "LOCK"
+				"command-event-concurrent", STATION_ID, SLOT_2, BOOT_ID, "LOCK"
 			);
 		service.registerDeviceCommand(command);
 		DeviceEvent event =
@@ -445,7 +468,7 @@ class IdempotencyServiceTests {
 			new ReturnAttemptCommand("different-request-1", RENTAL_1, SLOT_2)
 		);
 		ReturnAttemptResult returnTwo = service.createReturnAttempt(
-			new ReturnAttemptCommand("different-request-2", RENTAL_1, SLOT_3)
+			new ReturnAttemptCommand("different-request-2", RENTAL_2, SLOT_3)
 		);
 		assertNotEquals(returnOne.returnAttemptId(), returnTwo.returnAttemptId());
 
@@ -453,8 +476,6 @@ class IdempotencyServiceTests {
 			"different-command-1",
 			STATION_ID,
 			SLOT_2,
-			RENTAL_1,
-			returnOne.returnAttemptId(),
 			BOOT_ID,
 			"LOCK"
 		);
@@ -462,8 +483,6 @@ class IdempotencyServiceTests {
 			"different-command-2",
 			STATION_ID,
 			SLOT_3,
-			RENTAL_1,
-			returnTwo.returnAttemptId(),
 			BOOT_ID,
 			"LOCK"
 		);
@@ -512,8 +531,7 @@ class IdempotencyServiceTests {
 
 		DeviceCommand commandOne =
 			new DeviceCommand(
-				"conflict-command-1", STATION_ID, SLOT_2, RENTAL_1,
-				null, BOOT_ID, "LOCK"
+				"conflict-command-1", STATION_ID, SLOT_2, BOOT_ID, "LOCK"
 			);
 		service.registerDeviceCommand(commandOne);
 		assertThrows(IdempotencyConflictException.class, () ->
@@ -522,8 +540,6 @@ class IdempotencyServiceTests {
 					"conflict-command-1",
 					STATION_ID,
 					SLOT_3,
-					RENTAL_1,
-					null,
 					BOOT_ID,
 					"LOCK"
 				)
@@ -538,8 +554,7 @@ class IdempotencyServiceTests {
 		);
 		DeviceCommand commandTwo =
 			new DeviceCommand(
-				"conflict-command-2", STATION_ID, SLOT_3, RENTAL_1,
-				null, BOOT_ID, "LOCK"
+				"conflict-command-2", STATION_ID, SLOT_3, BOOT_ID, "LOCK"
 			);
 		service.registerDeviceCommand(commandTwo);
 		assertThrows(IdempotencyConflictException.class, () ->
@@ -621,6 +636,30 @@ class IdempotencyServiceTests {
 			throw new IllegalStateException("COUNT query returned null");
 		}
 		return value;
+	}
+
+	private void truncateBusinessData() {
+		jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 0");
+		try {
+			for (String table : List.of(
+				"settlement_payment_mutation_guard",
+				"payment_attempt",
+				"settlement",
+				"device_operation",
+				"damage_inspection",
+				"return_attempt",
+				"rental",
+				"slot",
+				"station",
+				"face_profile_sync_operation",
+				"admin_account",
+				"user_account"
+			)) {
+				jdbcTemplate.execute("TRUNCATE TABLE " + table);
+			}
+		} finally {
+			jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 1");
+		}
 	}
 
 	private String text(String sql, Object... arguments) {

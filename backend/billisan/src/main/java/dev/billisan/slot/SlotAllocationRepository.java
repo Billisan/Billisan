@@ -19,7 +19,7 @@ class SlotAllocationRepository {
 	Optional<String> lockNextRentalSlot(String stationId) {
 		return queryOptionalSlot("""
 			SELECT candidate.slot_id
-			FROM slot candidate FORCE INDEX (idx_slot_station_allocation_candidate)
+			FROM slot candidate
 			WHERE candidate.station_id = ?
 			  AND candidate.service_status = 'AVAILABLE'
 			  AND candidate.occupancy_status = 'OCCUPIED'
@@ -48,7 +48,7 @@ class SlotAllocationRepository {
 	Optional<String> lockNextReturnSlot(String stationId) {
 		return queryOptionalSlot("""
 			SELECT candidate.slot_id
-			FROM slot candidate FORCE INDEX (idx_slot_station_allocation_candidate)
+			FROM slot candidate
 			WHERE candidate.station_id = ?
 			  AND candidate.service_status = 'AVAILABLE'
 			  AND candidate.occupancy_status = 'EMPTY'

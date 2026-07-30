@@ -43,7 +43,7 @@ class FaceProfileSyncOperationEntityTest {
 	}
 
 	@Test
-	void deleteSuccessDoesNotStoreATemplateVersion() {
+	void deleteSuccessRetainsTheAffectedTemplateVersion() {
 		FaceProfileSyncOperationEntity operation = requested(
 			OperationType.DELETE
 		);
@@ -51,7 +51,7 @@ class FaceProfileSyncOperationEntityTest {
 		operation.markSucceeded(99, REQUESTED_AT.plusSeconds(2));
 
 		assertThat(operation.getSyncStatus()).isEqualTo(SyncStatus.SUCCEEDED);
-		assertThat(operation.getTemplateVersion()).isNull();
+		assertThat(operation.getTemplateVersion()).isEqualTo(99);
 	}
 
 	@Test
@@ -79,6 +79,7 @@ class FaceProfileSyncOperationEntityTest {
 			"face-sync-request-001",
 			"00000000-0000-0000-0000-000000000001",
 			operationType,
+			1,
 			REQUESTED_AT
 		);
 	}

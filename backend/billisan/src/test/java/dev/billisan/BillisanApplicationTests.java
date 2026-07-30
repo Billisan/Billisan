@@ -31,7 +31,8 @@ class BillisanApplicationTests {
 		.withCommand(
 			"--character-set-server=utf8mb4",
 			"--collation-server=utf8mb4_0900_ai_ci",
-			"--default-time-zone=+09:00"
+			"--default-time-zone=+00:00",
+			"--log-bin-trust-function-creators=1"
 		);
 
 	@DynamicPropertySource
@@ -53,8 +54,9 @@ class BillisanApplicationTests {
 	}
 
 	@Test
-	void createsExactlyTenBusinessTables() {
+	void createsFinalBusinessAndInternalTables() {
 		List<String> expectedTables = List.of(
+			"admin_account",
 			"damage_inspection",
 			"device_operation",
 			"face_profile_sync_operation",
@@ -62,6 +64,7 @@ class BillisanApplicationTests {
 			"rental",
 			"return_attempt",
 			"settlement",
+			"settlement_payment_mutation_guard",
 			"slot",
 			"station",
 			"user_account"
@@ -80,79 +83,89 @@ class BillisanApplicationTests {
 
 	@Test
 	void createsRequiredIndexesAndForeignKeys() {
-		assertUniqueIndex("return_attempt", "request_id", "uk_return_attempt_request_id");
+		assertUniqueIndex("return_attempt", "request_id", "UK_RETURN_ATTEMPT_REQUEST_ID");
 		assertNonUniqueIndex(
 			"return_attempt",
 			"rental_id",
-			"idx_return_attempt_rental_status"
+			"FK_RETURN_ATTEMPT_RENTAL"
 		);
-		assertNoUniqueIndex("return_attempt", "rental_id");
 		assertUniqueIndex(
 			"damage_inspection",
 			"return_attempt_id",
-			"uk_damage_inspection_return_attempt_id"
+			"UK_DAMAGE_INSPECTION_RETURN_ATTEMPT_ID"
 		);
 		assertForeignKey(
 			"damage_inspection",
 			"return_attempt_id",
 			"return_attempt",
-			"fk_damage_inspection_return_attempt"
+			"FK_DAMAGE_INSPECTION_RETURN_ATTEMPT_RENTAL"
 		);
 		assertUniqueIndex(
 			"device_operation",
 			"command_id",
-			"uk_device_operation_command_id"
+			"UK_DEVICE_OPERATION_COMMAND_ID"
 		);
 		assertUniqueIndex(
 			"device_operation",
 			"event_id",
-			"uk_device_operation_event_id"
+			"UK_DEVICE_OPERATION_EVENT_ID"
 		);
 		assertUniqueIndex(
 			"payment_attempt",
 			"creation_request_id",
-			"uk_payment_attempt_creation_request_id"
+			"UK_PAYMENT_CREATION_REQUEST_ID"
 		);
 		assertUniqueIndex(
 			"payment_attempt",
 			"toss_order_id",
-			"uk_payment_attempt_toss_order_id"
+			"UK_PAYMENT_TOSS_ORDER_ID"
 		);
 		assertUniqueIndex(
 			"payment_attempt",
 			"toss_payment_key",
-			"uk_payment_attempt_toss_payment_key"
+			"UK_PAYMENT_TOSS_PAYMENT_KEY"
 		);
 		assertUniqueIndex(
 			"face_profile_sync_operation",
 			"request_id",
-			"uk_face_profile_sync_operation_request_id"
+			"UK_FACE_PROFILE_SYNC_REQUEST_ID"
 		);
 		assertForeignKey(
 			"face_profile_sync_operation",
-			"user_id",
+			"user_ref",
 			"user_account",
-			"fk_face_profile_sync_operation_user_account"
+			"FK_FACE_PROFILE_SYNC_USER_REF"
 		);
 		assertColumnNullable("rental", "due_at", true);
 		assertColumnNullable("return_attempt", "return_slot_id", true);
 		assertColumnNullable("user_account", "password_hash", false);
 		assertColumnNullable("user_account", "name", false);
-		assertColumnNullable("device_operation", "issued_boot_id", false);
+		assertColumnNullable("device_operation", "issued_boot_id", true);
+		assertColumnType("user_account", "user_id", "char(9)");
+		assertUniqueIndex(
+			"user_account",
+			"user_ref",
+			"UK_USER_ACCOUNT_USER_REF"
+		);
+		assertEquals(9, jdbcTemplate.queryForObject("""
+			SELECT COUNT(*)
+			FROM information_schema.triggers
+			WHERE trigger_schema = DATABASE()
+			""", Integer.class));
 	}
 
 	@Test
 	void allowsASecondReturnAttemptForTheSameRental() {
 		jdbcTemplate.update("""
 			INSERT INTO user_account (
-				user_id, login_id, password_hash, name, role,
+				user_id, user_ref, login_id, password_hash, name,
 				face_registered, created_at, updated_at
 			) VALUES (
+				'100000001',
 				'10000000-0000-0000-0000-000000000001',
-				'migration-test-user',
+				'migration-test@example.com',
 				'{noop}migration-test-password',
 				'Migration Test User',
-				'USER',
 				FALSE,
 				NOW(6),
 				NOW(6)
@@ -160,10 +173,9 @@ class BillisanApplicationTests {
 			""");
 		jdbcTemplate.update("""
 			INSERT INTO station (
-				station_id, station_code, name, service_status, device_status, updated_at
+				station_id, name, service_status, device_status, updated_at
 			) VALUES (
 				'20000000-0000-0000-0000-000000000001',
-				'MIGRATION-STATION',
 				'Migration Test Station',
 				'AVAILABLE',
 				'ONLINE',
@@ -202,13 +214,13 @@ class BillisanApplicationTests {
 				requested_at, rented_at, due_at
 			) VALUES (
 				'40000000-0000-0000-0000-000000000001',
-				'10000000-0000-0000-0000-000000000001',
+				'100000001',
 				'30000000-0000-0000-0000-000000000001',
 				'migration-rental-request-1',
-				'ACTIVE',
-				NOW(6),
-				NOW(6),
-				DATE_ADD(NOW(6), INTERVAL 1 DAY)
+				'RETURNING',
+				UTC_TIMESTAMP(6),
+				UTC_TIMESTAMP(6),
+				DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 24 HOUR)
 			)
 			""");
 		jdbcTemplate.update("""
@@ -259,6 +271,21 @@ class BillisanApplicationTests {
 				NOW(6)
 			)
 			"""));
+	}
+
+	private void assertColumnType(
+		String table,
+		String column,
+		String expectedType
+	) {
+		String actualType = jdbcTemplate.queryForObject("""
+			SELECT column_type
+			FROM information_schema.columns
+			WHERE table_schema = DATABASE()
+			  AND table_name = ?
+			  AND column_name = ?
+			""", String.class, table, column);
+		assertEquals(expectedType, actualType);
 	}
 
 	@Test

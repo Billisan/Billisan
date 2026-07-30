@@ -1,7 +1,7 @@
 package dev.billisan.slot;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -10,8 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SlotAllocationService {
-
-	private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Seoul");
 
 	private final SlotAllocationRepository repository;
 
@@ -103,7 +101,7 @@ public class SlotAllocationService {
 	}
 
 	private static LocalDateTime now() {
-		LocalDateTime current = LocalDateTime.now(BUSINESS_ZONE);
+		LocalDateTime current = LocalDateTime.now(ZoneOffset.UTC);
 		return current.withNano(current.getNano() / 1_000 * 1_000);
 	}
 

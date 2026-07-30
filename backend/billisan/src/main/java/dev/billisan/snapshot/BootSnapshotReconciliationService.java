@@ -2,7 +2,7 @@ package dev.billisan.snapshot;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -21,8 +21,6 @@ import dev.billisan.snapshot.BootSnapshotRepository.StationRow;
 @Service
 public class BootSnapshotReconciliationService {
 
-	private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Seoul");
-
 	private final BootSnapshotRepository repository;
 	private final BootSnapshotPolicy policy;
 
@@ -40,7 +38,7 @@ public class BootSnapshotReconciliationService {
 
 		LocalDateTime measuredAt = command
 			.measuredAt()
-			.atZoneSameInstant(BUSINESS_ZONE)
+			.atZoneSameInstant(ZoneOffset.UTC)
 			.toLocalDateTime();
 		StationRow station = repository
 			.lockStation(command.stationId())
@@ -262,7 +260,7 @@ public class BootSnapshotReconciliationService {
 	}
 
 	private static LocalDateTime now() {
-		LocalDateTime current = LocalDateTime.now(BUSINESS_ZONE);
+		LocalDateTime current = LocalDateTime.now(ZoneOffset.UTC);
 		return current.withNano(current.getNano() / 1_000 * 1_000);
 	}
 

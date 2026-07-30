@@ -1,7 +1,7 @@
 package dev.billisan.idempotency;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -16,8 +16,6 @@ import dev.billisan.idempotency.IdempotencyRepository.SettlementRow;
 
 @Service
 public class IdempotencyService {
-
-	private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Seoul");
 
 	private final IdempotencyRepository repository;
 
@@ -77,8 +75,6 @@ public class IdempotencyService {
 			generatedId,
 			command.stationId(),
 			command.slotId(),
-			command.rentalId(),
-			command.returnAttemptId(),
 			command.commandId(),
 			command.issuedBootId(),
 			command.operationType(),
@@ -152,7 +148,6 @@ public class IdempotencyService {
 			event.slotId(),
 			event.occupancyStatus(),
 			event.lockStatus(),
-			operation.returnAttemptId() != null,
 			event.occurredAt()
 		) != 1) {
 			throw new IllegalStateException("Device event slot does not exist");
@@ -239,10 +234,6 @@ public class IdempotencyService {
 			);
 		}
 
-		if (repository.markSettlementPaid(payment.settlementId(), approvedAt) != 1) {
-			throw new IllegalStateException("Settlement was not paid exactly once");
-		}
-
 		return new PaymentApprovalResult(
 			payment.paymentAttemptId(),
 			payment.settlementId(),
@@ -283,9 +274,7 @@ public class IdempotencyService {
 		DeviceCommand command
 	) {
 		if (!stored.stationId().equals(command.stationId())
-			|| !stored.slotId().equals(command.slotId())
-			|| !Objects.equals(stored.rentalId(), command.rentalId())
-			|| !Objects.equals(stored.returnAttemptId(), command.returnAttemptId())
+			|| !Objects.equals(stored.slotId(), command.slotId())
 			|| !stored.issuedBootId().equals(command.issuedBootId())
 			|| !stored.operationType().equals(command.operationType())) {
 			throw new IdempotencyConflictException("commandId", command.commandId());
@@ -356,7 +345,9 @@ public class IdempotencyService {
 		Objects.requireNonNull(command, "command");
 		requireText(command.commandId(), "commandId");
 		requireText(command.stationId(), "stationId");
-		requireText(command.slotId(), "slotId");
+		if (command.slotId() != null) {
+			requireText(command.slotId(), "slotId");
+		}
 		requireText(command.issuedBootId(), "issuedBootId");
 		requireText(command.operationType(), "operationType");
 	}
@@ -380,8 +371,10 @@ public class IdempotencyService {
 		requireText(command.paymentAttemptId(), "paymentAttemptId");
 		requireText(command.tossOrderId(), "tossOrderId");
 		requireText(command.paymentKey(), "paymentKey");
-		if (command.amount() < 0) {
-			throw new IllegalArgumentException("amount must not be negative");
+		if (command.amount() < 1 || command.amount() > 7_000) {
+			throw new IllegalArgumentException(
+				"amount must be between 1 and 7000"
+			);
 		}
 	}
 
@@ -396,7 +389,7 @@ public class IdempotencyService {
 	}
 
 	private static LocalDateTime now() {
-		LocalDateTime current = LocalDateTime.now(BUSINESS_ZONE);
+		LocalDateTime current = LocalDateTime.now(ZoneOffset.UTC);
 		return current.withNano(current.getNano() / 1_000 * 1_000);
 	}
 
@@ -425,8 +418,6 @@ public class IdempotencyService {
 		String commandId,
 		String stationId,
 		String slotId,
-		String rentalId,
-		String returnAttemptId,
 		String issuedBootId,
 		String operationType
 	) {
