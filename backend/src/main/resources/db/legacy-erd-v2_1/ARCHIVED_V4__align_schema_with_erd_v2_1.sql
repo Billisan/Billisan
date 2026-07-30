@@ -1,3 +1,8 @@
+-- ARCHIVED REFERENCE ONLY.
+-- Flyway executes scripts only from classpath:db/migration.
+-- The active V8 migration replaces this legacy table's BIGINT id with
+-- sync_operation_id CHAR(36) as the primary key.
+
 ALTER TABLE user_account
     ADD COLUMN password_hash
         VARCHAR(255) CHARACTER SET ascii COLLATE ascii_bin NULL

@@ -159,6 +159,25 @@ class BillisanApplicationTests {
 	}
 
 	@Test
+	void mapsFaceProfileSyncOperationPrimaryKeyToFinalSchema() {
+		assertColumnType(
+			"face_profile_sync_operation",
+			"sync_operation_id",
+			"char(36)"
+		);
+		assertColumnNullable(
+			"face_profile_sync_operation",
+			"sync_operation_id",
+			false
+		);
+		assertPrimaryKey(
+			"face_profile_sync_operation",
+			"sync_operation_id"
+		);
+		assertColumnAbsent("face_profile_sync_operation", "id");
+	}
+
+	@Test
 	void allowsASecondReturnAttemptForTheSameRental() {
 		jdbcTemplate.update("""
 			INSERT INTO user_account (
@@ -290,6 +309,30 @@ class BillisanApplicationTests {
 			  AND column_name = ?
 			""", String.class, table, column);
 		assertEquals(expectedType, actualType);
+	}
+
+	private void assertPrimaryKey(String table, String column) {
+		Integer count = jdbcTemplate.queryForObject("""
+			SELECT COUNT(*)
+			FROM information_schema.key_column_usage
+			WHERE constraint_schema = DATABASE()
+			  AND table_name = ?
+			  AND constraint_name = 'PRIMARY'
+			  AND column_name = ?
+			  AND ordinal_position = 1
+			""", Integer.class, table, column);
+		assertEquals(1, count);
+	}
+
+	private void assertColumnAbsent(String table, String column) {
+		Integer count = jdbcTemplate.queryForObject("""
+			SELECT COUNT(*)
+			FROM information_schema.columns
+			WHERE table_schema = DATABASE()
+			  AND table_name = ?
+			  AND column_name = ?
+			""", Integer.class, table, column);
+		assertEquals(0, count);
 	}
 
 	@Test
