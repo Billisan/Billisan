@@ -1,5 +1,6 @@
 package dev.billisan.global.security;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,12 +34,18 @@ public class JwtProvider {
     }
 
     public Instant getExpiration(String token) {
+        return parseClaims(token).getExpiration().toInstant();
+    }
+
+    public String getSubject(String token) {
+        return parseClaims(token).getSubject();
+    }
+
+    private Claims parseClaims(String token) {
         return Jwts.parser()
                 .verifyWith(key)
                 .build()
                 .parseSignedClaims(token)
-                .getPayload()
-                .getExpiration()
-                .toInstant();
+                .getPayload();
     }
 }
