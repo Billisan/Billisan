@@ -1,164 +1,116 @@
-// import type { PiEnvelope } from '../types/piProtocol'
-//
-// // DEC-032(PROJECT_GUIDE.md §9.1) 대응 — 얼굴 인증 트리거에 한해 Kiosk FE가 Pi에 직접 연결한다.
-// const PI_WS_URL = import.meta.env.VITE_PI_WS_URL
-//
-// // TEMP: 실제 stationId 확정 전까지 임시값. 서버 응답이 오는지만 확인하는 용도(사용자 확인, 2026-07-29).
-// const TEMP_STATION_ID = crypto.randomUUID()
-//
-// const CLIENT_SESSION_KEY_STORAGE_KEY = 'billisan_kiosk_client_session_key'
-//
-// // clientSessionKey는 사용자 식별 정보가 아닌 브라우저 세션 한정 키 — Web Crypto로 생성해 sessionStorage에만 보관.
-// function getClientSessionKey(): string {
-//   const existing = sessionStorage.getItem(CLIENT_SESSION_KEY_STORAGE_KEY)
-//   if (existing) return existing
-//
-//   const key = crypto.randomUUID()
-//   sessionStorage.setItem(CLIENT_SESSION_KEY_STORAGE_KEY, key)
-//   return key
-// }
-//
-// let sequence = 0
-//
-// function buildEnvelope<TPayload>(params: {
-//   messageType: string
-//   operationId: string
-//   sessionId: string | null
-//   requestId: string
-//   payload: TPayload
-// }): PiEnvelope<TPayload> {
-//   const now = new Date()
-//   const expiresAt = new Date(now.getTime() + 15_000)
-//
-//   return {
-//     schemaVersion: '1.0',
-//     messageType: params.messageType,
-//     messageId: crypto.randomUUID(),
-//     operationId: params.operationId,
-//     sessionId: params.sessionId,
-//     requestId: params.requestId,
-//     correlationId: crypto.randomUUID(),
-//     sentAt: now.toISOString(),
-//     expiresAt: expiresAt.toISOString(),
-//     sequence: sequence++,
-//     payload: params.payload,
-//   }
-// }
-//
-// interface SessionOpenResult {
-//   sessionId: string
-//   mode: 'RENT' | 'RETURN'
-//   status: string
-//   expiresAt: string
-// }
-//
-// export interface FaceAuthResult {
-//   sessionId: string
-//   authRequestId: string
-//   authenticated: boolean
-//   eligibility: unknown
-//   kioskStep: string
-//   userMessageCode: string | null
-//   retryable: boolean
-// }
-//
-// // 연결 → 세션 생성(KSK-SESSION-001) → 얼굴 인증 요청(KSK-AUTH-001) 왕복 한 번만 처리한다.
-// // KIOSK.CONNECT/KIOSK.CONNECTED 핸드셰이크 스펙은 아직 확인 안 됨 — WebSocket 자체 open 이벤트로
-// // "연결됨"을 대신한다(가정, 재확인 필요). 하트비트·재연결·연결 승계는 이번 범위에 포함하지 않는다.
-// export function requestFaceAuthStart(): Promise<FaceAuthResult> {
-//   return new Promise((resolve, reject) => {
-//     const socket = new WebSocket(PI_WS_URL)
-//
-//     socket.onopen = () => {
-//       const sessionRequestId = crypto.randomUUID()
-//       const envelope = buildEnvelope({
-//         messageType: 'KIOSK.SESSION.OPEN.REQUEST',
-//         operationId: 'KSK-SESSION-001',
-//         sessionId: null,
-//         requestId: sessionRequestId,
-//         payload: {
-//           mode: 'RENT',
-//           stationId: TEMP_STATION_ID,
-//           clientSessionKey: getClientSessionKey(),
-//           lastKnownSessionId: null,
-//           operationRequestIds: {
-//             faceAuthRequestId: null,
-//             rentalRequestId: null,
-//             returnRequestId: null,
-//           },
-//         },
-//       })
-//       socket.send(JSON.stringify(envelope))
-//     }
-//
-//     socket.onmessage = (event) => {
-//       let message: PiEnvelope
-//       try {
-//         message = JSON.parse(event.data)
-//       } catch {
-//         console.error('Pi 메시지 파싱 실패', event.data)
-//         return
-//       }
-//
-//       console.log('[Pi WS] received', message)
-//
-//       if (message.messageType === 'KIOSK.SESSION.OPEN.RESULT') {
-//         const { sessionId } = message.payload as SessionOpenResult
-//         const authRequestId = crypto.randomUUID()
-//
-//         const authEnvelope = buildEnvelope({
-//           messageType: 'KIOSK.FACE_AUTH.REQUEST',
-//           operationId: 'KSK-AUTH-001',
-//           sessionId,
-//           requestId: authRequestId,
-//           payload: { authRequestId },
-//         })
-//         socket.send(JSON.stringify(authEnvelope))
-//         return
-//       }
-//
-//       if (message.messageType === 'KIOSK.FACE_AUTH.RESULT') {
-//         socket.close()
-//         resolve(message.payload as FaceAuthResult)
-//         return
-//       }
-//
-//       if (message.messageType === 'KIOSK.OPERATION.ERROR') {
-//         socket.close()
-//         reject(message.payload)
-//       }
-//     }
-//
-//     socket.onerror = (event) => {
-//       reject(event)
-//     }
-//   })
-// }
+const PI_WS_RENT_URL = import.meta.env.VITE_PI_WS_RENT_URL
+const PI_WS_RETURN_URL = import.meta.env.VITE_PI_WS_RETURN_URL
 
-const PI_WS_URL = import.meta.env.VITE_PI_WS_URL
+export interface PiStageMessage {
+  stage: string
+  message?: string
+  status?: string
+  resultCode?: string
+}
 
-// TEMP: 가장 기본적인 연결 확인용 — Envelope 없이 단순 메시지 하나만 주고받는다.
-export function requestFaceAuthStart(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const socket = new WebSocket(PI_WS_URL)
+interface FaceAuthStreamCallbacks {
+  onGuidance: (message: string) => void
+  onSucceeded: () => void
+  onFailed: (message?: string) => void
+  // SLOT_REQUESTED~DONE 등 아직 페이로드를 확인 못 한 이후 단계 — 로그만 남기고 화면엔 반영하지 않는다.
+  onUnhandledStage: (raw: PiStageMessage) => void
+}
 
-    socket.onopen = () => {
-      console.log('[Pi WS] open')
-      socket.send(JSON.stringify({ type: 'START_FACE_AUTH' }))
+// 실서버 실측 프로토콜(2026-07-30, 팀 채팅 확인) — Envelope 없는 flat {stage, ...} JSON 스트림.
+// AUTH_STARTED → (GUIDANCE ×N) → AUTH_SUCCEEDED|AUTH_FAILED → (SLOT_REQUESTED~DONE, 이번 범위 밖)
+// 모르는 stage는 에러 처리하지 않고 무시한다(팀 확인 원칙) — onUnhandledStage로만 흘려보냄.
+// mode(RENT/RETURN)를 트리거 메시지에 같이 실어 보낸다 — 서버가 대여/반납 흐름을 구분할 수 있도록.
+// 서버가 이 필드를 실제로 사용하는지는 미확인(추가된 필드, 기존 type은 그대로 유지).
+export function startFaceAuthStream(
+  mode: 'RENT' | 'RETURN',
+  callbacks: FaceAuthStreamCallbacks,
+): () => void {
+  const socket = new WebSocket(PI_WS_RENT_URL)
+
+  socket.onopen = () => {
+    console.log('[Pi WS] open', mode)
+    socket.send(JSON.stringify({ type: 'START_FACE_AUTH', mode }))
+  }
+
+  socket.onmessage = (event) => {
+    let data: PiStageMessage
+    try {
+      data = JSON.parse(event.data)
+    } catch {
+      console.error('Pi 메시지 파싱 실패', event.data)
+      return
     }
 
-    socket.onmessage = (event) => {
-      console.log('[Pi WS] message', event.data)
-      resolve()
+    switch (data.stage) {
+      case 'AUTH_STARTED':
+        break
+
+      case 'GUIDANCE':
+        if (data.message) callbacks.onGuidance(data.message)
+        break
+
+      case 'AUTH_SUCCEEDED':
+        callbacks.onSucceeded()
+        break
+
+      case 'AUTH_FAILED':
+        callbacks.onFailed(data.message)
+        break
+
+      default:
+        callbacks.onUnhandledStage(data)
+    }
+  }
+
+  socket.onerror = (event) => {
+    console.error('[Pi WS] error', event)
+  }
+
+  socket.onclose = (event) => {
+    console.log('[Pi WS] close', event.code, event.reason)
+  }
+
+  return () => socket.close()
+}
+
+interface ReturnInspectionStreamCallbacks {
+  // 반납·우산 파손 인식 stage 이름을 아직 팀 확인 전이라, 전부 이 콜백 하나로 흘려보낸다.
+  onStage: (raw: PiStageMessage) => void
+}
+
+// TEMP/추정 구현 — 반납·우산 파손 인식 트리거 메시지 이름(`START_RETURN_INSPECTION`)은
+// 팀 확인 전 추측값이다(얼굴 인증의 START_FACE_AUTH와 같은 패턴을 가정). 실서버 반응으로
+// 검증되면 이 주석과 함께 확정 구현으로 교체한다.
+export function startReturnInspectionStream(
+  callbacks: ReturnInspectionStreamCallbacks,
+): () => void {
+  const socket = new WebSocket(PI_WS_RETURN_URL)
+
+  socket.onopen = () => {
+    console.log('[Pi WS] open (return inspection, TEMP 추정)')
+    socket.send(JSON.stringify({ type: 'START_RETURN_INSPECTION' }))
+  }
+
+  socket.onmessage = (event) => {
+    let data: PiStageMessage
+    try {
+      data = JSON.parse(event.data)
+    } catch {
+      console.error('Pi 메시지 파싱 실패', event.data)
+      return
     }
 
-    socket.onerror = (event) => {
-      console.error('[Pi WS] error', event)
-      reject(event)
-    }
+    console.log('[Pi WS] return inspection stage', data)
+    callbacks.onStage(data)
+  }
 
-    socket.onclose = (event) => {
-      console.log('[Pi WS] close', event.code, event.reason)
-    }
-  })
+  socket.onerror = (event) => {
+    console.error('[Pi WS] error', event)
+  }
+
+  socket.onclose = (event) => {
+    console.log('[Pi WS] close', event.code, event.reason)
+  }
+
+  return () => socket.close()
 }

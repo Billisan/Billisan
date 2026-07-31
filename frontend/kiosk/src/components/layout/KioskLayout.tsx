@@ -3,7 +3,7 @@ import 'dayjs/locale/ko'
 import { useEffect, useState, type ReactNode } from 'react'
 import logo from '../../assets/logo.svg'
 import { ChevronLeftIcon } from '../icons/ChevronLeftIcon'
-import { RentalStepIndicator } from './RentalStepIndicator'
+import { StepIndicator, type StepFlow } from './StepIndicator'
 
 dayjs.locale('ko')
 
@@ -11,7 +11,8 @@ interface KioskLayoutProps {
   children: ReactNode
   onBack?: () => void
   fullBleed?: boolean
-  currentStep?: 1 | 2 | 3
+  currentStep?: 1 | 2 | 3 | 4
+  flow?: StepFlow
 }
 
 export function KioskLayout({
@@ -19,6 +20,7 @@ export function KioskLayout({
   onBack,
   fullBleed = false,
   currentStep,
+  flow,
 }: KioskLayoutProps) {
   const [now, setNow] = useState(() => dayjs())
 
@@ -32,7 +34,7 @@ export function KioskLayout({
       <header className="relative flex min-h-[15vh] w-full items-center justify-between px-14 py-6">
         {currentStep && (
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-            <RentalStepIndicator currentStep={currentStep} />
+            <StepIndicator currentStep={currentStep} flow={flow} />
           </div>
         )}
         {onBack ? (

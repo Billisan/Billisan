@@ -23,6 +23,10 @@ const MESSAGES: Record<
     title: '이미 대여 중인 우산이 있어요',
     subtitle: '현재 대여 중인 건이 있어 신규 대여할 수 없습니다.',
   },
+  [RENTAL_BLOCK_REASON.ACTIVE_RENTAL_NOT_FOUND]: {
+    title: '반납할 대여 내역이 없어요',
+    subtitle: '현재 대여 중인 우산이 없습니다.',
+  },
 }
 
 const AUTO_CLOSE_SECONDS = 5
@@ -54,9 +58,14 @@ export function RentalBlockModal({ reason, onClose }: RentalBlockModalProps) {
           <p className="text-tertiary-text mt-3 text-xl">{subtitle}</p>
         </div>
 
-        <p className="text-tertiary-text text-base">
-          {secondsLeft}초 후 자동으로 닫힙니다
-        </p>
+        <div className="flex flex-col items-center gap-3">
+          <div className="bg-primary flex h-18 w-18 items-center justify-center rounded-full">
+            <span className="text-3xl font-bold text-white">{secondsLeft}</span>
+          </div>
+          <p className="text-tertiary-text text-base">
+            5초 후 자동으로 닫힙니다
+          </p>
+        </div>
 
         <button
           type="button"

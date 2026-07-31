@@ -60,8 +60,11 @@ export function RentalCompleteScreen({
         </div>
 
         <div className="flex flex-col items-center gap-3">
+          <div className="bg-primary flex h-18 w-18 items-center justify-center rounded-full">
+            <span className="text-3xl font-bold text-white">{secondsLeft}</span>
+          </div>
           <p className="text-tertiary-text text-base">
-            {secondsLeft}초 후 자동으로 홈 화면으로 돌아갑니다
+            5초 후 자동으로 홈 화면으로 돌아갑니다
           </p>
 
           <button
