@@ -3,6 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { BillisanLogo } from '@/components/brand/BillisanLogo';
 import { LoginForm } from '@/features/auth/components/LoginForm';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { returnPathOf } from '@/features/auth/lib/returnPath';
 import { PageTitle } from '@/shared/components/PageTitle';
 
 /**
@@ -16,9 +17,16 @@ export function LoginPage() {
     const location = useLocation();
     const state = location.state as { expired?: boolean } | null;
 
-    // 이미 로그인돼 있으면 대시보드로.
+    /*
+     * 이미 로그인돼 있으면 보던 화면으로. **`/` 로 고정하면 안 됩니다.**
+     *
+     * 로그인 성공 순간에는 이 분기와 `useLogin` 의 `onSuccess` 가 거의 동시에 돕니다.
+     * 여기가 `/` 로 고정돼 있던 동안에는 `useLogin` 이 복귀시켜 놓아도 이쪽이 덮어써서,
+     * 세션이 끊겨 튕긴 사람이 다시 로그인하면 늘 대시보드로 떨어졌습니다.
+     * 두 곳이 같은 `returnPathOf` 를 쓰므로 어느 쪽이 이기든 결과가 같습니다.
+     */
     if (isAuthenticated) {
-        return <Navigate to="/" replace />;
+        return <Navigate to={returnPathOf(state)} replace />;
     }
 
     return (

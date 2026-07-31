@@ -8,7 +8,8 @@ import {
     getStationStatus,
     isDeviceOnline,
     sortByStock,
-    STOCK_THRESHOLD,
+    STOCK_RATIO_THRESHOLD,
+    stockRatio,
     type SlotSummary,
     type Station,
 } from '@/features/stations/types';
@@ -141,15 +142,47 @@ describe('getStationStatus', () => {
         );
     });
 
-    it('임계값 경계에서 갈린다', () => {
-        expect(getStationStatus(station({ available: STOCK_THRESHOLD.surplus }))).toBe('SURPLUS');
-        expect(getStationStatus(station({ available: STOCK_THRESHOLD.surplus - 1 }))).toBe(
-            'NORMAL',
+    /**
+     * 화면흐름 §13 이 "재고 **비율**에서 파생"으로 정했습니다.
+     *
+     * 개수로 가르던 시절에는 슬롯 3개짜리가 꽉 차 있어도(3/3) 「적정」이라 재배치 후보에서
+     * 빠졌습니다. 대여소마다 슬롯이 3~5개로 다르므로 규모를 나눠 봐야 뜻이 통합니다.
+     */
+    it.each([
+        // 슬롯 5개 — 예전 개수 기준과 결과가 같습니다.
+        [5, 5, 'SURPLUS'],
+        [5, 4, 'SURPLUS'],
+        [5, 3, 'NORMAL'],
+        [5, 2, 'NORMAL'],
+        [5, 1, 'SHORTAGE'],
+        [5, 0, 'SHORTAGE'],
+        // 슬롯 4개 — 3/4(75%)가 적정에서 과잉으로 바뀝니다.
+        [4, 4, 'SURPLUS'],
+        [4, 3, 'SURPLUS'],
+        [4, 2, 'NORMAL'],
+        [4, 1, 'SHORTAGE'],
+        // 슬롯 3개 — 꽉 차 있으면 과잉, 1개만 남으면 적정입니다.
+        [3, 3, 'SURPLUS'],
+        [3, 2, 'SURPLUS'],
+        [3, 1, 'NORMAL'],
+        [3, 0, 'SHORTAGE'],
+    ])('슬롯 %i개에 %i개 남으면 %s', (capacity, available, expected) => {
+        expect(getStationStatus(station({ capacity, available }))).toBe(expected);
+    });
+
+    it('비율 경계값 자체는 위쪽 상태에 속한다', () => {
+        // 2/3 는 과잉, 1/3 은 적정 — '이상'이므로 경계는 위 칸입니다.
+        expect(stockRatio(station({ capacity: 3, available: 2 }))).toBeCloseTo(
+            STOCK_RATIO_THRESHOLD.surplus,
         );
-        expect(getStationStatus(station({ available: STOCK_THRESHOLD.normal }))).toBe('NORMAL');
-        expect(getStationStatus(station({ available: STOCK_THRESHOLD.normal - 1 }))).toBe(
-            'SHORTAGE',
-        );
+        expect(getStationStatus(station({ capacity: 3, available: 2 }))).toBe('SURPLUS');
+        expect(getStationStatus(station({ capacity: 3, available: 1 }))).toBe('NORMAL');
+    });
+
+    /** 슬롯이 없으면 0으로 나누게 됩니다. NaN 이 조용히 부족으로 떨어지는 걸 막아 둔 자리입니다. */
+    it('슬롯이 0개면 비율 0, 부족으로 본다', () => {
+        expect(stockRatio(station({ capacity: 0, available: 0 }))).toBe(0);
+        expect(getStationStatus(station({ capacity: 0, available: 0 }))).toBe('SHORTAGE');
     });
 });
 
