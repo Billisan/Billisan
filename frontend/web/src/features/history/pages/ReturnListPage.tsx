@@ -15,7 +15,6 @@ import {
     ListFooter,
     StatStrip,
 } from '@/features/history/components/HistoryShell';
-import { HISTORY_SYNCED_AT } from '@/features/history/mocks/history';
 import {
     RETURN_STATUS_LABEL,
     RETURN_STATUS_TONE,
@@ -26,6 +25,8 @@ import { Badge } from '@/shared/components/Badge';
 import { useReturns } from '@/features/history/hooks/useHistory';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
+import { HISTORY_SYNCED_AT } from '@/features/history/mocks/history';
+import { mockSyncedAt, syncedAtLabel } from '@/shared/lib/syncedAt';
 import { PageTitle } from '@/shared/components/PageTitle';
 import { AiResultBadge } from '@/features/inspections/components/InspectionParts';
 import { RefId } from '@/shared/components/RefId';
@@ -141,7 +142,10 @@ export function ReturnListPage() {
 
     return (
         <div>
-            <PageBar className="mb-[18px]" meta={`${HISTORY_SYNCED_AT} 기준`} />
+            <PageBar
+                className="mb-[18px]"
+                meta={syncedAtLabel(mockSyncedAt(HISTORY_SYNCED_AT), query.dataUpdatedAt)}
+            />
             {/* 탭이 제목 역할을 해서 화면에는 안 보이지만, 제목은 있어야 합니다. */}
             <PageTitle visuallyHidden>반납 이력</PageTitle>
             <HistoryTabs />

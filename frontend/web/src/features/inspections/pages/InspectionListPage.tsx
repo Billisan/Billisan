@@ -23,6 +23,7 @@ import { InspectLink } from '@/features/stations/components/InspectLink';
 import { DataTable, TBody, TableCard, Td, Th, THead, Tr } from '@/shared/components/DataTable';
 import { FilterSelect, type FilterOption } from '@/shared/components/FilterSelect';
 import { PageBar } from '@/shared/components/PageBar';
+import { mockSyncedAt, syncedAtLabel } from '@/shared/lib/syncedAt';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/components/PageState';
 import { RefId } from '@/shared/components/RefId';
 import { PageTitle } from '@/shared/components/PageTitle';
@@ -114,13 +115,14 @@ export function InspectionListPage() {
     const cursor = trail[trail.length - 1];
 
     // ADMIN-INSPECTION-001. 목업인지 실 API 인지는 inspectionsApi 안에서만 갈립니다.
-    const { data, isPending, isError, error, refetch, isFetching } = useInspectionList({
-        aiResult,
-        reviewStatus,
-        from: fromDateOf(period),
-        cursor,
-        size: INSPECTION_PAGE_SIZE,
-    });
+    const { data, isPending, isError, error, refetch, isFetching, dataUpdatedAt } =
+        useInspectionList({
+            aiResult,
+            reviewStatus,
+            from: fromDateOf(period),
+            cursor,
+            size: INSPECTION_PAGE_SIZE,
+        });
 
     const items = data?.items ?? [];
     const pendingCount = items.filter((item) => item.reviewStatus === 'PENDING').length;
@@ -154,7 +156,7 @@ export function InspectionListPage() {
 
     return (
         <div>
-            <PageBar meta={`${INSPECTIONS_SYNCED_AT} 기준`} />
+            <PageBar meta={syncedAtLabel(mockSyncedAt(INSPECTIONS_SYNCED_AT), dataUpdatedAt)} />
 
             <div className="mb-[22px] flex items-center justify-between gap-4">
                 <PageTitle>파손 검수</PageTitle>

@@ -7,6 +7,7 @@ import { formatWon } from '@/features/history/types';
 import { Badge } from '@/shared/components/Badge';
 import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
+import { mockSyncedAt, syncedAtLabel } from '@/shared/lib/syncedAt';
 import { PageTitle } from '@/shared/components/PageTitle';
 import { RefId } from '@/shared/components/RefId';
 import { ROW_CLICKABLE, useRowNavigate } from '@/shared/hooks/useRowNavigate';
@@ -58,7 +59,7 @@ export function UserHistoryPage() {
                  * 대여·반납 상세에서만 들어오므로, 링크로 바로 들어온 사람은 이력 쪽으로 보냅니다.
                  */
                 backTo="/history/rentals"
-                meta={`${HISTORY_SYNCED_AT} 기준`}
+                meta={syncedAtLabel(mockSyncedAt(HISTORY_SYNCED_AT), query.dataUpdatedAt)}
             />
 
             <div className="mb-4 flex h-[76px] items-center rounded-lg bg-white px-[18px]">
