@@ -21,7 +21,7 @@ public class AuthController {
         this.authService = authService;
     }
 
-    @PostMapping("/api/auth/login")
+    @PostMapping("/api/v1/auth/login")
     public ResponseEntity<LoginResponse> login(
             @RequestHeader("X-Request-Id") UUID requestId,
             @Valid @RequestBody LoginRequest request) {
