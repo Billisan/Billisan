@@ -73,6 +73,31 @@ export function EmptyState({
 }
 
 /**
+ * 조회한 대상이 없을 때 (상세 화면 전용).
+ *
+ * **`ErrorState` 와 반드시 갈라야 합니다.** 둘 다 "화면에 내용이 없다"로 보이지만 관리자가
+ * 할 일이 정반대입니다.
+ *   없음   → 링크·주소가 틀렸거나 지워진 것. 다시 눌러도 결과가 같으니 목록으로 돌아갑니다.
+ *   실패   → 지금 못 읽는 것. 잠깐 뒤에 다시 하면 됩니다.
+ *
+ * 예전에는 상세 화면들이 조회 실패에도 「존재하지 않는 …입니다」를 띄웠습니다. 서버가
+ * 500 을 줘도 그렇게 단정해서, 관리자는 링크가 잘못된 줄 알고 찾기를 포기했습니다.
+ *
+ * ID 를 함께 보여 주는 이유는 백엔드 로그와 대조할 값이 그것뿐이기 때문입니다.
+ */
+export function NotFoundState({ label, id }: { label: string; id?: string }) {
+    return (
+        <Frame>
+            <p className="text-[13px] font-bold text-brand-body">존재하지 않는 {label}입니다</p>
+            {id && <p className="font-mono text-[11px] text-brand-muted">{id}</p>}
+            <p className="text-[12px] font-medium text-brand-muted">
+                주소가 잘못됐거나 이미 지워진 항목입니다.
+            </p>
+        </Frame>
+    );
+}
+
+/**
  * 조회 실패.
  *
  * 관리자 오류 10종은 전부 `retryable=false` 라 자동 재시도하지 않습니다. 대신 사람이

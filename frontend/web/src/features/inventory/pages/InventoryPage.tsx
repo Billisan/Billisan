@@ -1,11 +1,18 @@
-import { ShieldCheck, SquareDashed, TriangleAlert, Umbrella } from 'lucide-react';
+import {
+    CircleHelp,
+    CircleSlash,
+    ShieldCheck,
+    SquareDashed,
+    TriangleAlert,
+    Umbrella,
+} from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { usePendingInspectionBySlot } from '@/features/inspections/hooks/useInspections';
 import { DetailLink } from '@/features/stations/components/DetailLink';
-import { useInventory, useStationSlots } from '@/features/stations/hooks/useStations';
-import { MOCK_STATIONS, STATIONS_SYNCED_AT } from '@/features/stations/mocks/stations';
+import { useInventory, useStations, useStationSlots } from '@/features/stations/hooks/useStations';
+import { STATIONS_SYNCED_AT } from '@/features/stations/mocks/stations';
 import {
     deriveSlotDisplayStatus,
     formatSlotLabel,
@@ -14,12 +21,12 @@ import {
     slotStatusHint,
     slotStatusText,
     type SlotDisplayStatus,
-    type Station,
 } from '@/features/stations/types';
 import { Badge } from '@/shared/components/Badge';
 import { FilterSelect, type FilterOption } from '@/shared/components/FilterSelect';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
+import { mockSyncedAt, syncedAtLabel } from '@/shared/lib/syncedAt';
 import { SearchInput } from '@/shared/components/SearchInput';
 import { PageTitle } from '@/shared/components/PageTitle';
 import { ROW_CLICKABLE, useRowNavigate } from '@/shared/hooks/useRowNavigate';
@@ -43,7 +50,11 @@ import { cn } from '@/lib/utils';
  */
 
 type StatusFilter =
-    'ALL' | Extract<SlotDisplayStatus, 'AVAILABLE' | 'EMPTY' | 'ADMIN_REVIEW' | 'DAMAGED'>;
+    | 'ALL'
+    | Extract<
+          SlotDisplayStatus,
+          'AVAILABLE' | 'EMPTY' | 'ADMIN_REVIEW' | 'DAMAGED' | 'OUT_OF_SERVICE' | 'UNKNOWN'
+      >;
 
 /**
  * §7.5 의 필터 목록에서 '건조 중'을 뺀 것입니다.
@@ -60,13 +71,13 @@ const STATUS_OPTIONS: readonly FilterOption<StatusFilter>[] = [
     { value: 'EMPTY', label: SLOT_DISPLAY_LABEL.EMPTY },
     { value: 'ADMIN_REVIEW', label: SLOT_DISPLAY_LABEL.ADMIN_REVIEW },
     { value: 'DAMAGED', label: SLOT_DISPLAY_LABEL.DAMAGED },
+    /*
+     * 이 둘이 빠져 있었습니다. 표에는 「이용 중지」·「확인 필요」 배지가 뜨는데 필터로는
+     * 좁힐 수 없어서, 그 슬롯만 보려면 눈으로 찾아야 했습니다.
+     */
+    { value: 'OUT_OF_SERVICE', label: SLOT_DISPLAY_LABEL.OUT_OF_SERVICE },
+    { value: 'UNKNOWN', label: SLOT_DISPLAY_LABEL.UNKNOWN },
 ];
-
-// 드롭다운 value 는 UUID 입니다. 그대로 `ADMIN-INVENTORY-001` 의 경로 변수로 들어갑니다.
-const STATION_OPTIONS: readonly FilterOption<string>[] = MOCK_STATIONS.map((station) => ({
-    value: station.stationId,
-    label: station.name,
-}));
 
 function parseStatus(value: string | null): StatusFilter {
     return STATUS_OPTIONS.some((option) => option.value === value)
@@ -74,20 +85,40 @@ function parseStatus(value: string | null): StatusFilter {
         : 'ALL';
 }
 
-function parseStation(value: string | null): string {
-    return MOCK_STATIONS.some((station) => station.stationId === value)
-        ? (value as string)
-        : MOCK_STATIONS[0].stationId;
-}
-
 export function InventoryPage() {
     // 행 아무 데나 눌러도 슬롯 상세로 (이력·대여소 표와 같은 규칙)
     const rowNavigate = useRowNavigate();
     // 확정된 조회 조건은 URL Query 에만 둡니다 (화면흐름 §6.2).
     const [searchParams, setSearchParams] = useSearchParams();
-    const stationId = parseStation(searchParams.get('station'));
+
+    /*
+     * **대여소 목록을 조회로 받습니다.** 예전에는 `MOCK_STATIONS` 를 직접 import 해서
+     * 드롭다운·기본값·현재 대여소를 전부 목업에서 꺼냈습니다.
+     *
+     * 그러면 `stationsApi.list` 를 실 API 로 바꿔도 **이 화면만 안 따라옵니다.** 목업
+     * UUID 로 실제 재고·슬롯 API 를 부르게 되어 전부 404 가 납니다. 목록 API 가 계약에
+     * 없어 지금은 어차피 목업이 오지만, 통로를 하나로 두면 그때 고칠 것이 없습니다.
+     */
+    const stationsQuery = useStations();
+    const stations = useMemo(() => stationsQuery.data ?? [], [stationsQuery.data]);
+    const stationOptions = useMemo<readonly FilterOption<string>[]>(
+        // 드롭다운 value 는 UUID 입니다. 그대로 `ADMIN-INVENTORY-001` 의 경로 변수로 들어갑니다.
+        () => stations.map((item) => ({ value: item.stationId, label: item.name })),
+        [stations],
+    );
+
     const keyword = searchParams.get('q')?.trim() ?? '';
     const status = parseStatus(searchParams.get('status'));
+    /*
+     * 주소에 없거나 목록에 없는 대여소면 첫 번째로 떨어집니다. 목록을 아직 못 받았으면
+     * 빈 문자열이고, 그동안 재고·슬롯 조회는 `enabled: false` 로 멈춥니다 — 빈 id 로
+     * 요청을 쏘면 404 만 쌓입니다.
+     */
+    const requested = searchParams.get('station');
+    const stationId =
+        stations.find((item) => item.stationId === requested)?.stationId ??
+        stations[0]?.stationId ??
+        '';
 
     const [stationInput, setStationInput] = useState(stationId);
     const [keywordInput, setKeywordInput] = useState(keyword);
@@ -99,7 +130,7 @@ export function InventoryPage() {
         setStatusInput(status);
     }, [stationId, keyword, status]);
 
-    const station = MOCK_STATIONS.find((item) => item.stationId === stationId) as Station;
+    const station = stations.find((item) => item.stationId === stationId);
 
     // 집계 카드는 필터와 무관하게 그 대여소의 전체 재고를 셉니다 (ADMIN-INVENTORY-001).
     // 표와 다른 API 라 따로 조회합니다 — 서버가 세어 준 값을 클라이언트가 다시 세지 않습니다.
@@ -127,17 +158,19 @@ export function InventoryPage() {
          *
          * `stationCode` 는 뺐습니다 — ERD v3.0 이 P0 필수 컬럼에서 제외했습니다.
          */
-        const stationText = station.name.toLowerCase();
+        const stationText = (station?.name ?? '').toLowerCase();
 
         return allSlots.filter((slot) => {
             const label = formatSlotLabel(slot.slotNumber).toLowerCase();
             const matchesKeyword =
-                !normalized || label.includes(normalized) || stationText.includes(normalized);
+                !normalized ||
+                label.includes(normalized) ||
+                (stationText !== '' && stationText.includes(normalized));
             const matchesStatus = status === 'ALL' || deriveSlotDisplayStatus(slot) === status;
 
             return matchesKeyword && matchesStatus;
         });
-    }, [allSlots, keyword, status, station.name]);
+    }, [allSlots, keyword, status, station?.name]);
 
     /*
      * 집계는 `ADMIN-INVENTORY-001` 필드 그대로입니다.
@@ -149,6 +182,16 @@ export function InventoryPage() {
         empty: summary?.emptySlotCount ?? 0,
         review: summary?.adminReviewSlotCount ?? 0,
         damaged: summary?.damagedUmbrellaCount ?? 0,
+        /*
+         * 이 둘이 빠져 있었습니다. 표에는 「이용 중지」·「확인 필요」 배지가 보이는데
+         * 위 카드 어디에도 안 잡혀서, 슬롯 5개짜리 대여소에서 카드 합이 4가 됐습니다.
+         * 남는 1개가 어디로 갔는지 화면만 봐서는 알 수 없었습니다.
+         *
+         * 하필 빠진 둘이 **사람이 손대야 풀리는 상태**입니다. 이용 중지는 관리자가
+         * 되돌려야 하고, 확인 필요는 센서·DB 가 어긋나 판단이 필요한 자리입니다.
+         */
+        outOfService: summary?.outOfServiceSlotCount ?? 0,
+        unknown: summary?.unknownOccupancySlotCount ?? 0,
         total: summary?.totalSlotCount ?? 0,
     };
 
@@ -157,7 +200,7 @@ export function InventoryPage() {
 
     const applyQuery = (next: { station: string; keyword: string; status: StatusFilter }) => {
         const params = new URLSearchParams();
-        if (next.station !== MOCK_STATIONS[0].stationId) params.set('station', next.station);
+        if (next.station !== stations[0]?.stationId) params.set('station', next.station);
         if (next.keyword) params.set('q', next.keyword);
         if (next.status !== 'ALL') params.set('status', next.status);
         setSearchParams(params);
@@ -177,7 +220,13 @@ export function InventoryPage() {
 
     return (
         <div>
-            <PageBar className="mb-[18px]" meta={`${STATIONS_SYNCED_AT} 기준`} />
+            <PageBar
+                className="mb-[18px]"
+                meta={syncedAtLabel(
+                    summary?.asOf ?? mockSyncedAt(STATIONS_SYNCED_AT),
+                    inventoryQuery.dataUpdatedAt,
+                )}
+            />
 
             {/*
              * 조회 줄은 **왼쪽에 즉시 반영되는 것, 오른쪽에 눌러야 하는 것** 순서입니다.
@@ -214,7 +263,7 @@ export function InventoryPage() {
                         setStatusInput('ALL');
                         applyQuery({ station: next, keyword, status: 'ALL' });
                     }}
-                    options={STATION_OPTIONS}
+                    options={stationOptions}
                     className="w-[150px]"
                 />
 
@@ -250,7 +299,7 @@ export function InventoryPage() {
             </form>
 
             {/* 집계 카드 — 시안 기준 227x96, 간격 16 */}
-            <div className="mb-4 grid grid-cols-4 gap-4">
+            <div className="mb-4 grid grid-cols-3 gap-4">
                 <StatCard
                     tone="green"
                     icon={<Umbrella className="size-[17px]" strokeWidth={2.1} aria-hidden />}
@@ -297,7 +346,50 @@ export function InventoryPage() {
                     label="파손"
                     value={counts.damaged}
                 />
+                {/*
+                 * 이용 중지·확인 필요는 표에 배지로는 보이는데 집계에는 없었습니다.
+                 * 색은 표 배지와 같은 것을 씁니다 — 같은 상태가 화면마다 다른 색이면
+                 * 같은 것인지 알 수 없습니다 (`SLOT_DISPLAY_TONE`).
+                 */}
+                <StatCard
+                    tone="violet"
+                    icon={<CircleSlash className="size-[17px]" strokeWidth={2.1} aria-hidden />}
+                    label="이용 중지"
+                    value={counts.outOfService}
+                    sub="관리자 해제"
+                />
+                {/*
+                 * **표 배지의 「확인 필요」와 다른 값입니다.** 라벨을 그대로 쓰면 안 됩니다.
+                 *
+                 *   표 배지 「확인 필요」 = `deriveSlotDisplayStatus` 가 4축 조합을 판정하지
+                 *       못해 마지막으로 떨어진 상태
+                 *   이 카드          = `occupancyStatus === 'UNKNOWN'`, 즉 **점유 센서를
+                 *       못 읽은** 슬롯 수
+                 *
+                 * 둘은 겹칠 수도, 한쪽에만 잡힐 수도 있습니다. 같은 이름을 붙이면 표에
+                 * 「확인 필요」가 없는데 카드에는 숫자가 뜨는 일이 생기고, 그러면 관리자가
+                 * 없는 슬롯을 찾아다닙니다. `occupancy_status` 의 뜻 그대로 적습니다.
+                 */}
+                <StatCard
+                    tone="blue"
+                    icon={<CircleHelp className="size-[17px]" strokeWidth={2.1} aria-hidden />}
+                    label="점유 확인 불가"
+                    value={counts.unknown}
+                    sub="센서 미확인"
+                />
             </div>
+
+            {/*
+             * 계약 주석: "집계 항목은 서로 겹칠 수 있으므로 모든 count 를 단순 합산해 전체
+             * 수를 계산하지 않는다."
+             *
+             * 실제로 겹칩니다 — 이용 중지 슬롯이 점유까지 확인 불가면 두 카드에 함께
+             * 잡힙니다. 카드 여섯 개가 나란히 있으면 더해 보고 싶어지고, 합이 전체와
+             * 안 맞으면 화면이 틀린 줄 압니다. 더하지 말라고 적어 둡니다.
+             */}
+            <p className="mb-4 text-[11px] font-medium text-brand-muted">
+                집계는 서로 겹칠 수 있어 합계가 전체 슬롯 수와 다를 수 있습니다.
+            </p>
 
             <div className="overflow-hidden rounded-lg bg-white">
                 {/* 열 폭은 시안 좌표 그대로입니다: 302 / 474 / 813.8(중앙) / 933 / 1149~1205 */}
@@ -360,7 +452,7 @@ export function InventoryPage() {
                                     {formatSlotLabel(slot.slotNumber)}
                                 </span>
                                 <span className="font-medium text-brand-ink-soft">
-                                    {station.name}
+                                    {station?.name ?? ''}
                                 </span>
                                 <span className="flex justify-center">
                                     <Badge
@@ -443,6 +535,9 @@ const CARD_TONE = {
     slate: { chip: 'bg-tone-slate-bg text-tone-slate-fg', value: 'text-tone-slate-fg' },
     amber: { chip: 'bg-tone-amber-bg text-tone-amber-fg', value: 'text-tone-amber-fg' },
     red: { chip: 'bg-tone-red-bg text-tone-red-fg', value: 'text-tone-red-fg' },
+    // 표 배지의 `SLOT_DISPLAY_TONE.OUT_OF_SERVICE` · `UNKNOWN` 과 같은 색입니다.
+    violet: { chip: 'bg-tone-violet-bg text-tone-violet-fg', value: 'text-tone-violet-fg' },
+    blue: { chip: 'bg-tone-blue-bg text-tone-blue-fg', value: 'text-tone-blue-fg' },
 } as const;
 
 function StatCard({

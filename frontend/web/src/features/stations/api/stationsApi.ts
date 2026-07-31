@@ -5,7 +5,7 @@ import type { SlotStatusChange } from '@/features/stations/components/SlotStatus
 import { MOCK_NS, mockUuid } from '@/features/stations/mocks/ids';
 import { buildSlots, inspectionStateOf, slotSeq } from '@/features/stations/mocks/slots';
 import { applyOverride, isInspectionDecided } from '@/features/stations/mocks/slotOverrides';
-import { findStation, listStations } from '@/features/stations/mocks/stations';
+import { findStation, listStations, STATIONS_SYNCED_AT } from '@/features/stations/mocks/stations';
 import type { SlotDetail, SlotSummary, Station } from '@/features/stations/types';
 
 /**
@@ -124,7 +124,17 @@ export const stationsApi = {
             adminReviewSlotCount: 0,
             outOfServiceSlotCount: 0,
             damagedUmbrellaCount: 0,
-            asOf: new Date().toISOString(),
+            /*
+             * **현재 시각이 아니라 목업 기준 시각입니다.**
+             *
+             * `new Date()` 를 쓰면 목업 슬롯이 07-24 로 고정돼 있는데 집계만 오늘 시각을
+             * 달고 나옵니다. 화면은 이 값을 「… 기준」으로 그대로 찍으므로, 며칠 전 데이터를
+             * 방금 센 것처럼 보여 주게 됩니다.
+             *
+             * 계약상 `asOf` 는 "집계 기준 서버 시각" 이라 실 API 에서는 서버가 채웁니다.
+             * 목업은 자기 데이터가 언제 것인지를 말해야 맞습니다.
+             */
+            asOf: STATIONS_SYNCED_AT,
         };
 
         for (const slot of slots) {

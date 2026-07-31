@@ -236,6 +236,15 @@ export function SlotStatusDialog({
                 role="dialog"
                 aria-modal
                 aria-labelledby="slot-status-dialog-title"
+                /*
+                 * 열자마자 여기로 포커스를 받습니다 (`useModalA11y`). 이게 없으면
+                 * `focus()` 가 조용히 실패해서, 모달이 떠도 포커스는 뒤쪽 버튼에 남습니다.
+                 * 화면낭독기는 새로 뜬 내용을 읽지 않아 **모달이 열린 줄 모릅니다.**
+                 *
+                 * 첫 라디오 버튼이 아니라 컨테이너에 거는 이유는 제목부터 읽히게 하려는
+                 * 것입니다. 무엇을 바꾸려는 모달인지 모른 채 선택지부터 들으면 안 됩니다.
+                 */
+                tabIndex={-1}
                 className="my-auto w-[452px] rounded-[14px] bg-white px-[30px] pb-[28px] pt-[26px] shadow-[0_8px_28px_rgba(11,18,32,0.16)]"
             >
                 <div className="flex items-start">

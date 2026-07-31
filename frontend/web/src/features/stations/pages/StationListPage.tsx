@@ -4,9 +4,10 @@ import { useSearchParams } from 'react-router-dom';
 import { StationTable } from '@/features/stations/components/StationTable';
 import { useStations } from '@/features/stations/hooks/useStations';
 import { getStationStatus } from '@/features/stations/types';
-import { STATIONS_SYNCED_AT } from '@/features/stations/mocks/stations';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
+import { STATIONS_SYNCED_AT } from '@/features/stations/mocks/stations';
+import { mockSyncedAt, syncedAtLabel } from '@/shared/lib/syncedAt';
 import { SearchInput } from '@/shared/components/SearchInput';
 import { PageTitle } from '@/shared/components/PageTitle';
 import { Pagination } from '@/shared/components/Pagination';
@@ -124,7 +125,10 @@ export function StationListPage() {
 
     return (
         <div>
-            <PageBar className="mb-[18px]" meta={`${STATIONS_SYNCED_AT} 기준`} />
+            <PageBar
+                className="mb-[18px]"
+                meta={syncedAtLabel(mockSyncedAt(STATIONS_SYNCED_AT), query.dataUpdatedAt)}
+            />
 
             {/*
              * 제목과 조회 줄을 한 줄에 놓고 조회 쪽을 오른쪽 끝에 붙입니다.

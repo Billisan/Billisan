@@ -23,7 +23,8 @@ import { InspectLink } from '@/features/stations/components/InspectLink';
 import { DataTable, TBody, TableCard, Td, Th, THead, Tr } from '@/shared/components/DataTable';
 import { FilterSelect, type FilterOption } from '@/shared/components/FilterSelect';
 import { PageBar } from '@/shared/components/PageBar';
-import { EmptyState } from '@/shared/components/PageState';
+import { mockSyncedAt, syncedAtLabel } from '@/shared/lib/syncedAt';
+import { EmptyState, ErrorState, LoadingState } from '@/shared/components/PageState';
 import { RefId } from '@/shared/components/RefId';
 import { PageTitle } from '@/shared/components/PageTitle';
 
@@ -114,13 +115,14 @@ export function InspectionListPage() {
     const cursor = trail[trail.length - 1];
 
     // ADMIN-INSPECTION-001. 목업인지 실 API 인지는 inspectionsApi 안에서만 갈립니다.
-    const { data, isPending, isError, error, refetch, isFetching } = useInspectionList({
-        aiResult,
-        reviewStatus,
-        from: fromDateOf(period),
-        cursor,
-        size: INSPECTION_PAGE_SIZE,
-    });
+    const { data, isPending, isError, error, refetch, isFetching, dataUpdatedAt } =
+        useInspectionList({
+            aiResult,
+            reviewStatus,
+            from: fromDateOf(period),
+            cursor,
+            size: INSPECTION_PAGE_SIZE,
+        });
 
     const items = data?.items ?? [];
     const pendingCount = items.filter((item) => item.reviewStatus === 'PENDING').length;
@@ -154,7 +156,7 @@ export function InspectionListPage() {
 
     return (
         <div>
-            <PageBar meta={`${INSPECTIONS_SYNCED_AT} 기준`} />
+            <PageBar meta={syncedAtLabel(mockSyncedAt(INSPECTIONS_SYNCED_AT), dataUpdatedAt)} />
 
             <div className="mb-[22px] flex items-center justify-between gap-4">
                 <PageTitle>파손 검수</PageTitle>
@@ -206,9 +208,17 @@ export function InspectionListPage() {
             </div>
 
             {isPending ? (
-                <ListState>불러오는 중…</ListState>
+                <LoadingState />
             ) : isError ? (
-                <ListState>목록을 불러오지 못했습니다. {error.message}</ListState>
+                /*
+                 * 예전에는 문구 한 줄만 띄웠습니다. **다시 시도할 방법이 화면에 없어서**
+                 * 관리자가 할 수 있는 게 새로고침(F5)뿐이었습니다. 그러면 조회 조건이
+                 * URL 에 있어 살아남긴 해도 화면 전체가 다시 뜹니다.
+                 *
+                 * 빈 목록은 이미 공용 `EmptyState` 를 쓰고 있었는데 로딩·오류만 자체
+                 * 구현이라, 같은 화면 안에서 세 상태의 생김새가 달랐습니다.
+                 */
+                <ErrorState error={error} onRetry={() => void refetch()} />
             ) : items.length > 0 ? (
                 <TableCard>
                     <DataTable>
@@ -334,15 +344,6 @@ export function InspectionListPage() {
                 <br />
                 전체 건수와 페이지 수는 응답에 없습니다. 목록은 `nextCursor` 로만 이어집니다.
             </p>
-        </div>
-    );
-}
-
-/** 목록 자리에 들어가는 안내 한 줄 (로딩·오류·빈 목록 공용). */
-function ListState({ children }: { children: React.ReactNode }) {
-    return (
-        <div className="flex h-[200px] items-center justify-center rounded-lg bg-white text-[13px] font-medium text-brand-muted">
-            {children}
         </div>
     );
 }

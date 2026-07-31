@@ -6,10 +6,11 @@ import { DistributionList } from '@/features/map/components/DistributionList';
 import { DistributionMap } from '@/features/map/components/DistributionMap';
 import { SelectedStationPanel } from '@/features/map/components/SelectedStationPanel';
 import { useStations } from '@/features/stations/hooks/useStations';
-import { STATIONS_SYNCED_AT } from '@/features/stations/mocks/stations';
 import { CAMPUS_NAME } from '@/shared/constants/organization';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
+import { STATIONS_SYNCED_AT } from '@/features/stations/mocks/stations';
+import { mockSyncedAt, syncedAtLabel } from '@/shared/lib/syncedAt';
 import { PageTitle } from '@/shared/components/PageTitle';
 import { cn } from '@/lib/utils';
 
@@ -78,7 +79,10 @@ export function MapPage() {
 
     return (
         <div>
-            <PageBar className="mb-[18px]" meta={`${STATIONS_SYNCED_AT} 기준`} />
+            <PageBar
+                className="mb-[18px]"
+                meta={syncedAtLabel(mockSyncedAt(STATIONS_SYNCED_AT), query.dataUpdatedAt)}
+            />
 
             <div className="mb-[22px] flex items-center gap-3">
                 <PageTitle className="mr-auto">지도 · 분포도</PageTitle>

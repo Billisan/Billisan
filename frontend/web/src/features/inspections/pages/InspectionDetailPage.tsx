@@ -10,6 +10,7 @@ import {
 } from '@/features/inspections/components/InspectionParts';
 import { useDecideInspection, useInspection } from '@/features/inspections/hooks/useInspections';
 import { PageBar } from '@/shared/components/PageBar';
+import { ErrorState, LoadingState, NotFoundState } from '@/shared/components/PageState';
 import { PageTitle } from '@/shared/components/PageTitle';
 
 /**
@@ -28,16 +29,33 @@ export function InspectionDetailPage() {
 
     // ADMIN-INSPECTION-002. 판정이 성공하면 훅이 캐시를 무효화해 이 조회가 다시 돕니다
     // — 계약이 요구하는 "권위 상세 재조회"입니다 (화면흐름 §7.7 · API명세 B-5).
-    const { data: detail, isPending } = useInspection(inspectionId);
+    const { data: detail, isPending, isError, error, refetch } = useInspection(inspectionId);
     const decide = useDecideInspection();
 
     if (isPending) {
         return (
             <div>
                 <PageBar breadcrumb={[{ label: '파손 검수', to: '/inspections' }]} />
-                <div className="flex h-[200px] items-center justify-center rounded-lg bg-white text-[13px] font-medium text-brand-muted">
-                    불러오는 중…
-                </div>
+                <LoadingState />
+            </div>
+        );
+    }
+
+    /*
+     * **조회 실패와 "없는 검수"를 갈라 말합니다.**
+     *
+     * 예전에는 둘 다 「존재하지 않는 검수입니다」였습니다. 서버가 500 을 줘도 화면은
+     * 그렇게 단정했고, 관리자는 링크가 잘못된 줄 알고 찾기를 포기합니다. 실제로는 잠깐
+     * 뒤에 다시 하면 되는 상황인데 다시 시도할 버튼조차 없었습니다.
+     *
+     * 검수 상세는 파손 판정으로 이어지는 화면이라, "없는 건" 과 "지금 못 읽는 것" 을
+     * 뭉뚱그리면 관리자가 대응을 못 고릅니다.
+     */
+    if (isError) {
+        return (
+            <div>
+                <PageBar breadcrumb={[{ label: '파손 검수', to: '/inspections' }]} />
+                <ErrorState error={error} onRetry={() => void refetch()} />
             </div>
         );
     }
@@ -46,9 +64,7 @@ export function InspectionDetailPage() {
         return (
             <div>
                 <PageBar breadcrumb={[{ label: '파손 검수', to: '/inspections' }]} />
-                <div className="flex h-[200px] items-center justify-center rounded-lg bg-white text-[13px] font-medium text-brand-muted">
-                    존재하지 않는 검수입니다. ({inspectionId})
-                </div>
+                <NotFoundState label="검수" id={inspectionId} />
             </div>
         );
     }
