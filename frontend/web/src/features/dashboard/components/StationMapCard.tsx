@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 
 import { Panel, PanelHeader } from '@/features/dashboard/components/Panel';
+import { MapBackdrop } from '@/features/map/components/MapBackdrop';
 import { PanelState } from '@/features/dashboard/components/PanelState';
 import { useStations } from '@/features/stations/hooks/useStations';
 import {
@@ -11,36 +12,6 @@ import {
 } from '@/features/stations/types';
 import { CAMPUS_NAME } from '@/shared/constants/organization';
 import { cn } from '@/lib/utils';
-
-/**
- * 지도 배경 플레이스홀더.
- * 실제 지도 SDK 붙이기 전까지 쓰는 도형이며, 좌표는 시안 좌표계를 그대로 씁니다.
- * TODO: 지도 SDK(카카오/네이버) 연동 시 이 컴포넌트만 교체하면 마커는 그대로 재사용됩니다.
- */
-function MapBackdrop() {
-    return (
-        <svg
-            className="absolute inset-0 size-full"
-            viewBox="306 184 606 562"
-            preserveAspectRatio="xMidYMid slice"
-            aria-hidden
-            focusable="false"
-        >
-            <rect x="306" y="184" width="606" height="562" fill="#EAEDF0" />
-            {/* 도로 */}
-            <rect x="286" y="540" width="646" height="26" rx="13" fill="#FFFFFF" />
-            <rect x="286" y="438" width="646" height="20" rx="10" fill="#FFFFFF" />
-            <rect x="286" y="709" width="646" height="20" rx="10" fill="#FFFFFF" />
-            <rect x="518" y="164" width="26" height="602" rx="13" fill="#FFFFFF" />
-            <rect x="714" y="164" width="20" height="602" rx="10" fill="#FFFFFF" />
-            {/* 블록 */}
-            <rect x="334" y="580" width="160" height="120" rx="24" fill="#DCEEDD" />
-            <rect x="758" y="244" width="140" height="120" rx="40" fill="#D7E8F7" />
-            <rect x="556" y="244" width="80" height="56" rx="10" fill="#E2E5E9" />
-            <rect x="758" y="654" width="70" height="48" rx="10" fill="#E2E5E9" />
-        </svg>
-    );
-}
 
 function MapLegend() {
     return (
