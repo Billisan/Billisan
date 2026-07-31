@@ -9,7 +9,7 @@ import {
 
 interface ReturnCompleteScreenProps {
   inspectionResult: InspectionResult
-  returnedAt: string
+  returnedAt: string | null
   onConfirm: () => void
 }
 
@@ -58,10 +58,10 @@ export function ReturnCompleteScreen({
           <div className="border-disabled flex w-100 flex-col items-center gap-1 rounded-2xl border bg-white py-6">
             <span className="text-lg font-bold text-black">반납 시각</span>
             <span className="text-tertiary-text text-base">
-              {dayjs(returnedAt).format('YYYY-MM-DD')}
+              {returnedAt ? dayjs(returnedAt).format('YYYY-MM-DD') : '-'}
             </span>
             <span className="text-tertiary-text text-base">
-              {dayjs(returnedAt).format('A h:mm')}
+              {returnedAt ? dayjs(returnedAt).format('A h:mm') : '확인 중'}
             </span>
           </div>
         </div>

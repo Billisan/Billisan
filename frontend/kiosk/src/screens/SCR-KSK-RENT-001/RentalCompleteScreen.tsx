@@ -4,9 +4,15 @@ import checkCircleIcon from "../../assets/check-circle.svg";
 import { KioskLayout } from "../../components/layout/KioskLayout";
 
 interface RentalCompleteScreenProps {
-  rentedAt: string;
-  dueAt: string;
+  rentedAt: string | null;
+  dueAt: string | null;
   onConfirm: () => void;
+}
+
+// 임베디드 문서(2026-07-31) §4.4: Spring 연동 전이라 rentedAt/dueAt이 현재 항상 null로 온다.
+function formatDateTime(value: string | null): { date: string; time: string } {
+  if (!value) return { date: "-", time: "확인 중" };
+  return { date: dayjs(value).format("YYYY-MM-DD"), time: dayjs(value).format("A h:mm") };
 }
 
 const AUTO_CONFIRM_SECONDS = 5;
@@ -17,6 +23,8 @@ export function RentalCompleteScreen({
   onConfirm,
 }: RentalCompleteScreenProps) {
   const [secondsLeft, setSecondsLeft] = useState(AUTO_CONFIRM_SECONDS);
+  const rented = formatDateTime(rentedAt);
+  const due = formatDateTime(dueAt);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -41,19 +49,19 @@ export function RentalCompleteScreen({
             <div className="flex flex-1 flex-col items-center gap-1 py-6">
               <span className="text-lg font-bold text-black">대여 시각</span>
               <span className="text-tertiary-text text-base">
-                {dayjs(rentedAt).format("YYYY-MM-DD")}
+                {rented.date}
               </span>
               <span className="text-tertiary-text text-base">
-                {dayjs(rentedAt).format("A h:mm")}
+                {rented.time}
               </span>
             </div>
             <div className="flex flex-1 flex-col items-center gap-1 py-6">
               <span className="text-lg font-bold text-black">반납 기한</span>
               <span className="text-tertiary-text text-base">
-                {dayjs(dueAt).format("YYYY-MM-DD")}
+                {due.date}
               </span>
               <span className="text-tertiary-text text-base">
-                {dayjs(dueAt).format("A h:mm")}
+                {due.time}
               </span>
             </div>
           </div>

@@ -21,4 +21,5 @@ export interface KioskStageMessage {
   message?: string
   eligible?: boolean
   reasonCode?: EligibilityReasonCode
+  sessionId?: string
 }
