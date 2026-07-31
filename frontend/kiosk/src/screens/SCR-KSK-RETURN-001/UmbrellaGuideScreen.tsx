@@ -45,12 +45,10 @@ export function UmbrellaGuideScreen({
           <div className="border-disabled h-64 w-104 rounded-2xl border-2 border-dashed" />
         }
         steps={UMBRELLA_GUIDE_STEPS}
-        actionLabel="준비되었습니다"
-        onAction={onAction}
         footer={
           <div className="flex flex-col items-center gap-3">
-            <div className="bg-primary flex h-18 w-18 items-center justify-center rounded-full">
-              <span className="text-3xl font-bold text-white">
+            <div className="bg-primary flex h-14 w-14 items-center justify-center rounded-full">
+              <span className="text-2xl font-bold text-white">
                 {secondsLeft}
               </span>
             </div>

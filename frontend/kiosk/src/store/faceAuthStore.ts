@@ -1,14 +1,25 @@
 import { create } from 'zustand'
-import { startFaceAuthStream } from '../api/piSocket'
+import {
+  isRentalBlockReason,
+  startKioskStageStream,
+} from '../api/kioskStageStream'
+import { KIOSK_STAGE, type KioskMode } from '../types/kioskStage'
 import { AUTH_SCREEN_VARIANT, type AuthScreenVariant } from '../types/faceAuth'
-
-type FaceAuthMode = 'RENT' | 'RETURN'
+import type { RentalBlockReason } from '../types/eligibility'
 
 interface FaceAuthState {
   variant: AuthScreenVariant
   guidanceMessage: string | null
-  startCapture: (mode: FaceAuthMode, onAuthenticated: () => void) => void
-  retry: (mode: FaceAuthMode, onAuthenticated: () => void) => void
+  startCapture: (
+    mode: KioskMode,
+    onEligible: () => void,
+    onBlocked: (reason: RentalBlockReason) => void,
+  ) => void
+  retry: (
+    mode: KioskMode,
+    onEligible: () => void,
+    onBlocked: (reason: RentalBlockReason) => void,
+  ) => void
   reset: () => void
 }
 
@@ -19,33 +30,50 @@ export const useFaceAuthStore = create<FaceAuthState>((set, get) => ({
   variant: AUTH_SCREEN_VARIANT.GUIDE,
   guidanceMessage: null,
 
-  // DEC-032 — Pi에 얼굴 인증을 요청하고, 실시간 stage 스트림(AUTH_STARTED/GUIDANCE/AUTH_SUCCEEDED/AUTH_FAILED)에
-  // 따라 화면을 전환한다. 프로토콜은 Envelope 방식이 아니라 flat {stage,...} 방식(2026-07-30 팀 확인).
-  // mode(RENT/RETURN)를 트리거 메시지에 실어 보내 대여/반납 흐름을 서버가 구분할 수 있게 한다.
-  startCapture: (mode, onAuthenticated) => {
+  // 기본은 기존 Pi WebSocket producer이며, 환경 변수로 Mock producer를 선택할 수 있다.
+  startCapture: (mode, onEligible, onBlocked) => {
     closeStream?.()
     set({ variant: AUTH_SCREEN_VARIANT.FACE_CAPTURE, guidanceMessage: null })
 
-    closeStream = startFaceAuthStream(mode, {
-      onGuidance: (message) => set({ guidanceMessage: message }),
+    closeStream = startKioskStageStream(mode, (message) => {
+      switch (message.stage) {
+        case KIOSK_STAGE.AUTH_STARTED:
+          set({ variant: AUTH_SCREEN_VARIANT.FACE_CAPTURE })
+          return
 
-      // MATCHED는 다음 화면으로 넘어가는 지점이라 이 스토어의 variant를 바꾸지 않는다 —
-      // 호출부(AuthScreen → App.tsx)가 onAuthenticated로 결과를 받아 전환한다.
-      onSucceeded: () => {
-        set({ guidanceMessage: null })
-        onAuthenticated()
-      },
+        case KIOSK_STAGE.GUIDANCE:
+          set({ guidanceMessage: message.message ?? null })
+          return
 
-      // AUTH_FAILED가 "미검출"과 "미매칭" 중 무엇인지 구분하는 정보가 아직 없어
-      // 일단 FACE_NOT_MATCHED로 매핑한다(임시 매핑, PLAN §5 참고).
-      onFailed: () => set({ variant: AUTH_SCREEN_VARIANT.FACE_NOT_MATCHED, guidanceMessage: null }),
+        case KIOSK_STAGE.AUTH_SUCCEEDED:
+          set({
+            variant: AUTH_SCREEN_VARIANT.FACE_PROCESSING,
+            guidanceMessage: null,
+          })
+          return
 
-      onUnhandledStage: (raw) => console.log('[Pi WS] 아직 처리하지 않는 stage', raw),
+        case KIOSK_STAGE.ELIGIBILITY_RESULT:
+          if (message.eligible) {
+            onEligible()
+            return
+          }
+
+          if (isRentalBlockReason(message.reasonCode)) {
+            onBlocked(message.reasonCode)
+            return
+          }
+          set({ variant: AUTH_SCREEN_VARIANT.FACE_NOT_MATCHED, guidanceMessage: null })
+          return
+
+        case KIOSK_STAGE.AUTH_FAILED:
+          set({ variant: AUTH_SCREEN_VARIANT.FACE_NOT_MATCHED, guidanceMessage: null })
+      }
     })
   },
 
   // 새 인증 시도이므로 startCapture와 동일하게 처음부터 다시 연결한다.
-  retry: (mode, onAuthenticated) => get().startCapture(mode, onAuthenticated),
+  retry: (mode, onEligible, onBlocked) =>
+    get().startCapture(mode, onEligible, onBlocked),
 
   reset: () => {
     closeStream?.()

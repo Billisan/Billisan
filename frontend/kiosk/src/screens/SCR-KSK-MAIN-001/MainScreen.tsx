@@ -61,10 +61,10 @@ export function MainScreen({ onRent, onReturn }: MainScreenProps) {
 
   return (
     <KioskLayout fullBleed>
-      <div className="flex w-full flex-1 flex-col justify-between p-14">
-        <div className="flex w-full flex-col gap-4">
+      <div className="flex w-full flex-1 flex-col justify-center gap-30 p-14">
+        <div className="flex w-full flex-col gap-12">
           <div className="border-disabled divide-disabled bg-white flex w-full divide-x rounded-2xl border">
-            <div className="flex flex-1 items-baseline justify-center gap-3 py-4">
+            <div className="flex flex-1 items-baseline justify-center gap-3 py-6">
               <span className="text-tertiary-text text-xl font-medium">
                 현재 대여 가능한 우산
               </span>
@@ -72,7 +72,7 @@ export function MainScreen({ onRent, onReturn }: MainScreenProps) {
                 {usableSlotCount ?? 0}개
               </span>
             </div>
-            <div className="flex flex-1 items-baseline justify-center gap-3  py-4">
+            <div className="flex flex-1 items-baseline justify-center gap-3 py-4">
               <span className="text-tertiary-text text-xl font-medium">
                 현재 반납 가능한 우산함
               </span>
