@@ -7,12 +7,15 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "admin_account")
 public class AdminAccount {
 
     @Id
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "admin_id", columnDefinition = "CHAR(36)", updatable = false, nullable = false)
     private UUID adminId;
 
