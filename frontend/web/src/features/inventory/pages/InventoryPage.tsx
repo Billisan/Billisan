@@ -11,8 +11,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 
 import { usePendingInspectionBySlot } from '@/features/inspections/hooks/useInspections';
 import { DetailLink } from '@/features/stations/components/DetailLink';
-import { useInventory, useStationSlots } from '@/features/stations/hooks/useStations';
-import { MOCK_STATIONS, STATIONS_SYNCED_AT } from '@/features/stations/mocks/stations';
+import { useInventory, useStations, useStationSlots } from '@/features/stations/hooks/useStations';
+import { STATIONS_SYNCED_AT } from '@/features/stations/mocks/stations';
 import {
     deriveSlotDisplayStatus,
     formatSlotLabel,
@@ -21,12 +21,12 @@ import {
     slotStatusHint,
     slotStatusText,
     type SlotDisplayStatus,
-    type Station,
 } from '@/features/stations/types';
 import { Badge } from '@/shared/components/Badge';
 import { FilterSelect, type FilterOption } from '@/shared/components/FilterSelect';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
+import { mockSyncedAt, syncedAtLabel } from '@/shared/lib/syncedAt';
 import { SearchInput } from '@/shared/components/SearchInput';
 import { PageTitle } from '@/shared/components/PageTitle';
 import { ROW_CLICKABLE, useRowNavigate } from '@/shared/hooks/useRowNavigate';
@@ -79,22 +79,10 @@ const STATUS_OPTIONS: readonly FilterOption<StatusFilter>[] = [
     { value: 'UNKNOWN', label: SLOT_DISPLAY_LABEL.UNKNOWN },
 ];
 
-// 드롭다운 value 는 UUID 입니다. 그대로 `ADMIN-INVENTORY-001` 의 경로 변수로 들어갑니다.
-const STATION_OPTIONS: readonly FilterOption<string>[] = MOCK_STATIONS.map((station) => ({
-    value: station.stationId,
-    label: station.name,
-}));
-
 function parseStatus(value: string | null): StatusFilter {
     return STATUS_OPTIONS.some((option) => option.value === value)
         ? (value as StatusFilter)
         : 'ALL';
-}
-
-function parseStation(value: string | null): string {
-    return MOCK_STATIONS.some((station) => station.stationId === value)
-        ? (value as string)
-        : MOCK_STATIONS[0].stationId;
 }
 
 export function InventoryPage() {
@@ -102,9 +90,35 @@ export function InventoryPage() {
     const rowNavigate = useRowNavigate();
     // 확정된 조회 조건은 URL Query 에만 둡니다 (화면흐름 §6.2).
     const [searchParams, setSearchParams] = useSearchParams();
-    const stationId = parseStation(searchParams.get('station'));
+
+    /*
+     * **대여소 목록을 조회로 받습니다.** 예전에는 `MOCK_STATIONS` 를 직접 import 해서
+     * 드롭다운·기본값·현재 대여소를 전부 목업에서 꺼냈습니다.
+     *
+     * 그러면 `stationsApi.list` 를 실 API 로 바꿔도 **이 화면만 안 따라옵니다.** 목업
+     * UUID 로 실제 재고·슬롯 API 를 부르게 되어 전부 404 가 납니다. 목록 API 가 계약에
+     * 없어 지금은 어차피 목업이 오지만, 통로를 하나로 두면 그때 고칠 것이 없습니다.
+     */
+    const stationsQuery = useStations();
+    const stations = useMemo(() => stationsQuery.data ?? [], [stationsQuery.data]);
+    const stationOptions = useMemo<readonly FilterOption<string>[]>(
+        // 드롭다운 value 는 UUID 입니다. 그대로 `ADMIN-INVENTORY-001` 의 경로 변수로 들어갑니다.
+        () => stations.map((item) => ({ value: item.stationId, label: item.name })),
+        [stations],
+    );
+
     const keyword = searchParams.get('q')?.trim() ?? '';
     const status = parseStatus(searchParams.get('status'));
+    /*
+     * 주소에 없거나 목록에 없는 대여소면 첫 번째로 떨어집니다. 목록을 아직 못 받았으면
+     * 빈 문자열이고, 그동안 재고·슬롯 조회는 `enabled: false` 로 멈춥니다 — 빈 id 로
+     * 요청을 쏘면 404 만 쌓입니다.
+     */
+    const requested = searchParams.get('station');
+    const stationId =
+        stations.find((item) => item.stationId === requested)?.stationId ??
+        stations[0]?.stationId ??
+        '';
 
     const [stationInput, setStationInput] = useState(stationId);
     const [keywordInput, setKeywordInput] = useState(keyword);
@@ -116,7 +130,7 @@ export function InventoryPage() {
         setStatusInput(status);
     }, [stationId, keyword, status]);
 
-    const station = MOCK_STATIONS.find((item) => item.stationId === stationId) as Station;
+    const station = stations.find((item) => item.stationId === stationId);
 
     // 집계 카드는 필터와 무관하게 그 대여소의 전체 재고를 셉니다 (ADMIN-INVENTORY-001).
     // 표와 다른 API 라 따로 조회합니다 — 서버가 세어 준 값을 클라이언트가 다시 세지 않습니다.
@@ -144,17 +158,19 @@ export function InventoryPage() {
          *
          * `stationCode` 는 뺐습니다 — ERD v3.0 이 P0 필수 컬럼에서 제외했습니다.
          */
-        const stationText = station.name.toLowerCase();
+        const stationText = (station?.name ?? '').toLowerCase();
 
         return allSlots.filter((slot) => {
             const label = formatSlotLabel(slot.slotNumber).toLowerCase();
             const matchesKeyword =
-                !normalized || label.includes(normalized) || stationText.includes(normalized);
+                !normalized ||
+                label.includes(normalized) ||
+                (stationText !== '' && stationText.includes(normalized));
             const matchesStatus = status === 'ALL' || deriveSlotDisplayStatus(slot) === status;
 
             return matchesKeyword && matchesStatus;
         });
-    }, [allSlots, keyword, status, station.name]);
+    }, [allSlots, keyword, status, station?.name]);
 
     /*
      * 집계는 `ADMIN-INVENTORY-001` 필드 그대로입니다.
@@ -184,7 +200,7 @@ export function InventoryPage() {
 
     const applyQuery = (next: { station: string; keyword: string; status: StatusFilter }) => {
         const params = new URLSearchParams();
-        if (next.station !== MOCK_STATIONS[0].stationId) params.set('station', next.station);
+        if (next.station !== stations[0]?.stationId) params.set('station', next.station);
         if (next.keyword) params.set('q', next.keyword);
         if (next.status !== 'ALL') params.set('status', next.status);
         setSearchParams(params);
@@ -204,7 +220,13 @@ export function InventoryPage() {
 
     return (
         <div>
-            <PageBar className="mb-[18px]" meta={`${STATIONS_SYNCED_AT} 기준`} />
+            <PageBar
+                className="mb-[18px]"
+                meta={syncedAtLabel(
+                    summary?.asOf ?? mockSyncedAt(STATIONS_SYNCED_AT),
+                    inventoryQuery.dataUpdatedAt,
+                )}
+            />
 
             {/*
              * 조회 줄은 **왼쪽에 즉시 반영되는 것, 오른쪽에 눌러야 하는 것** 순서입니다.
@@ -241,7 +263,7 @@ export function InventoryPage() {
                         setStatusInput('ALL');
                         applyQuery({ station: next, keyword, status: 'ALL' });
                     }}
-                    options={STATION_OPTIONS}
+                    options={stationOptions}
                     className="w-[150px]"
                 />
 
@@ -430,7 +452,7 @@ export function InventoryPage() {
                                     {formatSlotLabel(slot.slotNumber)}
                                 </span>
                                 <span className="font-medium text-brand-ink-soft">
-                                    {station.name}
+                                    {station?.name ?? ''}
                                 </span>
                                 <span className="flex justify-center">
                                     <Badge
