@@ -80,28 +80,76 @@ function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 /**
+ * 봉투 곁에 올 수 있는 메타 필드들. 이 이름들만 있으면 봉투로 봅니다.
+ *
+ * 업무 DTO 가 우연히 `data` 를 갖고 있을 때 잘못 벗기는 걸 막는 장치입니다. 관리자 API
+ * 10개 중 최상위 `data` 를 쓰는 DTO 는 없지만, `unwrapEnvelope` 는 모든 응답을 지나므로
+ * 조건을 좁혀 둡니다.
+ */
+const ENVELOPE_SIBLINGS = new Set([
+    'success',
+    'status',
+    'statusCode',
+    'code',
+    'message',
+    'error',
+    'errors',
+    'meta',
+    'timestamp',
+    'path',
+    'requestId',
+]);
+
+/**
  * 봉투를 벗겨 알맹이만 돌려줍니다. 규격을 안 따르는 응답은 원본 그대로 둡니다.
  *
- * (A) 는 `success` 로, (B) 는 `statusCode` 로 알아봅니다. 둘 다 아니면 손대지 않습니다 —
- * 백엔드가 봉투 없이 DTO 를 바로 주는 엔드포인트가 있어도 깨지지 않게.
+ * **`{ data: {...} }` 하나만 온 경우도 벗깁니다.** 계약이 응답을 「Body · `data`」로
+ * 적어 두었을 뿐 `success` 나 `statusCode` 같은 동반 필드를 요구하지 않습니다. 예전에는
+ * 그 둘 중 하나가 있어야만 벗겼는데, 서버가 계약 문구 그대로 `{"data":{…}}` 를 주면
+ * **봉투째 통과시켜 알맹이를 못 읽었습니다.**
+ *
+ * 그게 조용한 고장이라 위험했습니다. `ADMIN-AUTH-001` 에서 `accessToken` 과 관리자
+ * 신원이 전부 `undefined` 가 되는데도 로그인 화면은 대시보드로 넘어갑니다. 이후 모든
+ * 요청에 `Authorization` 이 빠진 채 나가고, 사용자는 "로그인은 됐는데 아무것도 안 보인다"
+ * 를 겪습니다. 실패로 보이지 않는 실패입니다.
+ *
+ * 판정은 "`data` 가 있고, 나머지 키가 전부 봉투용 메타인가"로 합니다. 그래서
+ * `{data}`·`{success,data}`·`{statusCode,data}` 는 벗기고, `data` 옆에 업무 필드가
+ * 있는 응답은 손대지 않습니다.
  */
 export function unwrapEnvelope<T>(body: unknown): T {
     if (!isObject(body) || !('data' in body)) return body as T;
-    if ('success' in body || 'statusCode' in body) return body.data as T;
+
+    const siblings = Object.keys(body).filter((key) => key !== 'data');
+    if (siblings.every((key) => ENVELOPE_SIBLINGS.has(key))) return body.data as T;
+
     return body as T;
 }
 
-/** 오류 본문에서 `code`·`message` 를 꺼냅니다. 어느 봉투든 같은 결과를 냅니다. */
+/**
+ * 오류 본문에서 `code`·`message` 를 꺼냅니다. 어느 봉투든 같은 결과를 냅니다.
+ *
+ * **계약이 오류 본문의 모양을 정해 두지 않았습니다.** `ADMIN-AUTH-001` 은 성공 응답만
+ * `data` 봉투로 규정하고, 실패는 `401 INVALID_ADMIN_CREDENTIALS`·`403
+ * ADMIN_ACCOUNT_REQUIRED` 라는 코드 이름만 적혀 있습니다. 그래서 서버가 셋 중 무엇을
+ * 주더라도 같은 값을 읽도록 셋 다 받습니다.
+ *
+ * 코드를 못 읽으면 화면이 401 과 403 을 구분하지 못합니다. 「비밀번호가 틀렸다」와
+ * 「관리자 계정이 아니다」는 사용자가 해야 할 행동이 전혀 달라서, 그걸 뭉뚱그리면
+ * 관리자 권한이 없는 사람이 비밀번호만 계속 다시 칩니다.
+ */
 export function readApiError(body: unknown): { code?: string; message?: string } {
     if (!isObject(body)) return {};
 
     const topMessage = typeof body.message === 'string' ? body.message : undefined;
+    /** (C) — 코드가 최상위에 평평하게 옵니다. 아래 두 모양이 못 잡을 때의 마지막 수단입니다. */
+    const topCode = typeof body.code === 'string' ? body.code : undefined;
 
     // (A) — error 가 코드·메시지를 가진 객체입니다.
     if (isObject(body.error)) {
         const { code, message } = body.error;
         return {
-            code: typeof code === 'string' ? code : undefined,
+            code: typeof code === 'string' ? code : topCode,
             // error 안에 문구가 없으면 최상위 message 로 내려갑니다. (B) 가 error 를
             // 코드 없는 객체로 주는 경우가 있어서, 없으면 문구까지 통째로 잃습니다.
             message: typeof message === 'string' ? message : topMessage,
@@ -110,7 +158,7 @@ export function readApiError(body: unknown): { code?: string; message?: string }
 
     // (B) — 최상위 message 만 있고 code 는 error 에 문자열로 오거나 아예 없습니다.
     return {
-        code: typeof body.error === 'string' ? body.error : undefined,
+        code: typeof body.error === 'string' ? body.error : topCode,
         message: topMessage,
     };
 }
