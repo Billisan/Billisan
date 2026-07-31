@@ -74,22 +74,46 @@ export function isDeviceOnline(station: Station): boolean {
 export type StationStatus = 'SHORTAGE' | 'NORMAL' | 'SURPLUS' | 'OFFLINE';
 
 /**
- * 재고 상태 임계값 (대여 가능 수량 기준).
+ * 재고 상태 임계값 — **개수가 아니라 채움 비율입니다.**
  *
- * 대여소당 SLOT 이 3~5개라 임계값도 그 규모입니다 (상위 기획 §4.1).
- * TODO: 운영 정책 확정되면 대여소별 설정값으로 빼세요.
+ * 화면흐름 §13: "부족·정상·과잉은 영속 Enum이 아니라 **재고 비율**·수요 예측에서
+ * 파생되는 UI 상태다."
+ *
+ * 예전에는 대여 가능 **개수**로 갈랐습니다(4개 이상 과잉, 2개 이상 적정). 대여소마다
+ * 슬롯이 3~5개로 다른데 같은 잣대를 대니 작은 대여소가 계속 손해를 봤습니다.
+ * 슬롯 3개짜리가 **꽉 차 있어도**(3/3, 100%) 「적정」으로 나왔고, 그래서 재배치
+ * 후보에서 빠졌습니다. 반대로 슬롯 5개에 4개 남은 곳(80%)은 과잉으로 잡혔습니다.
+ *
+ * 비율로 바꾸면 규모와 무관하게 같은 뜻이 됩니다. 슬롯이 5개인 대여소에서는 예전 기준과
+ * 결과가 같습니다(0~1 부족 · 2~3 적정 · 4~5 과잉) — 바뀌는 건 3·4개짜리뿐입니다.
+ *
+ * TODO: §13 이 말하는 '수요 예측'은 아직 계약이 없습니다. 지금은 비율만 씁니다.
  */
-export const STOCK_THRESHOLD = {
-    /** 이 값 이상이면 과잉 */
-    surplus: 4,
-    /** 이 값 이상이면 적정, 미만이면 부족 */
-    normal: 2,
+export const STOCK_RATIO_THRESHOLD = {
+    /** 이 비율 이상이면 과잉 */
+    surplus: 2 / 3,
+    /** 이 비율 이상이면 적정, 미만이면 부족 */
+    normal: 1 / 3,
 } as const;
 
+/**
+ * 채움 비율. 슬롯이 0개면 0 입니다.
+ *
+ * `capacity` 는 `ADMIN-INVENTORY-001` 의 `totalSlotCount` 입니다. 0 으로 나누면 `NaN` 이
+ * 되고 `NaN` 은 어떤 비교에도 false 라 조용히 「부족」으로 떨어집니다. 슬롯이 없는
+ * 대여소에 빌려줄 우산도 없으니 결론은 같지만, 우연에 기대지 않고 명시합니다.
+ */
+export function stockRatio(station: Station): number {
+    return station.capacity > 0 ? station.available / station.capacity : 0;
+}
+
 export function getStationStatus(station: Station): StationStatus {
+    // 장치가 끊긴 대여소는 재고를 믿을 수 없습니다. 비율보다 먼저 봅니다.
     if (!isDeviceOnline(station)) return 'OFFLINE';
-    if (station.available >= STOCK_THRESHOLD.surplus) return 'SURPLUS';
-    if (station.available >= STOCK_THRESHOLD.normal) return 'NORMAL';
+
+    const ratio = stockRatio(station);
+    if (ratio >= STOCK_RATIO_THRESHOLD.surplus) return 'SURPLUS';
+    if (ratio >= STOCK_RATIO_THRESHOLD.normal) return 'NORMAL';
     return 'SHORTAGE';
 }
 
