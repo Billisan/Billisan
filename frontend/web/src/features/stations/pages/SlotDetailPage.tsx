@@ -33,6 +33,7 @@ import { Badge } from '@/shared/components/Badge';
 import { CopyButton } from '@/shared/components/CopyButton';
 import { DataTable, TBody, Td, TableCard, Th, THead, Tr } from '@/shared/components/DataTable';
 import { PageBar } from '@/shared/components/PageBar';
+import { ErrorState, LoadingState, NotFoundState } from '@/shared/components/PageState';
 import { PageTitle } from '@/shared/components/PageTitle';
 import { LOCK_STATUS_LABEL } from '@/shared/constants/statusLabels';
 
@@ -41,7 +42,8 @@ export function SlotDetailPage() {
     const [dialogOpen, setDialogOpen] = useState(false);
 
     // ADMIN-SLOT-DETAIL-001 — 라우트 파라미터는 슬롯 UUID 하나뿐입니다.
-    const { data: slot } = useSlotDetail(slotId);
+    const slotQuery = useSlotDetail(slotId);
+    const slot = slotQuery.data;
     /*
      * 대여소는 **슬롯 응답의 `stationId`** 로 찾습니다. 주소에서 받지 않습니다.
      *
@@ -54,25 +56,59 @@ export function SlotDetailPage() {
     // ADMIN-SLOT-STATUS-001 — 성공하면 훅이 캐시를 무효화해 이 조회가 다시 돕니다.
     const changeStatus = useChangeSlotStatus();
 
-    if (!station || !slot) {
+    /*
+     * 세 경우를 갈라 말합니다. 예전에는 `!station || !slot` 하나로 묶어 전부
+     * 「존재하지 않는 슬롯입니다」였습니다.
+     *
+     *   불러오는 중 → 데이터가 아직 `undefined` 라서, **로딩 중에도** "없다" 고 떴습니다.
+     *                 잠깐이지만 없는 걸 봤다고 믿고 뒤로 가는 데는 충분합니다.
+     *   조회 실패   → 서버가 500 을 줘도 "없다" 고 단정했고, 다시 시도할 버튼도 없었습니다.
+     *   정말 없음   → 이때만 "없다" 가 맞습니다.
+     */
+    const breadcrumb = [
+        { label: '대여소 관리', to: '/stations' },
+        ...(station ? [{ label: station.name, to: `/stations/${station.stationId}` }] : []),
+    ];
+
+    if (slotQuery.isPending) {
         return (
             <div>
-                <PageBar
-                    breadcrumb={[
-                        { label: '대여소 관리', to: '/stations' },
-                        ...(station
-                            ? [
-                                  {
-                                      label: station.name,
-                                      to: `/stations/${station.stationId}`,
-                                  },
-                              ]
-                            : []),
-                    ]}
-                />
-                <div className="flex h-[200px] items-center justify-center rounded-lg bg-white text-[13px] font-medium text-brand-muted">
-                    존재하지 않는 슬롯입니다. ({slotId})
-                </div>
+                <PageBar breadcrumb={breadcrumb} />
+                <LoadingState />
+            </div>
+        );
+    }
+
+    if (slotQuery.isError) {
+        return (
+            <div>
+                <PageBar breadcrumb={breadcrumb} />
+                <ErrorState error={slotQuery.error} onRetry={() => void slotQuery.refetch()} />
+            </div>
+        );
+    }
+
+    if (!slot) {
+        return (
+            <div>
+                <PageBar breadcrumb={breadcrumb} />
+                <NotFoundState label="슬롯" id={slotId} />
+            </div>
+        );
+    }
+
+    /*
+     * 슬롯은 있는데 대여소를 못 읽은 경우.
+     *
+     * 대여소 이름은 이름표일 뿐이라 슬롯 상세를 막을 이유가 없습니다. 예전에는 이때도
+     * "슬롯이 없다" 고 해서, 대여소 조회만 실패해도 멀쩡한 슬롯을 못 보게 했습니다.
+     * TODO: 대여소 조회 API 가 계약에 들어오면 여기도 재시도를 붙이세요.
+     */
+    if (!station) {
+        return (
+            <div>
+                <PageBar breadcrumb={breadcrumb} />
+                <ErrorState error={new Error('대여소 정보를 불러오지 못했습니다.')} />
             </div>
         );
     }
