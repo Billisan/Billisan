@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 
 import { StationTable } from '@/features/stations/components/StationTable';
 import { useStations } from '@/features/stations/hooks/useStations';
+import { getStationStatus } from '@/features/stations/types';
 import { STATIONS_SYNCED_AT } from '@/features/stations/mocks/stations';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
@@ -75,13 +76,30 @@ export function StationListPage() {
     const totals = useMemo(
         () =>
             filtered.reduce(
-                (acc, station) => ({
-                    available: acc.available + station.available,
-                    capacity: acc.capacity + station.capacity,
-                    damaged: acc.damaged + station.damaged,
-                    adminReview: acc.adminReview + station.adminReview,
-                }),
-                { available: 0, capacity: 0, damaged: 0, adminReview: 0 },
+                (acc, station) => {
+                    const status = getStationStatus(station);
+                    return {
+                        available: acc.available + station.available,
+                        capacity: acc.capacity + station.capacity,
+                        damaged: acc.damaged + station.damaged,
+                        adminReview: acc.adminReview + station.adminReview,
+                        /*
+                         * 채워야 할 곳이 몇 군데인지. 합계만 있으면 "전체로는 넉넉한데
+                         * 특정 대여소만 비어 있는" 상황이 숫자에 묻힙니다. 표에 재고 열이
+                         * 생겼어도 다음 쪽까지 세어 보려면 결국 넘겨 봐야 합니다.
+                         */
+                        shortage: acc.shortage + (status === 'SHORTAGE' ? 1 : 0),
+                        offline: acc.offline + (status === 'OFFLINE' ? 1 : 0),
+                    };
+                },
+                {
+                    available: 0,
+                    capacity: 0,
+                    damaged: 0,
+                    adminReview: 0,
+                    shortage: 0,
+                    offline: 0,
+                },
             ),
         [filtered],
     );
@@ -177,6 +195,14 @@ export function StationListPage() {
                     {` / 전체 슬롯 ${totals.capacity}`}
                     {totals.damaged > 0 && ` · 파손 ${totals.damaged}`}
                     {totals.adminReview > 0 && ` · 관리자 확인 ${totals.adminReview}`}
+                    {/*
+                     * 손봐야 하는 곳만 색을 씁니다. 0 이면 아예 적지 않습니다 —
+                     * 「부족 0개소」는 읽을 때 한 번 멈추게 만드는데 알려주는 건 없습니다.
+                     */}
+                    {totals.shortage > 0 && (
+                        <span className="text-status-shortage"> · 부족 {totals.shortage}개소</span>
+                    )}
+                    {totals.offline > 0 && ` · 오프라인 ${totals.offline}개소`}
                 </p>
                 <Pagination
                     page={currentPage}
