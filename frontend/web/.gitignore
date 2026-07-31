@@ -28,3 +28,10 @@ Thumbs.db
 
 # TS build info
 *.tsbuildinfo
+
+# CI 가 컨테이너 안에서 Node 를 돌릴 때 HOME=/workspace 로 두어 생기는 자리
+# (corepack 이 pnpm 을 받아 두는 곳). 저장소에 들어갈 것이 아닙니다.
+.cache
+.local
+.npm
+.vercel

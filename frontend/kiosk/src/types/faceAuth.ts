@@ -10,12 +10,3 @@ export const AUTH_SCREEN_VARIANT = {
 
 export type AuthScreenVariant =
   (typeof AUTH_SCREEN_VARIANT)[keyof typeof AUTH_SCREEN_VARIANT]
-
-export const FACE_AUTH_RESULT = {
-  MATCHED: 'MATCHED',
-  NOT_DETECTED: 'NOT_DETECTED',
-  NOT_MATCHED: 'NOT_MATCHED',
-} as const
-
-export type FaceAuthResult =
-  (typeof FACE_AUTH_RESULT)[keyof typeof FACE_AUTH_RESULT]

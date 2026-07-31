@@ -101,7 +101,7 @@ export function InspectionDetailPage() {
                         </p>
 
                         <div className="mt-[16px]">
-                            <p className="text-[11.5px] font-semibold text-brand-body">추론 점수</p>
+                            <p className="text-[11.5px] font-semibold text-brand-body">신뢰도</p>
                             <ScoreBar
                                 score={detail.aiScore}
                                 result={detail.aiResult}

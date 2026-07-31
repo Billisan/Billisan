@@ -4,6 +4,7 @@ import {
     MOCK_RENTALS,
     MOCK_RETURNS,
     MOCK_SETTLEMENTS,
+    MOCK_USER,
     findRental,
     findReturn,
     findSettlement,
@@ -313,5 +314,151 @@ describe('시간 순서', () => {
                 `반납 ${attempt.returnAttemptId}`,
             ).toBe(true);
         }
+    });
+});
+
+describe('사용자 통합 이력 타임라인', () => {
+    it('가리키는 대여·반납·정산이 모두 존재한다', () => {
+        for (const entry of MOCK_USER.timeline) {
+            const found =
+                entry.kind === '대여'
+                    ? findRental(entry.linkId)
+                    : entry.kind === '반납'
+                      ? findReturn(entry.linkId)
+                      : findSettlement(entry.linkId);
+            expect(found, `${entry.kind} ${entry.linkId}`).toBeDefined();
+        }
+    });
+
+    it('대상 글자가 연결된 기록과 일치한다', () => {
+        /*
+         * 같은 사건을 타임라인과 상세에 따로 적어 두면 갈라집니다. 실제로
+         * 타임라인만 `제1공학관 · SL-03-07` 로 남아 있었습니다 — 앱 전체가
+         * `N번 슬롯` 으로 바뀐 뒤에도, 그리고 07 번은 그 대여소에 없는 슬롯입니다.
+         */
+        for (const entry of MOCK_USER.timeline) {
+            if (entry.kind === '정산') continue;
+            const record =
+                entry.kind === '대여' ? findRental(entry.linkId) : findReturn(entry.linkId);
+            expect(record, `${entry.kind} ${entry.linkId}`).toBeDefined();
+            expect(entry.target, `${entry.kind} ${entry.linkId}`).toContain(record!.stationName);
+            if (record!.slotLabel) {
+                expect(entry.target).toContain(record!.slotLabel);
+            }
+        }
+    });
+
+    it('걷어낸 옛 슬롯 표기가 남아 있지 않다', () => {
+        // ERD v3.0 이 station_code 를 P0 필수에서 뺐습니다. 'SL-03-07' 은 그 컬럼에
+        // 기대는 표기라 서버가 안 주면 만들 수 없습니다.
+        for (const entry of MOCK_USER.timeline) {
+            expect(entry.target, `${entry.kind} ${entry.linkId}`).not.toMatch(/SL-\d/);
+        }
+    });
+
+    it('시각이 최신순으로 내려간다', () => {
+        const times = MOCK_USER.timeline.map((entry) => entry.at);
+        expect([...times].sort().reverse()).toEqual(times);
+    });
+});
+
+describe('대여와 반납의 개수·매칭 관계', () => {
+    /** 대여가 `returnAttemptId` 로 가리키는 것은 **완료된 반납** 하나뿐입니다. */
+    const completed = MOCK_RETURNS.filter((item) => item.status === 'COMPLETED');
+
+    it('대여 수가 완료된 반납 수 이상이다', () => {
+        /*
+         * 반납은 대여 없이 생길 수 없고, 대여 중·분실은 반납이 없습니다.
+         *
+         * 주의: **전체 반납 수와 비교하면 안 됩니다.** ERD 가 `RENTAL 1:N RETURN_ATTEMPT`
+         * 라 실패 후 재시도가 쌓이면 반납 행이 대여보다 많아질 수 있습니다. 대여와
+         * 일대일로 맞는 것은 완료 시도뿐입니다.
+         */
+        expect(MOCK_RENTALS.length).toBeGreaterThanOrEqual(completed.length);
+    });
+
+    it('완료된 반납 수와 반납완료 대여 수가 같다', () => {
+        const done = MOCK_RENTALS.filter((item) => item.status === 'COMPLETED');
+        expect(done.length).toBe(completed.length);
+    });
+
+    it('모든 반납이 실재하는 대여에 매달린다', () => {
+        const ids = new Set(MOCK_RENTALS.map((item) => item.rentalId));
+        for (const attempt of MOCK_RETURNS) {
+            expect(ids, `반납 ${attempt.returnAttemptId}`).toContain(attempt.rentalId);
+        }
+    });
+
+    it('한 대여에 완료된 반납은 최대 1건이다', () => {
+        // 화면 안내 문구: "완료 시도는 최대 1건입니다 (§8.2)"
+        const perRental = new Map<string, number>();
+        for (const attempt of completed) {
+            perRental.set(attempt.rentalId, (perRental.get(attempt.rentalId) ?? 0) + 1);
+        }
+        for (const [rentalId, count] of perRental) {
+            expect(count, `대여 ${rentalId} 의 완료 반납`).toBe(1);
+        }
+    });
+
+    it('반납완료 대여는 완료된 반납을 가리킨다', () => {
+        for (const rental of MOCK_RENTALS.filter((item) => item.status === 'COMPLETED')) {
+            expect(rental.returnAttemptId, `대여 ${rental.rentalId}`).not.toBeNull();
+            expect(findReturn(rental.returnAttemptId ?? undefined)?.status).toBe('COMPLETED');
+        }
+    });
+
+    it('대여중·분실 대여는 완료된 반납을 가리키지 않는다', () => {
+        // 아직 안 돌아왔거나 잃어버린 건이라 완료 반납이 있을 수 없습니다.
+        for (const rental of MOCK_RENTALS.filter((item) => item.status !== 'COMPLETED')) {
+            expect(rental.returnAttemptId, `대여 ${rental.rentalId}`).toBeNull();
+        }
+    });
+
+    it('대여가 되짚지 않는 반납은 아직 안 끝난 시도뿐이다', () => {
+        /*
+         * 완료 반납은 반드시 대여 쪽에서도 가리킵니다. 역참조가 없는 반납은
+         * 처리 중·물리 완료·복구 필요·실패 — 즉 아직 완료가 아닌 것들입니다.
+         */
+        const pointed = new Set(MOCK_RENTALS.map((item) => item.returnAttemptId).filter(Boolean));
+        for (const attempt of MOCK_RETURNS) {
+            if (pointed.has(attempt.returnAttemptId)) continue;
+            expect(attempt.status, `반납 ${attempt.returnAttemptId}`).not.toBe('COMPLETED');
+        }
+    });
+
+    it('한 대여에 시도가 여러 건인 사례가 실제로 있다', () => {
+        /*
+         * 화면이 "한 대여에 여러 건일 수 있습니다" 라고 안내하는데 데이터에 그 사례가
+         * 없으면 그 안내를 확인할 방법이 없습니다. 실패 후 재시도가 그 경우입니다.
+         */
+        const perRental = new Map<string, number>();
+        for (const attempt of MOCK_RETURNS) {
+            perRental.set(attempt.rentalId, (perRental.get(attempt.rentalId) ?? 0) + 1);
+        }
+        expect([...perRental.values()].some((n) => n > 1)).toBe(true);
+    });
+});
+
+describe('조회 기간 프리셋이 구분되는 데이터', () => {
+    /*
+     * 목업이 한 주에 몰려 있으면 `최근 일주일`·`한 달`·`세 달` 이 전부 같은 결과를
+     * 냅니다. 필터가 동작해도 화면으로 확인할 방법이 없어집니다.
+     */
+    const days = MOCK_RENTALS.map((item) => item.rentedAt.slice(0, 10)).sort();
+    const ASOF = '2026-07-24';
+
+    it('세 프리셋이 각각 다른 건수를 낸다', () => {
+        const count = (from: string) => days.filter((d) => d >= from && d <= ASOF).length;
+        const week = count('2026-07-18');
+        const month = count('2026-06-25');
+        const quarter = count('2026-04-26');
+
+        expect(week).toBeLessThan(month);
+        expect(month).toBeLessThan(quarter);
+    });
+
+    it('모든 대여가 세 달 안에 있다 — 기본 조회에서 사라지는 건이 없다', () => {
+        expect(days[0] >= '2026-04-26').toBe(true);
+        expect(days[days.length - 1] <= ASOF).toBe(true);
     });
 });

@@ -1,17 +1,24 @@
-interface RentalStepIndicatorProps {
-  currentStep: 1 | 2 | 3
+export type StepFlow = 'RENT' | 'RETURN'
+
+interface StepIndicatorProps {
+  currentStep: number
+  flow?: StepFlow
 }
 
-const STEPS: Array<{ step: 1 | 2 | 3; label: string }> = [
-  { step: 1, label: '대여 시작' },
-  { step: 2, label: '안면 인식' },
-  { step: 3, label: '우산 받기' },
-]
+const STEP_LABELS: Record<StepFlow, string[]> = {
+  RENT: ['대여 시작', '안면 인식', '우산 받기'],
+  RETURN: ['반납 시작', '안면 인식', '우산 파손 인식', '반납 완료'],
+}
 
-export function RentalStepIndicator({ currentStep }: RentalStepIndicatorProps) {
+export function StepIndicator({ currentStep, flow = 'RENT' }: StepIndicatorProps) {
+  const steps = STEP_LABELS[flow].map((label, index) => ({
+    step: index + 1,
+    label,
+  }))
+
   return (
     <div className="flex items-center">
-      {STEPS.map(({ step, label }, index) => {
+      {steps.map(({ step, label }, index) => {
         const isActive = step === currentStep
 
         return (
@@ -36,7 +43,7 @@ export function RentalStepIndicator({ currentStep }: RentalStepIndicatorProps) {
                 {label}
               </span>
             </div>
-            {index < STEPS.length - 1 && (
+            {index < steps.length - 1 && (
               <span className="bg-disabled mx-4 h-px w-10" />
             )}
           </div>

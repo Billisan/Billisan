@@ -1,6 +1,7 @@
 import aiScanFail from '../../assets/ai-scan-fail.svg'
 import { Button } from '../../components/common/Button'
 import { KioskLayout } from '../../components/layout/KioskLayout'
+import type { StepFlow } from '../../components/layout/StepIndicator'
 
 interface ErrorScreenProps {
   title: string
@@ -10,7 +11,8 @@ interface ErrorScreenProps {
   onAction: () => void
   secondaryActionLabel?: string
   onSecondaryAction?: () => void
-  currentStep?: 1 | 2 | 3
+  currentStep?: 1 | 2 | 3 | 4
+  flow?: StepFlow
 }
 
 export function ErrorScreen({
@@ -22,9 +24,10 @@ export function ErrorScreen({
   secondaryActionLabel,
   onSecondaryAction,
   currentStep,
+  flow,
 }: ErrorScreenProps) {
   return (
-    <KioskLayout currentStep={currentStep}>
+    <KioskLayout currentStep={currentStep} flow={flow}>
       <div className="flex w-full flex-1 flex-col items-center justify-center gap-10">
         <div className="flex w-full flex-col items-center gap-8">
           <img src={aiScanFail} alt="" className="h-40 w-40" />

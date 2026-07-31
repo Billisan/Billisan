@@ -1,0 +1,17 @@
+# 관리자 웹의 줄 끝은 저장소·작업 폴더 양쪽 모두 LF 로 고정합니다.
+#
+# 이게 없으면 Windows 에서 `core.autocrlf=true` 가 체크아웃할 때 CRLF 로 바꿔 놓는데,
+# `.prettierrc` 는 `endOfLine: "lf"` 라서 **아무것도 고치지 않았는데 `format:check` 가
+# 46개 파일에서 깨집니다.** 리베이스나 stash 처럼 git 이 파일을 다시 꺼내는 순간마다
+# 재발합니다. CI 는 리눅스 컨테이너라 통과하고 로컬만 깨져서 원인을 찾기도 나쁩니다.
+#
+# `eol=lf` 는 작업 폴더까지 LF 로 강제해서 개인 git 설정과 무관하게 같은 결과를 냅니다.
+# 적용 범위는 이 폴더뿐입니다 — 다른 팀원 폴더는 각자의 설정을 따릅니다.
+* text=auto eol=lf
+
+# 바이너리는 손대지 않습니다.
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary

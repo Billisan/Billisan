@@ -9,12 +9,14 @@ import {
     userUuid,
     type SlotShapeRequest,
 } from '@/features/history/mocks/refs';
-import type {
-    Rental,
-    ReturnAttempt,
-    ReturnReviewStatus,
-    Settlement,
-    UserTimelineEntry,
+import {
+    SETTLEMENT_REASON_LABEL,
+    formatWon,
+    type Rental,
+    type ReturnAttempt,
+    type ReturnReviewStatus,
+    type Settlement,
+    type UserTimelineEntry,
 } from '@/features/history/types';
 
 /**
@@ -75,6 +77,36 @@ export const RENTAL_LIST_NOTE =
     '대여 상태: 대여중 · 연체(기한 초과 미반납) · 반납완료 · 분실(장기 미반납) · 개별 우산 ID 없이 대여 ID로 추적합니다';
 
 const RAW_RENTALS: RawRow<Rental>[] = [
+    /*
+     * 아래 둘은 **조회 기간 프리셋을 구분하려고** 둔 과거 건입니다.
+     *
+     * 목업이 07-18 ~ 07-24 딱 7일치라, `최근 일주일`·`한 달`·`세 달` 이 전부 같은 결과를
+     * 냈습니다. 필터가 동작해도 화면으로는 확인할 방법이 없었습니다.
+     *   R-87200  기준일 14일 전 → 일주일 밖, 한 달 안
+     *   R-86500  기준일 49일 전 → 한 달 밖, 세 달 안
+     */
+    {
+        rentalId: 'R-87200',
+        userRef: 'u_3a90',
+        stationName: '빌리대역 출구',
+        slotShape: 'EMPTY_SLOT',
+        rentedAt: '2026-07-10 12:30',
+        dueAt: '2026-07-11 12:30',
+        status: 'COMPLETED',
+        returnAttemptId: 'RT-87210',
+        settlementId: null,
+    },
+    {
+        rentalId: 'R-86500',
+        userRef: 'u_4d10',
+        stationName: '대운동장',
+        slotShape: 'EMPTY_SLOT',
+        rentedAt: '2026-06-05 08:40',
+        dueAt: '2026-06-06 08:40',
+        status: 'COMPLETED',
+        returnAttemptId: 'RT-86510',
+        settlementId: null,
+    },
     {
         /*
          * 반납 시도 `RT-87980` 의 대여.
@@ -283,6 +315,35 @@ const RAW_RENTALS: RawRow<Rental>[] = [
 ];
 
 const RAW_RETURNS: RawReturn[] = [
+    /* 위 과거 대여 두 건의 반납. 기간 프리셋을 구분하는 데이터입니다. */
+    {
+        returnAttemptId: 'RT-87210',
+        rentalId: 'R-87200',
+        userRef: 'u_3a90',
+        stationName: '빌리대역 출구',
+        slotShape: 'NO_INSPECTION',
+        attemptedAt: '2026-07-10 19:15',
+        status: 'COMPLETED',
+        aiResult: 'NORMAL',
+        aiScore: 0.06,
+        modelVersion: 'v0.4',
+        latencyMs: 284,
+        settlementId: null,
+    },
+    {
+        returnAttemptId: 'RT-86510',
+        rentalId: 'R-86500',
+        userRef: 'u_4d10',
+        stationName: '대운동장',
+        slotShape: 'NO_INSPECTION',
+        attemptedAt: '2026-06-05 17:50',
+        status: 'COMPLETED',
+        aiResult: 'NORMAL',
+        aiScore: 0.05,
+        modelVersion: 'v0.4',
+        latencyMs: 291,
+        settlementId: null,
+    },
     /*
      * ── 반납이 정상으로 끝나지 않은 세 건 ──────────────────────────────
      *
@@ -417,6 +478,36 @@ const RAW_RETURNS: RawReturn[] = [
         aiScore: 0.04,
         modelVersion: 'v0.4',
         latencyMs: 301,
+        settlementId: null,
+    },
+    {
+        /*
+         * **한 대여에 반납 시도가 둘인 경우** — `RENTAL 1:N RETURN_ATTEMPT` (ERD §8.2).
+         *
+         * 우산이 안 들어가서 한 번 실패하고, 4분 뒤 다시 시도해 성공한 건입니다.
+         * 아래 `RT-88213` 이 그 성공 시도이고 대여 `R-88021` 은 그쪽을 가리킵니다.
+         * 실패 시도는 대여가 되짚지 않지만 이력에는 남습니다 — "기존 실패 행을 덮어쓰지
+         * 않는다. 재시도는 새로운 request_id 와 새 행으로 생성한다"(ERD 실패와 재시도).
+         *
+         * 반납 목록 하단 안내가 "한 대여에 여러 건일 수 있습니다. 완료 시도는 최대
+         * 1건입니다" 라고 적어 두고 있는데, 정작 그 사례가 데이터에 없었습니다.
+         *
+         * 슬롯 선정 전에 끝나서 `slotShape` 가 없습니다 (ERD §19.3 이 `FAILED` 에서
+         * `return_slot_id` NULL 을 허용). AI 도 추론까지 못 가 `FAILED` 입니다.
+         */
+        returnAttemptId: 'RT-88211',
+        rentalId: 'R-88021',
+        userRef: 'u_8f3a',
+        stationName: '제1공학관',
+        slotShape: null,
+        // 슬롯이 없어 검수를 파생할 수 없습니다. AI 가 판정을 못 냈으니 사람이 봐야 합니다.
+        reviewStatus: 'PENDING',
+        attemptedAt: '2026-07-24 09:08',
+        status: 'FAILED',
+        aiResult: 'FAILED',
+        aiScore: null,
+        modelVersion: 'v0.4',
+        latencyMs: 0,
         settlementId: null,
     },
     {
@@ -796,6 +887,37 @@ const RAW_USER: UserSummary = {
     ],
 };
 
+/**
+ * 타임라인의 「대상」 글자.
+ *
+ * **손으로 적지 않고 연결된 기록에서 가져옵니다.** 예전에는 `'제1공학관 · SL-03-07'`
+ * 처럼 문자열을 박아 놨는데 두 가지가 어긋났습니다.
+ *   - `SL-03-07` 은 `station_code` 에 기대는 옛 표기입니다. ERD v3.0 이 그 컬럼을 P0
+ *     필수에서 빼서 앱 전체를 `N번 슬롯` 으로 바꿨는데 **이 화면만 남아 있었습니다.**
+ *   - 07 번은 제1공학관에 없는 슬롯입니다. 링크로 들어간 상세 화면과 글자가 달랐습니다.
+ *
+ * 같은 사건을 두 곳에 따로 적어 두면 반드시 갈라집니다. 이제 대여·반납은 그 기록의
+ * 대여소·슬롯을, 정산은 사유·금액을 그대로 씁니다.
+ */
+function timelineTarget(entry: UserTimelineEntry): string {
+    if (entry.kind === '정산') {
+        const settlement = MOCK_SETTLEMENTS.find(
+            (item) => item.settlementId === settlementUuid(entry.linkId),
+        );
+        return settlement
+            ? `${SETTLEMENT_REASON_LABEL[settlement.reason]} · ${formatWon(settlement.amount)}`
+            : entry.target;
+    }
+
+    const record =
+        entry.kind === '대여'
+            ? MOCK_RENTALS.find((item) => item.rentalId === rentalUuid(entry.linkId))
+            : MOCK_RETURNS.find((item) => item.returnAttemptId === returnUuid(entry.linkId));
+
+    if (!record) return entry.target;
+    return record.slotLabel ? `${record.stationName} · ${record.slotLabel}` : record.stationName;
+}
+
 /** 타임라인의 링크도 같은 규칙으로 바꿉니다. 안 바꾸면 눌러도 없는 화면으로 갑니다. */
 export const MOCK_USER: UserSummary = {
     ...RAW_USER,
@@ -810,6 +932,11 @@ export const MOCK_USER: UserSummary = {
         const path =
             entry.kind === '대여' ? 'rentals' : entry.kind === '반납' ? 'returns' : 'settlements';
 
-        return { ...entry, linkId: id, to: `/history/${path}/${id}` };
+        return {
+            ...entry,
+            linkId: id,
+            to: `/history/${path}/${id}`,
+            target: timelineTarget(entry),
+        };
     }),
 };

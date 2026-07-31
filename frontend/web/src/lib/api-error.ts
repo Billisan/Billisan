@@ -31,3 +31,15 @@ export class ApiRequestError extends Error {
 export function errorCodeOf(error: unknown): string | undefined {
     return error instanceof ApiRequestError ? error.code : undefined;
 }
+
+/**
+ * unknown 으로 잡힌 예외에서 HTTP 상태를 꺼냅니다.
+ *
+ * 코드가 없을 때 쓰는 차선책입니다. 계약이 이름을 정해 둔 오류는 `code` 로 가르는 게
+ * 맞지만, **`429` 는 이름이 없습니다** — 화면흐름 §15 가 "로그인 실패 횟수 제한, 잠금 …
+ * 은 `DEFERRED_NOT_CONTRACTED" 로 미뤄 두었기 때문입니다. 그런데 §7.1 은 로그인 실패를
+ * `401·403·429` 로 구분하라고 합니다. 이름이 없으니 상태로 가릅니다.
+ */
+export function errorStatusOf(error: unknown): number | undefined {
+    return error instanceof ApiRequestError ? error.statusCode : undefined;
+}

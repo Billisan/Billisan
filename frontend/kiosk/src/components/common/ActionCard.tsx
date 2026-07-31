@@ -40,7 +40,7 @@ export function ActionCard({
       type="button"
       disabled={disabled}
       aria-disabled={disabled}
-      className={`relative flex min-h-[16.8rem] w-full items-center gap-6 overflow-hidden rounded-3xl px-10 py-8 text-left transition-colors ${containerClasses} ${disabled ? 'cursor-not-allowed opacity-60' : 'active:brightness-95'} ${className}`}
+      className={`relative flex min-h-74 w-full items-center gap-6 overflow-hidden rounded-3xl px-10 py-8 text-left transition-colors ${containerClasses} ${disabled ? 'cursor-not-allowed opacity-60' : 'active:brightness-95'} ${className}`}
       {...rest}
     >
       <Icon
@@ -54,7 +54,7 @@ export function ActionCard({
       </span>
 
       <span className="relative z-10 flex flex-1 flex-col gap-1">
-        <span className="text-3xl font-bold">{title}</span>
+        <span className="text-4xl font-bold">{title}</span>
         <span
           className={`text-lg ${isPrimary ? 'text-white/90' : 'text-tertiary-text'}`}
         >

@@ -2,7 +2,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 
 import { useLogin } from '@/features/auth/hooks/useLogin';
-import { errorCodeOf } from '@/lib/api-error';
+import { errorCodeOf, errorStatusOf } from '@/lib/api-error';
 import { cn } from '@/lib/utils';
 
 /**
@@ -15,11 +15,19 @@ import { cn } from '@/lib/utils';
  */
 
 /**
- * 실패 사유 → 화면 문구.
+ * 실패 사유 → 화면 문구. 화면흐름 §7.1 이 `401·403·429` 를 구분하라고 정했습니다.
  *
  * `403 ADMIN_ACCOUNT_REQUIRED` 를 반드시 갈라야 합니다. 자격은 맞는데 **관리자 계정이
  * 아닌** 경우라, 여기에 "비밀번호가 올바르지 않습니다"를 띄우면 사용자가 맞는 비밀번호를
  * 계속 다시 칩니다. 반대로 자격 실패는 계정 존재 여부를 드러내지 않게 한 문장으로 고정합니다.
+ *
+ * **`429` 는 상태로 가릅니다.** 계약에 오류 코드 이름이 없습니다 — §15 가 "로그인 실패
+ * 횟수 제한, 잠금 … 은 `DEFERRED_NOT_CONTRACTED`" 로 미뤘기 때문입니다. 이름이 정해지면
+ * 위 `switch` 로 옮기세요.
+ *
+ * 429 를 안 가르면 피해가 큽니다. 속도 제한에 걸린 사람에게 "비밀번호가 틀렸다"고 하면
+ * 그 사람은 비밀번호를 **더 열심히 다시 칩니다.** 그게 바로 제한이 막으려던 행동이라
+ * 잠금이 길어지고, 화면은 끝까지 이유를 알려주지 않습니다.
  */
 function loginErrorMessage(error: unknown): string {
     switch (errorCodeOf(error)) {
@@ -28,8 +36,15 @@ function loginErrorMessage(error: unknown): string {
         case 'ADMIN_SESSION_EXPIRED':
             return '세션이 만료되었습니다. 다시 로그인해 주세요.';
         default:
-            return '아이디 또는 비밀번호가 올바르지 않습니다';
+            break;
     }
+
+    if (errorStatusOf(error) === 429) {
+        // 남은 시간은 서버가 `Retry-After` 로 줄 수 있지만 계약에 없어 숫자를 지어내지 않습니다.
+        return '로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.';
+    }
+
+    return '아이디 또는 비밀번호가 올바르지 않습니다';
 }
 
 /** 예시 문구(placeholder)는 두지 않습니다. 시안의 회색 글씨는 입력값 예시라 화면에 남기지 않습니다. */

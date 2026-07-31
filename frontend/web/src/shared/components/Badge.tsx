@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
 
-export type BadgeTone = 'green' | 'blue' | 'amber' | 'red' | 'slate';
+export type BadgeTone = 'green' | 'blue' | 'amber' | 'red' | 'slate' | 'violet';
 
 /** 톤별 배경/글자색. 문자열 리터럴이어야 Tailwind JIT 가 클래스를 뽑아냅니다. */
 const TONE_CLASS: Record<BadgeTone, string> = {
@@ -11,6 +11,7 @@ const TONE_CLASS: Record<BadgeTone, string> = {
     amber: 'bg-tone-amber-bg text-tone-amber-fg',
     red: 'bg-tone-red-bg text-tone-red-fg',
     slate: 'bg-tone-slate-bg text-tone-slate-fg',
+    violet: 'bg-tone-violet-bg text-tone-violet-fg',
 };
 
 interface BadgeProps {

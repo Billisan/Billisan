@@ -1,15 +1,16 @@
 import { useState } from 'react'
-import { checkRentalEligibility } from './api/eligibilityApi'
 import { startRental, type RentalStart } from './api/rentalApi'
 import { AuthScreen } from './screens/SCR-KSK-AUTH-001/AuthScreen'
 import { MainScreen } from './screens/SCR-KSK-MAIN-001/MainScreen'
-import { PickupSlotScreen } from './screens/SCR-KSK-RENT-001/PickupSlotScreen'
-import { RentalCompleteScreen } from './screens/SCR-KSK-RENT-001/RentalCompleteScreen'
+import { RentFlow } from './screens/SCR-KSK-RENT-001/RentFlow'
+import { ReturnFlow } from './screens/SCR-KSK-RETURN-001/ReturnFlow'
 import { useFaceAuthStore } from './store/faceAuthStore'
 import { useKioskFlowStore } from './store/kioskFlowStore'
 import { useKioskMainStore } from './store/kioskMainStore'
-import { RENTAL_ELIGIBILITY_RESULT } from './types/eligibility'
+import type { RentalBlockReason } from './types/eligibility'
 import { SCREEN_ID } from './types/screen'
+
+type Mode = 'RENT' | 'RETURN'
 
 function App() {
   const currentScreen = useKioskFlowStore((state) => state.currentScreen)
@@ -18,56 +19,65 @@ function App() {
   const setRentalBlockReason = useKioskMainStore(
     (state) => state.setRentalBlockReason,
   )
+  const [mode, setMode] = useState<Mode>('RENT')
   const [rental, setRental] = useState<RentalStart | null>(null)
-  const [isPickedUp, setIsPickedUp] = useState(false)
 
   const goToMain = () => {
     resetFaceAuth()
     setRental(null)
-    setIsPickedUp(false)
     goTo(SCREEN_ID.MAIN)
   }
 
-  // 09-screen-flow.md §4.1 "Spring 정책 검증" 대응 — 얼굴 매칭 성공 후 대여 자격을 확인한다.
-  const handleAuthenticated = async () => {
-    const result = await checkRentalEligibility()
-
-    if (result !== RENTAL_ELIGIBILITY_RESULT.ELIGIBLE) {
-      setRentalBlockReason(result)
-      goToMain()
-      return
-    }
-
+  // 자격 판정은 faceAuthStore가 수신한 ELIGIBILITY_RESULT stage로 끝난 상태다.
+  // 슬롯 배정은 기존 대여 flow Mock을 유지한다.
+  const handleRentAuthenticated = async () => {
     const startResult = await startRental()
     setRental(startResult)
     goTo(SCREEN_ID.RENT)
   }
 
-  if (currentScreen === SCREEN_ID.AUTH) {
-    return <AuthScreen onBack={goToMain} onAuthenticated={handleAuthenticated} />
+  const handleReturnAuthenticated = () => {
+    goTo(SCREEN_ID.RETURN)
   }
 
-  if (currentScreen === SCREEN_ID.RENT && rental !== null) {
-    if (!isPickedUp) {
-      return (
-        <PickupSlotScreen
-          slotNumber={rental.slotNumber}
-          onBack={goToMain}
-          onAction={() => setIsPickedUp(true)}
-        />
-      )
-    }
+  const handleEligibilityBlocked = (reason: RentalBlockReason) => {
+    setRentalBlockReason(reason)
+    goToMain()
+  }
 
+  if (currentScreen === SCREEN_ID.AUTH) {
     return (
-      <RentalCompleteScreen
-        rentedAt={rental.rentedAt}
-        dueAt={rental.dueAt}
-        onConfirm={goToMain}
+      <AuthScreen
+        onBack={goToMain}
+        onAuthenticated={
+          mode === 'RENT' ? handleRentAuthenticated : handleReturnAuthenticated
+        }
+        onEligibilityBlocked={handleEligibilityBlocked}
+        mode={mode}
       />
     )
   }
 
-  return <MainScreen onRent={() => goTo(SCREEN_ID.AUTH)} />
+  if (currentScreen === SCREEN_ID.RENT && rental !== null) {
+    return <RentFlow rental={rental} onBack={goToMain} />
+  }
+
+  if (currentScreen === SCREEN_ID.RETURN) {
+    return <ReturnFlow onBack={goToMain} />
+  }
+
+  return (
+    <MainScreen
+      onRent={() => {
+        setMode('RENT')
+        goTo(SCREEN_ID.AUTH)
+      }}
+      onReturn={() => {
+        setMode('RETURN')
+        goTo(SCREEN_ID.AUTH)
+      }}
+    />
+  )
 }
 
 export default App

@@ -1,51 +1,83 @@
 import { create } from 'zustand'
-import { authenticateFace as authenticateFaceApi } from '../api/faceAuthApi'
-import { requestFaceAuthStart } from '../api/piSocket'
 import {
-  AUTH_SCREEN_VARIANT,
-  FACE_AUTH_RESULT,
-  type AuthScreenVariant,
-  type FaceAuthResult,
-} from '../types/faceAuth'
+  isRentalBlockReason,
+  startKioskStageStream,
+} from '../api/kioskStageStream'
+import { KIOSK_STAGE, type KioskMode } from '../types/kioskStage'
+import { AUTH_SCREEN_VARIANT, type AuthScreenVariant } from '../types/faceAuth'
+import type { RentalBlockReason } from '../types/eligibility'
 
 interface FaceAuthState {
   variant: AuthScreenVariant
-  startCapture: () => Promise<void>
-  authenticateFace: () => Promise<FaceAuthResult>
-  retry: () => void
+  guidanceMessage: string | null
+  startCapture: (
+    mode: KioskMode,
+    onEligible: () => void,
+    onBlocked: (reason: RentalBlockReason) => void,
+  ) => void
+  retry: (
+    mode: KioskMode,
+    onEligible: () => void,
+    onBlocked: (reason: RentalBlockReason) => void,
+  ) => void
   reset: () => void
 }
 
-export const useFaceAuthStore = create<FaceAuthState>((set) => ({
+// 스토어 밖(모듈 스코프)에서 진행 중인 스트림의 종료 함수를 들고 있는다 — retry/reset 시 이전 연결을 정리하기 위함.
+let closeStream: (() => void) | null = null
+
+export const useFaceAuthStore = create<FaceAuthState>((set, get) => ({
   variant: AUTH_SCREEN_VARIANT.GUIDE,
+  guidanceMessage: null,
 
-  // DEC-032 — Pi에 얼굴 인증 시작을 요청하고, Pi 응답을 받은 뒤에야 FACE_CAPTURE로 전환한다.
-  // 실패 시 처리 방식은 아직 정해지지 않아 콘솔 로깅만 하고 GUIDE에 머무른다(6절 참고).
-  startCapture: async () => {
-    try {
-      await requestFaceAuthStart()
-      set({ variant: AUTH_SCREEN_VARIANT.FACE_CAPTURE })
-    } catch (error) {
-      console.error('Pi 얼굴 인증 시작 요청 실패', error)
-    }
+  // 기본은 기존 Pi WebSocket producer이며, 환경 변수로 Mock producer를 선택할 수 있다.
+  startCapture: (mode, onEligible, onBlocked) => {
+    closeStream?.()
+    set({ variant: AUTH_SCREEN_VARIANT.FACE_CAPTURE, guidanceMessage: null })
+
+    closeStream = startKioskStageStream(mode, (message) => {
+      switch (message.stage) {
+        case KIOSK_STAGE.AUTH_STARTED:
+          set({ variant: AUTH_SCREEN_VARIANT.FACE_CAPTURE })
+          return
+
+        case KIOSK_STAGE.GUIDANCE:
+          set({ guidanceMessage: message.message ?? null })
+          return
+
+        case KIOSK_STAGE.AUTH_SUCCEEDED:
+          set({
+            variant: AUTH_SCREEN_VARIANT.FACE_PROCESSING,
+            guidanceMessage: null,
+          })
+          return
+
+        case KIOSK_STAGE.ELIGIBILITY_RESULT:
+          if (message.eligible) {
+            onEligible()
+            return
+          }
+
+          if (isRentalBlockReason(message.reasonCode)) {
+            onBlocked(message.reasonCode)
+            return
+          }
+          set({ variant: AUTH_SCREEN_VARIANT.FACE_NOT_MATCHED, guidanceMessage: null })
+          return
+
+        case KIOSK_STAGE.AUTH_FAILED:
+          set({ variant: AUTH_SCREEN_VARIANT.FACE_NOT_MATCHED, guidanceMessage: null })
+      }
+    })
   },
 
-  authenticateFace: async () => {
-    set({ variant: AUTH_SCREEN_VARIANT.FACE_PROCESSING })
-    const result = await authenticateFaceApi()
+  // 새 인증 시도이므로 startCapture와 동일하게 처음부터 다시 연결한다.
+  retry: (mode, onEligible, onBlocked) =>
+    get().startCapture(mode, onEligible, onBlocked),
 
-    if (result === FACE_AUTH_RESULT.NOT_DETECTED) {
-      set({ variant: AUTH_SCREEN_VARIANT.FACE_NOT_DETECTED })
-    } else if (result === FACE_AUTH_RESULT.NOT_MATCHED) {
-      set({ variant: AUTH_SCREEN_VARIANT.FACE_NOT_MATCHED })
-    }
-    // MATCHED는 다음 화면(RENT-001, 다음 PLAN)으로 넘어가는 지점이라
-    // 이 스토어의 variant를 바꾸지 않는다 — 호출부(AuthScreen)가 결과를 보고 전환한다.
-
-    return result
+  reset: () => {
+    closeStream?.()
+    closeStream = null
+    set({ variant: AUTH_SCREEN_VARIANT.GUIDE, guidanceMessage: null })
   },
-
-  retry: () => set({ variant: AUTH_SCREEN_VARIANT.FACE_CAPTURE }),
-
-  reset: () => set({ variant: AUTH_SCREEN_VARIANT.GUIDE }),
 }))
