@@ -1,5 +1,6 @@
 package dev.billisan.global.security;
 
+import dev.billisan.admin.repository.AdminAccountRepository;
 import dev.billisan.user.repository.UserAccountRepository;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -24,10 +25,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
     private final UserAccountRepository userAccountRepository;
+    private final AdminAccountRepository adminAccountRepository;
 
-    public JwtAuthenticationFilter(JwtProvider jwtProvider, UserAccountRepository userAccountRepository) {
+    public JwtAuthenticationFilter(
+            JwtProvider jwtProvider,
+            UserAccountRepository userAccountRepository,
+            AdminAccountRepository adminAccountRepository) {
         this.jwtProvider = jwtProvider;
         this.userAccountRepository = userAccountRepository;
+        this.adminAccountRepository = adminAccountRepository;
     }
 
     @Override
@@ -40,16 +46,35 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (header != null && header.startsWith(BEARER_PREFIX)) {
             String token = header.substring(BEARER_PREFIX.length());
             try {
-                UUID userRef = UUID.fromString(jwtProvider.getSubject(token));
-                userAccountRepository.findByUserRef(userRef).ifPresent(user ->
-                        SecurityContextHolder.getContext().setAuthentication(
-                                UsernamePasswordAuthenticationToken.authenticated(
-                                        user, null, List.of(new SimpleGrantedAuthority("ROLE_USER")))));
+                String roleClaim = jwtProvider.getClaim(token, Role.CLAIM_KEY);
+                if (Role.USER.claimValue().equals(roleClaim)) {
+                    authenticateUser(token);
+                } else if (Role.ADMIN.claimValue().equals(roleClaim)) {
+                    authenticateAdmin(token);
+                } else {
+                    SecurityContextHolder.clearContext();
+                }
             } catch (JwtException | IllegalArgumentException e) {
                 SecurityContextHolder.clearContext();
             }
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private void authenticateUser(String token) {
+        UUID userRef = UUID.fromString(jwtProvider.getSubject(token));
+        userAccountRepository.findByUserRef(userRef).ifPresent(user ->
+                SecurityContextHolder.getContext().setAuthentication(
+                        UsernamePasswordAuthenticationToken.authenticated(
+                                user, null, List.of(new SimpleGrantedAuthority(Role.USER.authority())))));
+    }
+
+    private void authenticateAdmin(String token) {
+        UUID adminId = UUID.fromString(jwtProvider.getSubject(token));
+        adminAccountRepository.findById(adminId).ifPresent(admin ->
+                SecurityContextHolder.getContext().setAuthentication(
+                        UsernamePasswordAuthenticationToken.authenticated(
+                                admin, null, List.of(new SimpleGrantedAuthority(Role.ADMIN.authority())))));
     }
 }

@@ -15,17 +15,9 @@ import java.util.Map;
 public class JwtProvider {
 
     private final SecretKey key;
-    private final long expirationSeconds;
 
-    public JwtProvider(
-            @Value("${jwt.secret}") String secret,
-            @Value("${jwt.expiration-seconds}") long expirationSeconds) {
+    public JwtProvider(@Value("${jwt.secret}") String secret) {
         this.key = Keys.hmacShaKeyFor(secret.getBytes());
-        this.expirationSeconds = expirationSeconds;
-    }
-
-    public String generateToken(String userRef) {
-        return generateToken(userRef, Map.of(), expirationSeconds);
     }
 
     public String generateToken(String subject, Map<String, Object> claims, long tokenExpirationSeconds) {
@@ -37,10 +29,6 @@ public class JwtProvider {
                 .expiration(Date.from(now.plusSeconds(tokenExpirationSeconds)))
                 .signWith(key)
                 .compact();
-    }
-
-    public Instant getExpiration(String token) {
-        return parseClaims(token).getExpiration().toInstant();
     }
 
     public String getSubject(String token) {

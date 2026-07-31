@@ -6,6 +6,7 @@ import dev.billisan.admin.dto.AdminLoginResponse;
 import dev.billisan.admin.repository.AdminAccountRepository;
 import dev.billisan.global.exception.InvalidAdminCredentialsException;
 import dev.billisan.global.security.JwtProvider;
+import dev.billisan.global.security.Role;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -15,9 +16,6 @@ import java.util.Map;
 
 @Service
 public class AdminAuthService {
-
-    private static final String ROLE_CLAIM = "role";
-    private static final String ROLE_ADMIN = "ADMIN";
 
     private final AdminAccountRepository adminAccountRepository;
     private final PasswordEncoder passwordEncoder;
@@ -52,7 +50,7 @@ public class AdminAuthService {
 
         String token = jwtProvider.generateToken(
                 admin.getAdminId().toString(),
-                Map.of(ROLE_CLAIM, ROLE_ADMIN),
+                Map.of(Role.CLAIM_KEY, Role.ADMIN.claimValue()),
                 absoluteExpirationSeconds);
 
         return AdminLoginResponse.of(token, admin.getAdminId(), admin.getLoginId(), idleExpiresAt, absoluteExpiresAt);
