@@ -1,7 +1,5 @@
 package dev.billisan.global.security;
 
-import dev.billisan.admin.repository.AdminAccountRepository;
-import dev.billisan.user.repository.UserAccountRepository;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -24,16 +22,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtProvider jwtProvider;
-    private final UserAccountRepository userAccountRepository;
-    private final AdminAccountRepository adminAccountRepository;
 
-    public JwtAuthenticationFilter(
-            JwtProvider jwtProvider,
-            UserAccountRepository userAccountRepository,
-            AdminAccountRepository adminAccountRepository) {
+    public JwtAuthenticationFilter(JwtProvider jwtProvider) {
         this.jwtProvider = jwtProvider;
-        this.userAccountRepository = userAccountRepository;
-        this.adminAccountRepository = adminAccountRepository;
     }
 
     @Override
@@ -47,10 +38,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = header.substring(BEARER_PREFIX.length());
             try {
                 String roleClaim = jwtProvider.getClaim(token, Role.CLAIM_KEY);
+                UUID id = UUID.fromString(jwtProvider.getSubject(token));
                 if (Role.USER.claimValue().equals(roleClaim)) {
-                    authenticateUser(token);
+                    authenticate(id, Role.USER);
                 } else if (Role.ADMIN.claimValue().equals(roleClaim)) {
-                    authenticateAdmin(token);
+                    authenticate(id, Role.ADMIN);
                 } else {
                     SecurityContextHolder.clearContext();
                 }
@@ -62,19 +54,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private void authenticateUser(String token) {
-        UUID userRef = UUID.fromString(jwtProvider.getSubject(token));
-        userAccountRepository.findByUserRef(userRef).ifPresent(user ->
-                SecurityContextHolder.getContext().setAuthentication(
-                        UsernamePasswordAuthenticationToken.authenticated(
-                                user, null, List.of(new SimpleGrantedAuthority(Role.USER.authority())))));
-    }
-
-    private void authenticateAdmin(String token) {
-        UUID adminId = UUID.fromString(jwtProvider.getSubject(token));
-        adminAccountRepository.findById(adminId).ifPresent(admin ->
-                SecurityContextHolder.getContext().setAuthentication(
-                        UsernamePasswordAuthenticationToken.authenticated(
-                                admin, null, List.of(new SimpleGrantedAuthority(Role.ADMIN.authority())))));
+    private void authenticate(UUID id, Role role) {
+        SecurityContextHolder.getContext().setAuthentication(
+                UsernamePasswordAuthenticationToken.authenticated(
+                        id, null, List.of(new SimpleGrantedAuthority(role.authority()))));
     }
 }
