@@ -21,4 +21,10 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(new ApiError("INVALID_CREDENTIALS", ex.getMessage()));
     }
+
+    @ExceptionHandler(InvalidAdminCredentialsException.class)
+    public ResponseEntity<ApiError> handleInvalidAdminCredentials(InvalidAdminCredentialsException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ApiError("INVALID_ADMIN_CREDENTIALS", ex.getMessage()));
+    }
 }

@@ -30,6 +30,9 @@ spring:
 jwt:
   secret: ${JWT_SECRET}
   expiration-seconds: ${JWT_EXPIRATION_SECONDS:3600}
+  admin:
+    idle-expiration-seconds: ${JWT_ADMIN_IDLE_EXPIRATION_SECONDS:1800}
+    absolute-expiration-seconds: ${JWT_ADMIN_ABSOLUTE_EXPIRATION_SECONDS:28800}
 
 mqtt:
   broker-url: ${MQTT_BROKER_URL:tcp://localhost:1883}
