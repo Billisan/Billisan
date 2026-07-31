@@ -7,6 +7,7 @@ import type { RentalBlockReason } from '../../types/eligibility'
 import { CameraCaptureScreen } from '../common/CameraCaptureScreen'
 import { ErrorScreen } from '../common/ErrorScreen'
 import { LoadingScreen } from '../common/LoadingScreen'
+import { AuthSuccessScreen } from './AuthSuccessScreen'
 import { FaceAuthGuideScreen } from './FaceAuthGuideScreen'
 
 const FACE_STREAM_TOKEN = import.meta.env.VITE_FACE_STREAM_TOKEN
@@ -19,7 +20,7 @@ const AUTH_TIMEOUT_MS = 30_000
 
 interface AuthScreenProps {
   onBack: () => void
-  onAuthenticated: () => void
+  onAuthenticated: (sessionId: string) => void
   onEligibilityBlocked: (reason: RentalBlockReason) => void
   mode?: StepFlow
 }
@@ -66,6 +67,9 @@ export function AuthScreen({
           flow={mode}
         />
       )
+
+    case AUTH_SCREEN_VARIANT.AUTH_SUCCESS:
+      return <AuthSuccessScreen flow={mode} />
 
     case AUTH_SCREEN_VARIANT.FACE_PROCESSING:
       return (

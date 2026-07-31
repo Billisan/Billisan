@@ -23,7 +23,7 @@ export function CameraCaptureScreen({
         <img
           src={streamUrl}
           alt="카메라 스트림"
-          className="h-full w-full object-cover"
+          className="h-full w-full object-contain"
         />
         {guide}
       </div>
