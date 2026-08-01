@@ -32,6 +32,9 @@ services:
     image: mysql:8.0
     container_name: billisan-db
     restart: unless-stopped
+    # Flyway V14가 만드는 트리거 생성에 필요(ci.yml의 테스트 MySQL 컨테이너와 동일 옵션).
+    # 이게 없으면 binlog가 켜진 상태에서 트리거 생성이 거부되어 V14에서 마이그레이션이 실패한다.
+    command: --log-bin-trust-function-creators=1
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
