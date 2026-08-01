@@ -14,6 +14,7 @@ import java.util.UUID;
 public record InspectionDetailResponse(
         UUID inspectionId,
         UUID returnAttemptId,
+        UUID rentalId,
         UUID slotId,
         String aiResult,
         BigDecimal aiScore,
@@ -35,6 +36,7 @@ public record InspectionDetailResponse(
         return new InspectionDetailResponse(
                 inspection.getInspectionId(),
                 inspection.getReturnAttemptId(),
+                inspection.getRentalId(),
                 slot.getSlotId(),
                 inspection.getAiResult() == null ? null : inspection.getAiResult().name(),
                 inspection.getConfidence(),

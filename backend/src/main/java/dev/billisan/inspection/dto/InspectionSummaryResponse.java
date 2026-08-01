@@ -18,7 +18,8 @@ public record InspectionSummaryResponse(
         BigDecimal aiScore,
         String modelVersion,
         LocalDateTime processedAt,
-        String reviewStatus
+        String reviewStatus,
+        LocalDateTime updatedAt
 ) {
     public static InspectionSummaryResponse of(DamageInspection inspection) {
         return new InspectionSummaryResponse(
@@ -28,6 +29,7 @@ public record InspectionSummaryResponse(
                 inspection.getConfidence(),
                 inspection.getModelVersion(),
                 inspection.getCompletedAt(),
-                inspection.reviewStatus().name());
+                inspection.reviewStatus().name(),
+                inspection.getUpdatedAt());
     }
 }
