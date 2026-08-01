@@ -1,8 +1,12 @@
 package dev.billisan.inspection.repository;
 
 import dev.billisan.inspection.domain.DamageInspection;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -20,4 +24,9 @@ public interface DamageInspectionRepository extends JpaRepository<DamageInspecti
      * 최신 검수는 먼저 {@code return_attempt_id}를 알아낸 뒤 이 메서드로 조회한다.
      */
     Optional<DamageInspection> findFirstByReturnAttemptIdOrderByCreatedAtDesc(UUID returnAttemptId);
+
+    /** 판정(decide) CAS의 lost update 방지용 — {@link SlotRepository#findByIdForUpdate}와 동일 이유. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select d from DamageInspection d where d.inspectionId = :inspectionId")
+    Optional<DamageInspection> findByIdForUpdate(@Param("inspectionId") UUID inspectionId);
 }

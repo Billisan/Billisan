@@ -106,7 +106,9 @@ public class SlotAdminService {
             throw new AdminReasonRequiredException("reasonCode는 필수입니다.");
         }
 
-        Slot slot = slotRepository.findById(slotId)
+        // findById(비잠금)이면 두 요청이 같은 updatedAt을 동시에 읽고 CAS를 통과해 lost
+        // update가 날 수 있다(리뷰로 발견) — 조회 시점에 행을 잠가 뒤 트랜잭션을 대기시킨다.
+        Slot slot = slotRepository.findByIdForUpdate(slotId)
                 .orElseThrow(() -> new SlotNotFoundException("슬롯을 찾을 수 없습니다: " + slotId));
 
         if (!slot.getUpdatedAt().equals(request.expectedUpdatedAt())) {

@@ -25,7 +25,8 @@ import dev.billisan.slot.domain.Slot.ItemCondition;
 import dev.billisan.slot.domain.Slot.ServiceStatus;
 import dev.billisan.slot.repository.SlotRepository;
 import jakarta.persistence.criteria.Predicate;
-import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -144,7 +145,9 @@ public class InspectionAdminService {
             throw new AdminReasonRequiredException("reasonCode는 필수입니다.");
         }
 
-        DamageInspection inspection = requireInspection(inspectionId);
+        // findById(비잠금)이면 두 요청이 같은 updatedAt/reviewedBy를 동시에 읽고 CAS를 통과해
+        // lost update가 날 수 있다(리뷰로 발견) — 조회 시점에 행을 잠가 뒤 트랜잭션을 대기시킨다.
+        DamageInspection inspection = requireInspectionForUpdate(inspectionId);
 
         if (!inspection.getUpdatedAt().equals(request.expectedUpdatedAt())) {
             throw new InspectionConflictException(
@@ -155,7 +158,7 @@ public class InspectionAdminService {
         }
 
         ReturnAttempt returnAttempt = requireReturnAttempt(inspection.getReturnAttemptId());
-        Slot slot = requireSlot(returnAttempt.getReturnSlotId());
+        Slot slot = requireSlotForUpdate(returnAttempt.getReturnSlotId());
 
         switch (request.decision()) {
             case NORMAL -> applyNormal(inspection, slot, reviewedBy);
@@ -207,6 +210,11 @@ public class InspectionAdminService {
                 .orElseThrow(() -> new InspectionNotFoundException("검수를 찾을 수 없습니다: " + inspectionId));
     }
 
+    private DamageInspection requireInspectionForUpdate(UUID inspectionId) {
+        return damageInspectionRepository.findByIdForUpdate(inspectionId)
+                .orElseThrow(() -> new InspectionNotFoundException("검수를 찾을 수 없습니다: " + inspectionId));
+    }
+
     private ReturnAttempt requireReturnAttempt(UUID returnAttemptId) {
         return returnAttemptRepository.findById(returnAttemptId)
                 .orElseThrow(() -> new IllegalStateException(
@@ -215,6 +223,11 @@ public class InspectionAdminService {
 
     private Slot requireSlot(UUID slotId) {
         return slotRepository.findById(slotId)
+                .orElseThrow(() -> new SlotNotFoundException("슬롯을 찾을 수 없습니다: " + slotId));
+    }
+
+    private Slot requireSlotForUpdate(UUID slotId) {
+        return slotRepository.findByIdForUpdate(slotId)
                 .orElseThrow(() -> new SlotNotFoundException("슬롯을 찾을 수 없습니다: " + slotId));
     }
 
@@ -231,10 +244,61 @@ public class InspectionAdminService {
                 (root, query, cb) -> group == ReviewStatus.PENDING
                         ? cb.isNull(root.get("reviewedBy"))
                         : cb.isNotNull(root.get("reviewedBy")));
-        return damageInspectionRepository.findAll(
-                spec,
-                PageRequest.of(offset / Math.max(limit, 1), limit)
-        ).getContent();
+        // PageRequest.of(page, size)는 실제 offset을 page*size로 계산해서, limit이 요청마다
+        // 달라지는 이 커서 방식과 안 맞으면(offset이 limit의 배수가 아니면) 엉뚱한 위치를
+        // 조회한다(리뷰로 발견). offset을 그대로 쓰는 Pageable을 직접 구현해 우회한다.
+        return damageInspectionRepository.findAll(spec, offsetPage(offset, limit)).getContent();
+    }
+
+    private static Pageable offsetPage(int offset, int limit) {
+        return new OffsetBasedPageRequest(offset, limit);
+    }
+
+    private record OffsetBasedPageRequest(int offset, int limit) implements Pageable {
+        @Override
+        public int getPageNumber() {
+            return limit == 0 ? 0 : offset / limit;
+        }
+
+        @Override
+        public int getPageSize() {
+            return limit;
+        }
+
+        @Override
+        public long getOffset() {
+            return offset;
+        }
+
+        @Override
+        public Sort getSort() {
+            return Sort.unsorted();
+        }
+
+        @Override
+        public Pageable next() {
+            return new OffsetBasedPageRequest(offset + limit, limit);
+        }
+
+        @Override
+        public Pageable previousOrFirst() {
+            return hasPrevious() ? new OffsetBasedPageRequest(offset - limit, limit) : first();
+        }
+
+        @Override
+        public Pageable first() {
+            return new OffsetBasedPageRequest(0, limit);
+        }
+
+        @Override
+        public Pageable withPage(int pageNumber) {
+            return new OffsetBasedPageRequest(pageNumber * limit, limit);
+        }
+
+        @Override
+        public boolean hasPrevious() {
+            return offset > 0;
+        }
     }
 
     private Specification<DamageInspection> buildFilters(
