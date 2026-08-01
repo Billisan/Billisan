@@ -26,6 +26,9 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
             HttpServletResponse response,
             AuthenticationException authException) throws IOException {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        // setCharacterEncoding을 안 하면 Tomcat이 Writer에 기본 ISO-8859-1을 써서
+        // 한글이 "?"로 되돌릴 수 없이 깨진다(실기 테스트로 발견) — getWriter() 전에 설정.
+        response.setCharacterEncoding("UTF-8");
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.getWriter().write(objectMapper.writeValueAsString(
                 new ApiError("UNAUTHORIZED", "인증이 필요합니다.")));

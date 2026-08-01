@@ -12,6 +12,9 @@ services:
     container_name: billisan-db-local
     ports:
       - "3306:3306"
+    # Flyway V14가 만드는 트리거 생성에 필요 — 없으면 binlog가 켜진 상태에서 트리거 생성이
+    # 거부되어 V14에서 마이그레이션이 실패한다(운영 docker-compose.yml과 동일 옵션).
+    command: --log-bin-trust-function-creators=1
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
