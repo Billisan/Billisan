@@ -69,11 +69,7 @@ public class Slot {
         this.occupancyStatus = occupancyStatus;
         this.lockStatus = lockStatus;
         this.itemCondition = itemCondition;
-        // MySQL DATETIME(6)은 마이크로초까지만 저장하는데 LocalDateTime.now()는 나노초
-        // 단위라, 안 잘라두면 응답의 updatedAt(메모리 값)과 DB에 반영된 값이 반올림으로
-        // 어긋난다 — 이 값을 그대로 다음 PATCH의 expectedUpdatedAt으로 재사용하면(재조회
-        // 없이 응답 체이닝) 실제로는 최신인데도 SLOT_STATUS_CONFLICT가 잘못 뜬다(실기
-        // 테스트로 발견).
+        // DB는 DATETIME(6)(마이크로초)인데 now()는 나노초라 안 잘라두면 CAS 값이 어긋난다.
         LocalDateTime now = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS);
         this.createdAt = now;
         this.updatedAt = now;

@@ -11,9 +11,16 @@ public record SlotSummaryResponse(
         String itemCondition,
         String serviceStatus,
         String lockStatus,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        UUID updatedBy
 ) {
+    /** ADMIN-SLOT-001 목록용 — 이 API 계약엔 updatedBy가 없다. */
     public static SlotSummaryResponse of(Slot slot) {
+        return of(slot, null);
+    }
+
+    /** ADMIN-SLOT-STATUS-001 PATCH 응답용 — 변경을 수행한 관리자 식별자가 필수다. */
+    public static SlotSummaryResponse of(Slot slot, UUID updatedBy) {
         return new SlotSummaryResponse(
                 slot.getSlotId(),
                 slot.getSlotNumber(),
@@ -21,6 +28,7 @@ public record SlotSummaryResponse(
                 slot.getItemCondition() == null ? null : slot.getItemCondition().name(),
                 slot.getServiceStatus().name(),
                 slot.getLockStatus().name(),
-                slot.getUpdatedAt());
+                slot.getUpdatedAt(),
+                updatedBy);
     }
 }

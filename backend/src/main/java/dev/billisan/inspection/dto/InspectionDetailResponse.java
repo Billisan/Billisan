@@ -6,15 +6,12 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-/**
- * ⚠️ 이미지 존재 여부 필드조차 두지 않는다.
- * ⚠️ {@code decisionReasonCode}/{@code decisionNote}는 API 응답 필드이지만, 실제 스키마엔
- * 대응 컬럼이 없다 — 지금은 항상 {@code null}이다.
- */
+/** decisionReasonCode/decisionNote는 실제 스키마에 대응 컬럼이 없어 항상 null이다. */
 public record InspectionDetailResponse(
         UUID inspectionId,
         UUID returnAttemptId,
         UUID rentalId,
+        UUID stationId,
         UUID slotId,
         String aiResult,
         BigDecimal aiScore,
@@ -33,12 +30,14 @@ public record InspectionDetailResponse(
         String slotLockStatus
 ) {
     public static InspectionDetailResponse of(DamageInspection inspection, Slot slot) {
+        boolean failed = inspection.getStatus() == DamageInspection.ProcessStatus.FAILED;
         return new InspectionDetailResponse(
                 inspection.getInspectionId(),
                 inspection.getReturnAttemptId(),
                 inspection.getRentalId(),
+                slot.getStationId(),
                 slot.getSlotId(),
-                inspection.getAiResult() == null ? null : inspection.getAiResult().name(),
+                failed ? "FAILED" : inspection.getAiResult() == null ? null : inspection.getAiResult().name(),
                 inspection.getConfidence(),
                 inspection.getModelVersion(),
                 inspection.getCompletedAt(),

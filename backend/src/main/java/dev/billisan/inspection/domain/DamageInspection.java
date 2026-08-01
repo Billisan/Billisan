@@ -106,11 +106,7 @@ public class DamageInspection {
 
     @PreUpdate
     private void onUpdate() {
-        // MySQL DATETIME(6)은 마이크로초까지만 저장하는데 LocalDateTime.now()는 나노초
-        // 단위라, 안 잘라두면 PATCH 응답의 updatedAt(메모리 값)과 DB 반영값이 반올림으로
-        // 어긋난다 — 그 값을 재조회 없이 다음 PATCH의 expectedUpdatedAt으로 그대로
-        // 체이닝하면 실제로는 최신인데도 CONCURRENT_MODIFICATION이 잘못 뜬다(실기 테스트로
-        // 발견, Slot과 동일 원인).
+        // DB는 DATETIME(6)(마이크로초)인데 now()는 나노초라 안 잘라두면 CAS 값이 어긋난다.
         this.updatedAt = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS);
     }
 

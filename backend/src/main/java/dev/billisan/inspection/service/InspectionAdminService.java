@@ -35,7 +35,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -71,30 +73,62 @@ public class InspectionAdminService {
         InspectionCursor position = InspectionCursor.decode(cursor);
         Specification<DamageInspection> filters = buildFilters(aiResult, modelVersion, from, to);
 
-        List<InspectionSummaryResponse> items = new ArrayList<>();
+        List<DamageInspection> inspections = new ArrayList<>();
         String nextCursor = null;
 
-        if (matchesGroup(reviewStatus, ReviewStatus.PENDING) && items.size() < size) {
+        if (matchesGroup(reviewStatus, ReviewStatus.PENDING) && inspections.size() < size) {
             int offset = position.groupOffset(ReviewStatus.PENDING);
-            List<DamageInspection> pending = fetchGroup(filters, ReviewStatus.PENDING, offset, size - items.size());
-            items.addAll(pending.stream().map(InspectionSummaryResponse::of).toList());
+            List<DamageInspection> pending = fetchGroup(filters, ReviewStatus.PENDING, offset, size - inspections.size());
+            inspections.addAll(pending);
             // 페이지가 꽉 찼다는 건 PENDING 그룹에 더 남아있을 수 있다는 뜻(단순화된 오프셋
             // 커서라 정확한 총량은 모름) — 그 경우에만 PENDING 계속용 커서를 내려준다.
-            if (items.size() == size) {
+            if (inspections.size() == size) {
                 nextCursor = InspectionCursor.of(ReviewStatus.PENDING, offset + pending.size()).encode();
             }
         }
 
-        if (matchesGroup(reviewStatus, ReviewStatus.DECIDED) && items.size() < size) {
+        if (matchesGroup(reviewStatus, ReviewStatus.DECIDED) && inspections.size() < size) {
             int offset = position.group() == ReviewStatus.DECIDED ? position.offset() : 0;
-            List<DamageInspection> decided = fetchGroup(filters, ReviewStatus.DECIDED, offset, size - items.size());
-            items.addAll(decided.stream().map(InspectionSummaryResponse::of).toList());
-            if (items.size() == size && !decided.isEmpty()) {
+            List<DamageInspection> decided = fetchGroup(filters, ReviewStatus.DECIDED, offset, size - inspections.size());
+            inspections.addAll(decided);
+            if (inspections.size() == size && !decided.isEmpty()) {
                 nextCursor = InspectionCursor.of(ReviewStatus.DECIDED, offset + decided.size()).encode();
             }
         }
 
-        return new InspectionPageResponse(items, nextCursor);
+        return new InspectionPageResponse(toSummaries(inspections), nextCursor);
+    }
+
+    /**
+     * damage_inspection엔 station_id·slot_id가 없어 return_attempt→slot을 거쳐야 하는데,
+     * 행마다 조회하면 N+1이 된다 — 페이지 전체를 배치 2쿼리로 한 번에 매핑한다.
+     */
+    private List<InspectionSummaryResponse> toSummaries(List<DamageInspection> inspections) {
+        List<UUID> returnAttemptIds = inspections.stream()
+                .map(DamageInspection::getReturnAttemptId)
+                .distinct()
+                .toList();
+        Map<UUID, ReturnAttempt> returnAttemptsById = returnAttemptRepository.findAllById(returnAttemptIds).stream()
+                .collect(Collectors.toMap(ReturnAttempt::getReturnAttemptId, ra -> ra));
+
+        List<UUID> slotIds = returnAttemptsById.values().stream()
+                .map(ReturnAttempt::getReturnSlotId)
+                .filter(slotId -> slotId != null)
+                .distinct()
+                .toList();
+        Map<UUID, Slot> slotsById = slotRepository.findAllById(slotIds).stream()
+                .collect(Collectors.toMap(Slot::getSlotId, s -> s));
+
+        return inspections.stream()
+                .map(inspection -> {
+                    ReturnAttempt returnAttempt = returnAttemptsById.get(inspection.getReturnAttemptId());
+                    Slot slot = returnAttempt == null ? null : slotsById.get(returnAttempt.getReturnSlotId());
+                    return InspectionSummaryResponse.of(
+                            inspection,
+                            slot == null ? null : slot.getStationId(),
+                            slot == null ? null : slot.getSlotId());
+                })
+                .toList();
     }
 
     public InspectionDetailResponse getDetail(UUID inspectionId) {
@@ -133,8 +167,12 @@ public class InspectionAdminService {
         // settlement 변경이 전부 flush된다(@PreUpdate는 flush 시점에만 실행).
         damageInspectionRepository.flush();
 
-        Settlement settlement = settlementRepository.findByRentalId(inspection.getRentalId()).orElse(null);
-        return InspectionDecisionResult.of(inspection, slot, settlement);
+        // 파손 정산만 노출한다 — DAMAGED가 아니면 이 대여에 이미 있을 수 있는 연체 정산 등
+        // 무관한 정산을 settlement로 잘못 보여주지 않는다.
+        Settlement settlement = request.decision() == InspectionDecisionRequest.DecisionType.DAMAGED
+                ? settlementRepository.findByRentalId(inspection.getRentalId()).orElse(null)
+                : null;
+        return InspectionDecisionResult.of(inspection, request.decision().name(), slot, settlement);
     }
 
     private void applyNormal(DamageInspection inspection, Slot slot, UUID reviewedBy) {
@@ -146,13 +184,9 @@ public class InspectionAdminService {
         inspection.review(DamageInspection.Decision.DAMAGED, reviewedBy);
         slot.applyAdminStatus(ServiceStatus.OUT_OF_SERVICE, ItemCondition.DAMAGED);
 
-        // ★ 실기 테스트로 발견: settlement.damage_inspection_id가 참조하는 실제 FK는
-        // (damage_inspection_id, rental_id, damage_basis_guard) 복합 FK이고, 상대편
-        // damage_inspection.settlement_eligible_guard는 admin_decision=DAMAGED +
-        // reviewed_by/reviewed_at이 채워져야 1이 되는 생성 컬럼이다. Hibernate 기본 flush
-        // 순서는 INSERT를 UPDATE보다 먼저 내보내므로, 여기서 명시적으로 flush하지 않으면
-        // 방금 위에서 review()한 inspection의 UPDATE가 DB에 반영되기 전에 아래 settlement
-        // INSERT/UPDATE가 나가 FK_SETTLEMENT_DAMAGE_INSPECTION 위반으로 거부된다.
+        // settlement의 FK가 damage_inspection.settlement_eligible_guard(생성 컬럼, DAMAGED+
+        // reviewed_by/at 필요)를 참조한다. Hibernate가 INSERT를 UPDATE보다 먼저 내보내므로,
+        // 여기서 flush 안 하면 위 review()가 반영되기 전에 settlement가 나가 FK 위반이 난다.
         damageInspectionRepository.flush();
 
         // rental_id는 damage_inspection에 직접 있다(V14) — return_attempt를 다시 거치지

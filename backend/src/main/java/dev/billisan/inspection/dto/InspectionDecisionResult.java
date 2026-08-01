@@ -20,11 +20,16 @@ public record InspectionDecisionResult(
         SettlementState settlement,
         LocalDateTime updatedAt
 ) {
-    public static InspectionDecisionResult of(DamageInspection inspection, Slot slot, Settlement settlement) {
+    /**
+     * {@code appliedDecision}은 요청의 decision을 그대로 반영한다 — KEEP_ADMIN_REVIEW는
+     * 저장되는 판정값이 아니라서 {@code inspection.getAdminDecision()}만으로는 복원되지 않는다.
+     */
+    public static InspectionDecisionResult of(
+            DamageInspection inspection, String appliedDecision, Slot slot, Settlement settlement) {
         return new InspectionDecisionResult(
                 inspection.getInspectionId(),
                 inspection.reviewStatus().name(),
-                inspection.getAdminDecision() == null ? null : inspection.getAdminDecision().name(),
+                appliedDecision,
                 inspection.getReviewedBy(),
                 inspection.getReviewedAt(),
                 SlotState.of(slot),

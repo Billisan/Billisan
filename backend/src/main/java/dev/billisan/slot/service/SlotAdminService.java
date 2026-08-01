@@ -101,7 +101,7 @@ public class SlotAdminService {
     }
 
     @Transactional
-    public SlotSummaryResponse updateStatus(UUID slotId, SlotStatusUpdateRequest request) {
+    public SlotSummaryResponse updateStatus(UUID slotId, UUID adminId, SlotStatusUpdateRequest request) {
         if (request.reasonCode() == null || request.reasonCode().isBlank()) {
             throw new AdminReasonRequiredException("reasonCode는 필수입니다.");
         }
@@ -125,7 +125,7 @@ public class SlotAdminService {
         // 요청을 보내면 서버 실제 값과 달라 엉뚱하게 409가 난다. 명시적 flush로 @PreUpdate를
         // 지금 실행시켜 응답에 새 값을 담는다.
         slotRepository.flush();
-        return SlotSummaryResponse.of(slot);
+        return SlotSummaryResponse.of(slot, adminId);
     }
 
     private void requireStation(UUID stationId) {
