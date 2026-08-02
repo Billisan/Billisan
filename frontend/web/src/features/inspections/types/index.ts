@@ -43,20 +43,23 @@ export interface InspectionListItem {
     slotId: string;
 
     /*
-     * ↓ 계약 추가 요청분 (12-R 원본에는 아직 없습니다).
+     * ↓ 응답에 **없는** 필드입니다 (EC2 실측 2026-08-01: 필드셋에 미포함).
      *
-     * 원본 응답은 `stationId`·`slotId` UUID 뿐이라 화면에 36자 UUID 말고는 보여줄 게
-     * 없습니다. 두 값 모두 이미 다른 관리자 응답에 있는 값이고(STATION.name,
-     * ADMIN-SLOT-001 의 slotNumber), 금지 필드(비밀번호·이미지·얼굴·카드번호)에
-     * 해당하지 않으며 논리 계약 수도 늘리지 않습니다.
-     * TODO: 백엔드 반영이 확인되면 이 주석만 지우세요.
+     * 백엔드에 추가를 요청했지만 아직 미반영이라, 실 모드에서는 api 모듈이
+     * `ADMIN-SLOT-001`(slotNumber)과 시드 명부(STATION.name)로 짜 맞춰 채웁니다.
+     * 그 보강이 실패할 수 있어 **optional 입니다** — 화면은 없으면 축약 ID 로 버팁니다.
+     * TODO: 백엔드가 응답에 넣어 주면 required 로 되돌리고 보강 코드를 지우세요.
      */
     /** 반납 대여소 표시 이름 — `STATION.name` */
-    stationName: string;
+    stationName?: string;
     /** 대여소 내 슬롯 표시 번호 — `SLOT.slot_number` */
-    slotNumber: number;
-    /** AI 보조 결과. 이것만으로 파손이 확정되지 않습니다 (§3.1). */
-    aiResult: AiInspectionResult;
+    slotNumber?: number;
+    /**
+     * AI 보조 결과. 이것만으로 파손이 확정되지 않습니다 (§3.1).
+     * **추론이 아직 안 끝난 검수는 null 입니다** (백엔드 실측: FAILED 가 아니어도
+     * 결과가 없으면 null 을 내려줍니다).
+     */
+    aiResult: AiInspectionResult | null;
     /** 추론 점수. `FAILED` 는 추론 자체가 끝나지 않아 점수가 없습니다. */
     aiScore: number | null;
     modelVersion: string;
