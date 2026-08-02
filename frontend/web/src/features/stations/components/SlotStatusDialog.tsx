@@ -206,7 +206,21 @@ export function SlotStatusDialog({
     const mismatch =
         (choice.expects === 'present' && slot.occupancyStatus !== 'OCCUPIED') ||
         (choice.expects === 'absent' && slot.occupancyStatus === 'OCCUPIED');
-    const needsConfirm = mismatch && !confirmed;
+
+    /*
+     * **현장 확인은 센서가 어긋날 때만이 아니라 항상 필수입니다.**
+     *
+     * 예전에는 `mismatch` 일 때만 요구했습니다. 그러면 센서와 맞는 변경은 체크 없이
+     * 저장돼 `physicalStateConfirmed: false` 가 나가는데, 서버가 이 필드에
+     * `@AssertTrue` 를 걸어 두어 **400 `INVALID_REQUEST` 로 거부합니다**
+     * (실서버 확인: "physicalStateConfirmed는 현장 실물을 확인한 뒤에만 true로
+     * 보낼 수 있습니다"). 즉 상태 변경 절반이 저장 버튼을 눌러도 실패했습니다.
+     *
+     * 계약상으로도 이게 맞습니다 — 관리자 웹은 이미지를 받지 않으므로 현장에서 봤다는
+     * 것이 상태를 바꾸는 유일한 근거입니다. `mismatch` 는 이제 "막는 조건"이 아니라
+     * **경고를 더 세게 보여 주는 조건**으로만 씁니다.
+     */
+    const needsConfirm = !confirmed;
 
     // reasonCode 가 필수라 그것부터 봅니다. note 는 선택입니다 (12-R B-4).
     const canSubmit = !unchanged && !pending && reasonCode.trim() !== '' && !needsConfirm;
@@ -384,8 +398,8 @@ export function SlotStatusDialog({
                         type="checkbox"
                         checked={confirmed}
                         onChange={(event) => setConfirmed(event.target.checked)}
-                        // 센서와 어긋난 변경은 이 체크가 근거입니다. 그때만 필수로 표시합니다.
-                        aria-required={mismatch}
+                        // 서버가 `@AssertTrue` 로 항상 true 를 요구합니다 — 늘 필수입니다.
+                        aria-required
                         className={cn(
                             'size-4 accent-brand-blue',
                             needsConfirm && 'ring-2 ring-tone-amber-fg/50',
@@ -393,7 +407,7 @@ export function SlotStatusDialog({
                     />
                     <span className="text-[12.5px] font-medium text-brand-body">
                         현장에서 실물을 확인했습니다
-                        {mismatch && <span className="ml-1 text-tone-red-fg">*</span>}
+                        <span className="ml-1 text-tone-red-fg">*</span>
                     </span>
                 </label>
 

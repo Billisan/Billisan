@@ -193,6 +193,17 @@ export function InventoryPage() {
         outOfService: summary?.outOfServiceSlotCount ?? 0,
         unknown: summary?.unknownOccupancySlotCount ?? 0,
         total: summary?.totalSlotCount ?? 0,
+        /*
+         * 우산이 물리적으로 들어 있는 슬롯 수. **카드를 따로 두지 않고 보조 문구로 씁니다.**
+         *
+         * 「대여 가능 1 · 전체 5」만 보면 우산이 하나뿐인 것처럼 읽히는데, 실제로는 4개가
+         * 들어 있고 그중 3개가 검수·파손으로 묶여 못 나가는 상황일 수 있습니다. 관리자가
+         * 할 일이 '채우러 가기'와 '묶인 것 풀기'로 갈리므로 그 차이가 보여야 합니다.
+         *
+         * 다른 집계와 축이 겹쳐서(점유 ⊃ 대여 가능) 카드로 나란히 두면 더해 보게 되고,
+         * 계약도 "단순 합산 금지"라고 합니다. 그래서 카드가 아니라 문구입니다.
+         */
+        occupied: summary?.occupiedSlotCount ?? 0,
     };
 
     // 대여소당 SLOT 이 3~5개라 페이지를 나누지 않습니다 (ADMIN-SLOT-001 도 cursor 없음).
@@ -305,7 +316,15 @@ export function InventoryPage() {
                     icon={<Umbrella className="size-[17px]" strokeWidth={2.1} aria-hidden />}
                     label="대여 가능 재고"
                     value={counts.available}
-                    sub={`전체 ${counts.total}`}
+                    /*
+                     * 우산이 든 슬롯 수가 대여 가능 수보다 많으면 그 차이를 말해 줍니다 —
+                     * 「우산 4 중 · 전체 5」. 차이가 없으면 군더더기라 전체만 씁니다.
+                     */
+                    sub={
+                        counts.occupied > counts.available
+                            ? `우산 ${counts.occupied} 중 · 전체 ${counts.total}`
+                            : `전체 ${counts.total}`
+                    }
                 />
                 {/*
                  * '대여 중' 카드는 뺐습니다. `ADMIN-INVENTORY-001` 에 그런 집계가 없고,
