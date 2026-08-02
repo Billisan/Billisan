@@ -5,6 +5,7 @@ import { DeviceBadge } from '@/features/stations/components/DeviceBadge';
 import { SlotTable } from '@/features/stations/components/SlotTable';
 import { useStation, useStationSlots } from '@/features/stations/hooks/useStations';
 import { STATION_SYNCED_AT } from '@/features/stations/mocks/slots';
+import { mockSyncedAt } from '@/shared/lib/syncedAt';
 import {
     deriveSlotDisplayStatus,
     formatSlotLabel,
@@ -130,7 +131,12 @@ export function StationDetailPage() {
             <PageBar
                 className="mb-[18px]"
                 breadcrumb={[{ label: '대여소 관리', to: '/stations' }, { label: station.name }]}
-                meta={`최근 통신 ${STATION_SYNCED_AT}`}
+                /*
+                 * 「최근 통신」은 목업 상수라 실 모드에서는 지어낸 시각이 됩니다.
+                 * 대여소 단위 last_seen 을 주는 관리자 API 가 없어서(스웨거 실측) 실 모드는
+                 * 표기 자체를 접습니다 — 없는 값을 그럴듯하게 채우지 않습니다.
+                 */
+                meta={mockSyncedAt(STATION_SYNCED_AT) ? `최근 통신 ${STATION_SYNCED_AT}` : ''}
             />
 
             {/*
