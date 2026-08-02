@@ -6,7 +6,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { NotificationBell } from '@/components/layout/NotificationBell';
 import { authApi } from '@/features/auth/api/authApi';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { errorCodeOf } from '@/lib/api-error';
 import { cn } from '@/lib/utils';
+import { toast } from '@/shared/components/toast/toastStore';
 
 /**
  * 상단 헤더.
@@ -56,13 +58,38 @@ export function AppHeader() {
      */
     const handleLogout = async () => {
         setOpen(false);
+        /*
+         * **서버 실패를 삼키되, 조용히 넘기지는 않습니다.**
+         *
+         * 예전에는 catch 없이 try/finally 라 오류가 그대로 튀어 올랐고,
+         * onClick 은 Promise 를 안 받으므로 처리되지 않은 거부가 됐습니다.
+         * 화면은 멀쩡해 보이는데 콘솔에는 매번 터지고 있었습니다.
+         *
+         * 더 중요한 건 관리자가 받는 인상입니다. 서버 로그아웃이 실패하면
+         * **세션이 서버에 남아 있을 수 있는데** 화면은 끊긴 것처럼 보였습니다.
+         * 로컬 흔적은 반드시 지우되(로그아웃을 누른 사람을 로그인 상태로 두면 안 됨),
+         * 서버 쪽이 안 끝났다는 사실은 알려 줍니다.
+         */
+        let serverFailed: unknown = null;
         try {
             await authApi.logout();
-        } finally {
-            logout();
-            // `clear()` 가 `/auth/me` 캐시까지 지웁니다 — 다음 로그인 전까지 복원이 다시 됩니다.
-            queryClient.clear();
-            navigate('/login', { replace: true });
+        } catch (error) {
+            serverFailed = error;
+        }
+
+        logout();
+        // `clear()` 가 `/auth/me` 캐시까지 지웁니다 — 다음 로그인 전까지 복원이 다시 됩니다.
+        queryClient.clear();
+        navigate('/login', { replace: true });
+
+        if (serverFailed) {
+            const code = errorCodeOf(serverFailed);
+            toast.error(
+                '이 기기에서는 로그아웃했습니다',
+                `서버 세션 종료를 확인하지 못했습니다. 공용 PC 라면 브라우저를 닫으세요.${
+                    code ? ` (${code})` : ''
+                }`,
+            );
         }
     };
 
