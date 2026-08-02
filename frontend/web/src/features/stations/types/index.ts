@@ -1,3 +1,4 @@
+import type { ReturnAttemptStatus } from '@/features/history/types';
 import type { BadgeTone } from '@/shared/components/Badge';
 import {
     AI_RESULT_LABEL,
@@ -198,13 +199,19 @@ export interface SlotSummary {
 export interface SlotReturnAttemptRef {
     returnAttemptId: string;
     rentalId: string;
-    status: string;
+    /**
+     * 반납 시도 진행 단계. 값 집합은 이력 화면과 같은 것이라 타입을 함께 씁니다 —
+     * 백엔드 `ReturnAttempt.Status` 도 같은 다섯 개입니다.
+     * 라벨·톤은 `RETURN_STATUS_LABEL`·`RETURN_STATUS_TONE`(ERD 「반납 상태도 보조 표시 기준」).
+     */
+    status: ReturnAttemptStatus;
 }
 
 /** `ADMIN-SLOT-DETAIL-001` 의 `latestInspection` */
 export interface SlotInspectionRef {
     inspectionId: string;
-    aiResult: AiInspectionResult;
+    /** 추론이 아직 안 끝났으면 null (백엔드 실측 — FAILED 와 다른 상태입니다) */
+    aiResult: AiInspectionResult | null;
     /** 추론 실패 시 null */
     aiScore: number | null;
     modelVersion: string;
@@ -255,7 +262,19 @@ export type SlotDisplayStatus =
  *
  * 대여 가능 조건은 `AVAILABLE + OCCUPIED + NORMAL + LOCKED` 입니다 (ERD SLOT 불변조건).
  */
-export function deriveSlotDisplayStatus(slot: SlotSummary): SlotDisplayStatus {
+/**
+ * 4축만 있으면 판정할 수 있습니다.
+ *
+ * `SlotSummary` 전체를 요구하면 검수 상세(`ADMIN-INSPECTION-002`)가 못 씁니다 — 거기서는
+ * 같은 4축이 `slotOccupancyStatus` 처럼 평면 필드로 오고 `slotId`·`updatedAt` 이 슬롯의
+ * 것이 아닙니다. 좁혀 두면 두 화면이 **같은 함수로 같은 배지**를 그립니다.
+ */
+export type SlotStateAxes = Pick<
+    SlotSummary,
+    'occupancyStatus' | 'itemCondition' | 'serviceStatus' | 'lockStatus'
+>;
+
+export function deriveSlotDisplayStatus(slot: SlotStateAxes): SlotDisplayStatus {
     if (slot.serviceStatus === 'ADMIN_REVIEW') return 'ADMIN_REVIEW';
     if (slot.itemCondition === 'DAMAGED' || slot.itemCondition === 'REPAIRABLE') return 'DAMAGED';
     if (slot.serviceStatus === 'OUT_OF_SERVICE') return 'OUT_OF_SERVICE';
@@ -297,14 +316,25 @@ export const AI_RESULT_TONE: Record<AiInspectionResult, BadgeTone> = {
     FAILED: 'slate',
 };
 
+/*
+ * 아래 셋이 null 을 받는 이유: 추론이 아직 안 끝난 검수는 `aiResult` 가 null 로 옵니다
+ * (백엔드 실측). FAILED(추론이 죽음)와는 다른 상태라 「검수 실패」로 뭉개지 않고
+ * 「분석 전」으로 따로 말합니다.
+ */
+
+/** AI 결과 → 배지 톤 */
+export function aiResultTone(result: AiInspectionResult | null): BadgeTone {
+    return result ? AI_RESULT_TONE[result] : 'slate';
+}
+
 /** AI 결과 → 한글 */
-export function aiResultText(result: AiInspectionResult): string {
-    return AI_RESULT_LABEL[result];
+export function aiResultText(result: AiInspectionResult | null): string {
+    return result ? AI_RESULT_LABEL[result] : '분석 전';
 }
 
 /** AI 결과 마우스오버용 `한글 · CODE` */
-export function aiResultHint(result: AiInspectionResult): string {
-    return codeHint(AI_RESULT_LABEL, result);
+export function aiResultHint(result: AiInspectionResult | null): string {
+    return result ? codeHint(AI_RESULT_LABEL, result) : '분석 전 · 추론이 아직 끝나지 않았습니다';
 }
 
 /**
@@ -362,6 +392,28 @@ export const SLOT_DISPLAY_TONE: Record<SlotDisplayStatus, BadgeTone> = {
     OUT_OF_SERVICE: 'violet',
     /** 확정 불가. 파란색은 '진행 중'을 뜻해 오해가 없습니다. */
     UNKNOWN: 'blue',
+};
+
+/**
+ * 우산 품질 상태 → 배지 톤. **파생 배지가 아니라 `item_condition` 축 전용입니다.**
+ *
+ * 위 `SLOT_DISPLAY_TONE` 과 같은 색 규칙을 씁니다 — green 정상 · red 파손 확정 ·
+ * amber 사람 판단 대기 · violet 관리자가 이미 묶어 둔 것 · slate 중립.
+ *
+ * `REPAIRABLE` 이 `DAMAGED`(빨강)와 갈라져야 하는 이유: **관리자가 할 일이 다릅니다.**
+ * 파손은 판정이 끝나 정산까지 걸린 상태고, 수리 가능은 ERD 가 "관리자 품질 상태"라고
+ * 부르는 값으로 고쳐서 되돌릴 수 있습니다. 둘 다 빨강이면 폐기할 우산과 고칠 우산이
+ * 같아 보입니다. 「이용 중지」와 같은 보라를 쓰는 건 성격이 같아서입니다 —
+ * 관리자가 의도적으로 빼 둔 상태.
+ *
+ * `UNKNOWN` 은 amber 입니다. ERD 의미가 "AI 불확실·오류·물리 불일치"라 아직 아무도
+ * 판정하지 않은 자리이고, 그게 `ADMIN_REVIEW`(판정 대기)와 같은 결입니다.
+ */
+export const ITEM_CONDITION_TONE: Record<SlotItemCondition, BadgeTone> = {
+    NORMAL: 'green',
+    DAMAGED: 'red',
+    REPAIRABLE: 'violet',
+    UNKNOWN: 'amber',
 };
 
 /**

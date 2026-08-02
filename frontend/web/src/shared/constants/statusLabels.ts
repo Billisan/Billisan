@@ -59,6 +59,19 @@ export const LOCK_STATUS_LABEL = {
     ERROR: '잠금 오류',
 } as const;
 
+/**
+ * `SLOT.occupancy_status` — **ERD v3.0 「`SLOT.occupancy_status` 표시 기준」 표 그대로입니다.**
+ *
+ * 물리 센서가 읽은 값이라 관리자가 직접 바꾸지 못합니다 (`ADMIN-SLOT-STATUS-001` 요청에
+ * 이 축이 없는 이유). ERD 가 `UNKNOWN` 을 "센서 오류·불일치로 점유 여부를 확정할 수 없는
+ * 상태"로 정의합니다 — 「비어 있음」으로 뭉개면 없는 우산을 있다고 세게 됩니다.
+ */
+export const OCCUPANCY_STATUS_LABEL = {
+    EMPTY: '비어 있음',
+    OCCUPIED: '우산 있음',
+    UNKNOWN: '점유 확인 불가',
+} as const;
+
 /** `SLOT.service_status` */
 export const SLOT_SERVICE_LABEL = {
     AVAILABLE: '이용 가능',

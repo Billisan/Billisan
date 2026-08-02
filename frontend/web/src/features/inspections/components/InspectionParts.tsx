@@ -1,9 +1,9 @@
 import { formatScore } from '@/features/inspections/mocks/aiVerdict';
 import type { InspectionReviewStatus } from '@/features/inspections/types';
 import {
-    AI_RESULT_TONE,
     aiResultHint,
     aiResultText,
+    aiResultTone,
     type AiInspectionResult,
 } from '@/features/stations/types';
 import { Badge, type BadgeTone } from '@/shared/components/Badge';
@@ -20,13 +20,14 @@ import { cn } from '@/lib/utils';
 /**
  * AI 보조 결과 배지.
  *
- * `InspectionResult` 의 네 값만 들어옵니다. 시안에는 이 칸에 `ADMIN_REVIEW`(슬롯 상태)와
- * `오염 의심`(계약에 없는 말)이 섞여 있었는데, 값 집합이 달라서 그대로 쓸 수 없습니다.
+ * `InspectionResult` 의 네 값 + **null(분석 전)** 이 들어옵니다. 시안에는 이 칸에
+ * `ADMIN_REVIEW`(슬롯 상태)와 `오염 의심`(계약에 없는 말)이 섞여 있었는데, 값 집합이
+ * 달라서 그대로 쓸 수 없습니다.
  */
-export function AiResultBadge({ result }: { result: AiInspectionResult }) {
+export function AiResultBadge({ result }: { result: AiInspectionResult | null }) {
     return (
         <Badge
-            tone={AI_RESULT_TONE[result]}
+            tone={aiResultTone(result)}
             className="whitespace-nowrap"
             title={aiResultHint(result)}
         >
@@ -84,7 +85,7 @@ export function ScoreBar({
     className,
 }: {
     score: number | null;
-    result: AiInspectionResult;
+    result: AiInspectionResult | null;
     className?: string;
 }) {
     if (score === null) {
@@ -102,7 +103,7 @@ export function ScoreBar({
             </span>
             <span className="mt-[10px] block h-[6px] w-full overflow-hidden rounded-full bg-brand-track">
                 <span
-                    className={cn('block h-full rounded-full', BAR_CLASS[AI_RESULT_TONE[result]])}
+                    className={cn('block h-full rounded-full', BAR_CLASS[aiResultTone(result)])}
                     style={{ width: `${Math.round(score * 100)}%` }}
                 />
             </span>
