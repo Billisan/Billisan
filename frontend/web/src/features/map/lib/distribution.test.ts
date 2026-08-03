@@ -26,6 +26,8 @@ function station(overrides: Partial<Station> = {}): Station {
         capacity: 5,
         damaged: 0,
         adminReview: 0,
+        // 점유 센서를 못 읽은 슬롯 수. 이 파일의 계산엔 안 쓰이지만 `Station` 의 필수 필드입니다.
+        unknownOccupancy: 0,
         position: { x: 50, y: 50 },
         ...overrides,
     };

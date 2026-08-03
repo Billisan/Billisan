@@ -1,5 +1,5 @@
 import { X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 
 import {
     deriveSlotDisplayStatus,
@@ -12,7 +12,6 @@ import {
     type SlotServiceStatus,
 } from '@/features/stations/types';
 import { Badge } from '@/shared/components/Badge';
-import { SLOT_DISPLAY_LABEL } from '@/shared/constants/statusLabels';
 import { useModalA11y } from '@/shared/hooks/useModalA11y';
 import { cn } from '@/lib/utils';
 
@@ -32,10 +31,9 @@ import { cn } from '@/lib/utils';
  * 신규 DB Enum 이 아니라고 못 박았고, `DISCARDED` 도 별도 처분 action 이라 P0 state 가 아닙니다.
  */
 
-/** 관리자가 실제로 고를 만한 조합만 추립니다. */
+/** 서버가 허용하는 조합 전부. 한 줄이 조합 하나입니다. */
 interface Choice {
     id: string;
-    label: string;
     serviceStatus: SlotServiceStatus;
     itemCondition: SlotTargetItemCondition;
     /** 미리보기 배지에 쓸 파생 상태 */
@@ -58,23 +56,36 @@ interface Choice {
 }
 
 /**
- * 시안과 같은 4줄입니다. 명세는 선택지 개수를 정하지 않고 조합의 유효성만 정합니다.
+ * 관리자가 고를 수 있는 **네 가지 상태**입니다. 표·목록에서 쓰는 배지와 이름이 같습니다 —
+ * 「이용 가능」·「빈 슬롯」·「판정 대기」·「파손」. 서비스 상태 순으로 묶었습니다:
+ * 쓸 수 있음 → 판정 보류 → 운영에서 뺌.
  *
- * 시안의 `DISPOSED (폐기)` 자리는 `EMPTY (빈 슬롯)` 로 바꿨습니다.
- * 폐기 자체는 `DISCARDED` 라는 별도 처분 action 이고 P0 state 가 아닙니다(API명세 §3.1).
- * 화면흐름 WF-WEB-CHANGE-003 도 이 항목을 빼고 '회수 후 슬롯 비움'으로 표현하라고 합니다.
+ * **한 줄이 배지 하나입니다.** 예전에는 여섯 줄이었고, `ADMIN_REVIEW` 셋이 전부 「판정 대기」로
+ * `OUT_OF_SERVICE` 둘이 전부 「파손」으로 뭉개져서 배지 옆에 `targetItemCondition` 글자를
+ * 따로 붙여야 구분됐습니다. 네 줄로 줄이면서 **줄마다 배지가 달라져** 그 2단 표시가
+ * 필요 없어졌습니다. 관리자는 다른 화면에서 보던 그 이름 그대로 고릅니다.
  *
- * 다만 **폐기 이후 슬롯이 EMPTY 인지 OUT_OF_SERVICE 유지인지는 아직 미정입니다**
- * (화면흐름 DEC-WEB-002 / §17 에서 DEFERRED_NOT_CONTRACTED). 여기 EMPTY 는 '우산을 빼낸 상태'
- * 라는 뜻으로만 쓴 것이고, 폐기 절차의 최종 상태로 확정한 게 아닙니다. 확정되면 이 줄을 고치세요.
+ * 요청에는 여전히 두 축이 실립니다(`targetServiceStatus`·`targetItemCondition`).
+ * 화면에 한 개로 보일 뿐, 아래 배열이 그 조합을 들고 있습니다.
  *
- * 여기 없어서 이 화면으로는 못 가는 조합: `REPAIRABLE`(수리 가능), `OUT_OF_SERVICE+EMPTY`,
- * `ADMIN_REVIEW+(DAMAGED|REPAIRABLE)`. 필요해지면 줄만 더하면 됩니다.
+ * **`ADMIN_REVIEW+REPAIRABLE` 은 줄이 아니라 하위 선택입니다.** 「판정 대기」를 골랐을 때만
+ * 「수리 가능」 체크가 딸려 나옵니다 — `REPAIRABLE` 은 판정을 보류하는 동안 우산을 어떻게
+ * 봤는지를 덧붙이는 값이지, 다른 화면에 없는 다섯 번째 상태가 아니기 때문입니다.
+ * 켜면 `REPAIRABLE`, 끄면 `UNKNOWN` 이 실립니다.
+ *
+ * **뺀 조합**: `ADMIN_REVIEW+DAMAGED`, `OUT_OF_SERVICE+REPAIRABLE`, `OUT_OF_SERVICE+EMPTY`.
+ * 서버는 받지만 관리자가 그 상태로 할 일이 P0 범위에 없습니다. 파손이 보이는데 확정을
+ * 미룰 때는 「판정 대기」로 두면 검수 목록에 남고, 거기서 판정하면 정산까지 함께 처리됩니다.
+ * 필요해지면 줄만 다시 더하면 됩니다.
+ *
+ * 시안의 `DISPOSED (폐기)` 는 넣지 않았습니다. API명세 §3.1 이 `DRYING`·`DISPOSED` 를 신규
+ * DB Enum 이 아니라고 못 박았고 `DISCARDED` 도 별도 처분 action 이라 P0 state 가 아닙니다.
+ * 폐기 이후 슬롯이 `EMPTY` 인지 `OUT_OF_SERVICE` 유지인지도 미정입니다
+ * (화면흐름 DEC-WEB-002 · DEFERRED_NOT_CONTRACTED).
  */
 const CHOICES: Choice[] = [
     {
         id: 'available-normal',
-        label: SLOT_DISPLAY_LABEL.AVAILABLE,
         serviceStatus: 'AVAILABLE',
         itemCondition: 'NORMAL',
         display: 'AVAILABLE',
@@ -82,17 +93,7 @@ const CHOICES: Choice[] = [
         expects: 'present',
     },
     {
-        id: 'oos-damaged',
-        label: SLOT_DISPLAY_LABEL.DAMAGED,
-        serviceStatus: 'OUT_OF_SERVICE',
-        itemCondition: 'DAMAGED',
-        display: 'DAMAGED',
-        desc: '파손으로 확정하고 운영에서 내립니다. 검수에서 DAMAGED 판정을 냈을 때와 같은 결과입니다.',
-        expects: 'present',
-    },
-    {
         id: 'available-empty',
-        label: SLOT_DISPLAY_LABEL.EMPTY,
         serviceStatus: 'AVAILABLE',
         itemCondition: 'EMPTY',
         display: 'EMPTY',
@@ -101,15 +102,39 @@ const CHOICES: Choice[] = [
     },
     {
         id: 'review-unknown',
-        label: SLOT_DISPLAY_LABEL.ADMIN_REVIEW,
         serviceStatus: 'ADMIN_REVIEW',
         itemCondition: 'UNKNOWN',
         display: 'ADMIN_REVIEW',
-        desc: '판정을 보류합니다. 검수 목록에 미처리로 남습니다.',
+        desc: '판정을 보류합니다. 검수 목록에 미처리로 남아, 거기서 파손 여부를 확정할 수 있습니다.',
         // 보류는 실물이 있든 없든 성립합니다. 우산이 사라진 슬롯도 사람이 봐야 합니다.
         expects: 'either',
     },
+    {
+        /*
+         * **정산은 생기지 않습니다.** 예전 설명이 "검수에서 DAMAGED 판정을 냈을 때와 같은
+         * 결과"라고 했는데 틀렸습니다 — 검수 판정(`ADMIN-INSPECTION-003`)은 슬롯과 함께
+         * 파손 정산 7,000원을 멱등 생성하지만, 이 API 는 슬롯 두 축만 바꿉니다.
+         * 여기로 파손을 확정하면 슬롯은 파손인데 청구가 없는 상태가 됩니다.
+         */
+        id: 'oos-damaged',
+        serviceStatus: 'OUT_OF_SERVICE',
+        itemCondition: 'DAMAGED',
+        display: 'DAMAGED',
+        desc: '파손으로 확정하고 운영에서 내립니다. 파손 정산은 생기지 않습니다 — 청구가 필요하면 검수에서 판정하세요.',
+        expects: 'present',
+    },
 ];
+
+/**
+ * 모달을 열었을 때 미리 골라 두는 줄.
+ *
+ * 어느 쪽이든 **바로 저장되지 않는 선택**이어야 합니다. 「이용 가능」을 기본으로 두면
+ * 사유 코드만 적고 눌렀을 때 슬롯이 대여 대상으로 풀립니다. 보류(`ADMIN_REVIEW+UNKNOWN`)는
+ * 잘못 눌러도 검수 목록에 남을 뿐이라 되돌리기 쉽습니다.
+ */
+const DEFAULT_CHOICE_PRESENT = 'review-unknown';
+/** 우산이 없는 슬롯이면 우산을 전제하는 조합을 기본값으로 둘 수 없습니다. */
+const DEFAULT_CHOICE_ABSENT = 'available-empty';
 
 /**
  * ADMIN-SLOT-STATUS-001 요청 본문.
@@ -163,19 +188,38 @@ export function SlotStatusDialog({
 }: SlotStatusDialogProps) {
     const current = deriveSlotDisplayStatus(slot);
 
-    const [choiceId, setChoiceId] = useState(CHOICES[3].id);
+    /*
+     * 기본 선택은 **id 로 지목합니다.** 예전에는 `CHOICES[3]` 처럼 번호로 집었는데,
+     * 목록에 줄을 더하거나 순서를 바꾸면 조용히 다른 조합이 기본값이 됩니다.
+     * 상태를 바꾸는 모달이라 그 오차가 그대로 서버로 나갑니다.
+     */
+    const [choiceId, setChoiceId] = useState(DEFAULT_CHOICE_PRESENT);
     const [reasonCode, setReasonCode] = useState('');
     const [note, setNote] = useState('');
     const [confirmed, setConfirmed] = useState(false);
+    /**
+     * 「판정 대기」의 하위 선택 — 수리 가능 여부.
+     *
+     * `REPAIRABLE` 은 판정을 보류하는 동안에만 뜻이 있습니다. 「이용 가능」·「빈 슬롯」·「파손」
+     * 옆에 나란히 두면 다른 화면에 없는 다섯 번째 상태처럼 보이는데, 실제로는 「판정 대기」
+     * 안에서 우산을 어떻게 봤는지를 덧붙이는 값입니다. 그래서 목록에 줄을 더하지 않고
+     * 그 줄을 골랐을 때만 딸려 나옵니다.
+     *
+     * 끄면 `UNKNOWN`(아직 모름), 켜면 `REPAIRABLE`(고치면 씀) 입니다.
+     */
+    const [repairable, setRepairable] = useState(false);
 
     // 다시 열 때마다 초깃값으로 되돌립니다. 직전 입력이 남아 있으면 오조작이 납니다.
     useEffect(() => {
         if (!open) return;
         // 우산이 없는 슬롯이면 기본 선택도 우산을 전제하지 않는 것으로 둡니다.
-        setChoiceId(slot.occupancyStatus === 'OCCUPIED' ? CHOICES[3].id : CHOICES[2].id);
+        setChoiceId(
+            slot.occupancyStatus === 'OCCUPIED' ? DEFAULT_CHOICE_PRESENT : DEFAULT_CHOICE_ABSENT,
+        );
         setReasonCode('');
         setNote('');
         setConfirmed(false);
+        setRepairable(false);
     }, [open, slot.occupancyStatus]);
 
     useEffect(() => {
@@ -193,8 +237,25 @@ export function SlotStatusDialog({
     if (!open) return null;
 
     const choice = CHOICES.find((item) => item.id === choiceId) ?? CHOICES[0];
+
+    /*
+     * 「판정 대기」를 골랐을 때만 하위 선택(수리 가능)이 붙습니다.
+     *
+     * `id` 가 아니라 `serviceStatus` 로 봅니다. 목록의 id 를 바꾸거나 줄 순서를 손대도
+     * 조건이 조용히 어긋나지 않습니다 — `ADMIN_REVIEW` 줄은 지금 하나뿐입니다.
+     */
+    const showRepairable = choice.serviceStatus === 'ADMIN_REVIEW';
+    const repairableOn = showRepairable && repairable;
+
+    /** 실제 요청에 실리는 값. 화면의 배지 하나가 아니라 이 값이 서버로 갑니다. */
+    const targetItemCondition: SlotTargetItemCondition = repairableOn
+        ? 'REPAIRABLE'
+        : choice.itemCondition;
+    /** 수리 가능은 우산이 있어야 성립합니다 — 보류(`UNKNOWN`)의 `either` 와 다릅니다. */
+    const expects = repairableOn ? 'present' : choice.expects;
+
     const unchanged =
-        choice.serviceStatus === slot.serviceStatus && choice.itemCondition === slot.itemCondition;
+        choice.serviceStatus === slot.serviceStatus && targetItemCondition === slot.itemCondition;
 
     /*
      * 센서가 보는 점유 상태와 고른 목표가 어긋나는지.
@@ -204,8 +265,8 @@ export function SlotStatusDialog({
      * 이게 `physicalStateConfirmed` 가 있는 이유이기도 합니다("확정 변경은 `true`").
      */
     const mismatch =
-        (choice.expects === 'present' && slot.occupancyStatus !== 'OCCUPIED') ||
-        (choice.expects === 'absent' && slot.occupancyStatus === 'OCCUPIED');
+        (expects === 'present' && slot.occupancyStatus !== 'OCCUPIED') ||
+        (expects === 'absent' && slot.occupancyStatus === 'OCCUPIED');
 
     /*
      * **현장 확인은 센서가 어긋날 때만이 아니라 항상 필수입니다.**
@@ -229,7 +290,7 @@ export function SlotStatusDialog({
         if (!canSubmit) return;
         onSubmit({
             targetServiceStatus: choice.serviceStatus,
-            targetItemCondition: choice.itemCondition,
+            targetItemCondition,
             reasonCode: reasonCode.trim(),
             note: note.trim(),
             physicalStateConfirmed: confirmed,
@@ -299,55 +360,76 @@ export function SlotStatusDialog({
                             const active = item.id === choiceId;
 
                             return (
-                                <label
-                                    key={item.id}
-                                    className="flex h-[22px] cursor-pointer items-center gap-[12px]"
-                                >
-                                    <input
-                                        type="radio"
-                                        name="slot-status"
-                                        value={item.id}
-                                        checked={active}
-                                        onChange={() => setChoiceId(item.id)}
-                                        className="peer sr-only"
-                                    />
-                                    {/* 시안의 라디오는 16px 원, 선택 시 파란 2px 테두리 + 8px 점입니다. */}
-                                    <span
-                                        className={cn(
-                                            'flex size-4 shrink-0 items-center justify-center rounded-full border transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-brand-blue/40',
-                                            active
-                                                ? 'border-2 border-brand-blue'
-                                                : 'border-[1.5px] border-[#CBD2DC]',
-                                        )}
-                                        aria-hidden
-                                    >
-                                        {active && (
-                                            <span className="size-2 rounded-full bg-brand-blue" />
-                                        )}
-                                    </span>
+                                <Fragment key={item.id}>
+                                    <label className="flex h-[22px] cursor-pointer items-center gap-[12px]">
+                                        <input
+                                            type="radio"
+                                            name="slot-status"
+                                            value={item.id}
+                                            checked={active}
+                                            onChange={() => setChoiceId(item.id)}
+                                            className="peer sr-only"
+                                        />
+                                        {/* 시안의 라디오는 16px 원, 선택 시 파란 2px 테두리 + 8px 점입니다. */}
+                                        <span
+                                            className={cn(
+                                                'flex size-4 shrink-0 items-center justify-center rounded-full border transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-brand-blue/40',
+                                                active
+                                                    ? 'border-2 border-brand-blue'
+                                                    : 'border-[1.5px] border-[#CBD2DC]',
+                                            )}
+                                            aria-hidden
+                                        >
+                                            {active && (
+                                                <span className="size-2 rounded-full bg-brand-blue" />
+                                            )}
+                                        </span>
+                                        {/*
+                                         * 표·목록에서 쓰는 파생 배지 그대로입니다. 네 줄이 서로 다른
+                                         * 배지라 이것만으로 구분됩니다 — 관리자는 다른 화면에서 보던
+                                         * 이름으로 고르고, 아래 미리보기에서 같은 배지로 확인합니다.
+                                         */}
+                                        <Badge
+                                            tone={SLOT_DISPLAY_TONE[item.display]}
+                                            title={slotStatusHint(item.display)}
+                                            className={cn(
+                                                'w-[68px] transition-opacity',
+                                                !active && 'opacity-70',
+                                            )}
+                                        >
+                                            {slotStatusText(item.display)}
+                                        </Badge>
+                                    </label>
                                     {/*
-                                     * 글자만 두면 네 줄이 다 비슷해 보여서 뭘 고르는지 한눈에
-                                     * 안 들어옵니다. 표·목록에서 쓰는 것과 **같은 색 배지**를
-                                     * 그대로 씁니다 — 관리자가 표에서 보던 색과 이어집니다.
+                                     * 「판정 대기」를 고른 동안에만 나오는 하위 선택입니다.
+                                     * 라디오 원(16px) + 간격(12px) 만큼 들여써서 그 줄에
+                                     * 딸린 값이라는 걸 자리로 보여 줍니다.
                                      */}
-                                    <Badge
-                                        tone={SLOT_DISPLAY_TONE[item.display]}
-                                        title={slotStatusHint(item.display)}
-                                        className={cn(
-                                            'transition-opacity',
-                                            !active && 'opacity-70',
-                                        )}
-                                    >
-                                        {item.label}
-                                    </Badge>
-                                </label>
+                                    {active && item.serviceStatus === 'ADMIN_REVIEW' && (
+                                        <label className="ml-[28px] flex h-[22px] cursor-pointer items-center gap-[10px]">
+                                            <input
+                                                type="checkbox"
+                                                checked={repairable}
+                                                onChange={(event) =>
+                                                    setRepairable(event.target.checked)
+                                                }
+                                                className="size-4 accent-brand-blue"
+                                            />
+                                            <span className="text-[12.5px] font-medium text-brand-body">
+                                                수리 가능
+                                            </span>
+                                        </label>
+                                    )}
+                                </Fragment>
                             );
                         })}
                     </div>
                 </fieldset>
 
                 <p className="mt-[18px] rounded-lg bg-brand-surface px-5 py-[16px] text-[12.5px] font-medium leading-[20px] text-brand-muted">
-                    {choice.desc}
+                    {repairableOn
+                        ? '고치면 쓸 수 있다고 보고 판정을 보류합니다. 슬롯은 판정 대기로 남습니다.'
+                        : choice.desc}
                 </p>
 
                 {/*

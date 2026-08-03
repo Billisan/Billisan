@@ -12,6 +12,7 @@ import {
     type InspectionDecision,
 } from '@/features/stations/types';
 import { Badge } from '@/shared/components/Badge';
+import { RefId } from '@/shared/components/RefId';
 import { cn } from '@/lib/utils';
 
 /**
@@ -67,6 +68,14 @@ export function DecisionForm({
                     관리자 최종 판정
                 </h3>
 
+                {/*
+                 * 배지 옆의 슬롯 결과(`DECISION_EFFECT[...].slotState`, 예: 「이용 가능 · 정상」)
+                 * 는 뺐습니다. 판정이 끝난 화면에서는 **지금 슬롯이 실제로 어떤 상태인지**를
+                 * 아래 「현재 슬롯 상태」 카드가 네 축 그대로 보여 줍니다. 판정 시점의 예상
+                 * 결과를 옆에 또 적으면 같은 것을 두 번 말하는 셈이고, 그 뒤 슬롯 상태를
+                 * 따로 바꿨다면 둘이 어긋나 보입니다. 이 문구는 아직 판정 전인 폼 쪽에
+                 * (무엇이 바뀔지 미리 알려 주는 자리) 그대로 남아 있습니다.
+                 */}
                 <div className="mt-[18px] flex items-center gap-[10px]">
                     {detail.decision ? (
                         <Badge
@@ -78,27 +87,48 @@ export function DecisionForm({
                     ) : (
                         <Badge tone="slate">판정 값 없음</Badge>
                     )}
-                    <span className="text-[11.5px] font-medium text-brand-muted">
-                        {detail.decision && DECISION_EFFECT[detail.decision].slotState}
-                    </span>
                 </div>
 
-                <p className="mt-[15px] text-[11.5px] font-semibold text-brand-body">사유 코드</p>
-                <p className="mt-[6px] text-[12.5px] font-bold text-brand-ink">
-                    {detail.decisionReasonCode ?? '—'}
-                </p>
+                {/*
+                 * **값이 없으면 줄째로 숨깁니다.**
+                 *
+                 * 사유 코드·메모는 관리자가 파손을 확정할 때 적는 값이라, 정상 판정 건에는
+                 * 아예 없습니다. 그런 건에서 제목만 남기고 `—` 를 깔아 두면 화면 절반이
+                 * 빈칸이 되고, 「적었어야 하는데 빠진 것」처럼 읽힙니다. 없는 값은 없는
+                 * 대로 두는 편이 정확합니다 — 파손 건에서는 지금처럼 그대로 나옵니다.
+                 */}
+                {detail.decisionReasonCode && (
+                    <>
+                        <p className="mt-[15px] text-[11.5px] font-semibold text-brand-body">
+                            사유 코드
+                        </p>
+                        <p className="mt-[6px] text-[12.5px] font-bold text-brand-ink">
+                            {detail.decisionReasonCode}
+                        </p>
+                    </>
+                )}
 
-                <p className="mt-[13px] text-[11.5px] font-semibold text-brand-body">메모</p>
-                <p className="mt-[6px] rounded-lg bg-brand-surface px-3 py-[11px] text-[12.5px] font-medium leading-[1.5] text-brand-ink">
-                    {detail.decisionNote ?? '—'}
-                </p>
+                {detail.decisionNote && (
+                    <>
+                        <p className="mt-[13px] text-[11.5px] font-semibold text-brand-body">
+                            메모
+                        </p>
+                        <p className="mt-[6px] rounded-lg bg-brand-surface px-3 py-[11px] text-[12.5px] font-medium leading-[1.5] text-brand-ink">
+                            {detail.decisionNote}
+                        </p>
+                    </>
+                )}
 
                 {/*
                  * **누가 언제 판정했는지.** `ADMIN-INSPECTION-002` 가 `decidedBy`·`decidedAt`
                  * 을 주는데 화면에 안 그리고 있었습니다. 판정은 슬롯·정산을 함께 바꾸는
                  * 확정 행위라, 나중에 "이 파손 정산이 왜 생겼나"를 되짚을 때 사유·메모만으로는
-                 * 부족합니다. 관리자 UUID 는 축약해 보여주고 전체 값은 복사할 수 있게 둡니다
-                 * (36자를 그대로 깔면 줄이 넘칩니다).
+                 * 부족합니다.
+                 *
+                 * 관리자 UUID 는 `RefId` 로 보여 줍니다 — 검수 상세의 검수·반납·대여 ID 와
+                 * 같은 표시입니다. 예전에는 손으로 자른 글자에 `title`·`select-all` 만 있고
+                 * **복사 버튼이 없어서**, 한 화면 안에서 어떤 UUID 는 눌러 복사되고 어떤 건
+                 * 안 되는 상태였습니다. 전체 값이 필요한 이유가 같으니 표시도 같아야 합니다.
                  */}
                 <dl className="mt-[14px] flex gap-6">
                     <div>
@@ -111,11 +141,8 @@ export function DecisionForm({
                     </div>
                     <div className="min-w-0">
                         <dt className="text-[11.5px] font-semibold text-brand-body">판정 관리자</dt>
-                        <dd
-                            className="mt-[5px] select-all truncate font-mono text-[11.5px] font-semibold text-brand-ink"
-                            title={detail.decidedBy ?? undefined}
-                        >
-                            {detail.decidedBy ? `${detail.decidedBy.slice(0, 8)}…` : '—'}
+                        <dd className="mt-[5px]">
+                            <RefId id={detail.decidedBy} label="판정 관리자" />
                         </dd>
                     </div>
                 </dl>

@@ -164,7 +164,12 @@ export function ReturnDetailPage() {
                     <InfoRow label="신뢰도">
                         {item.aiScore === null ? '측정 불가' : item.aiScore.toFixed(2)}
                     </InfoRow>
-                    <InfoRow label="모델 버전">{item.modelVersion}</InfoRow>
+                    {/*
+                     * 「모델 버전」은 뺐습니다 — 검수 상세와 같은 이유입니다.
+                     * 관리자가 모델 이름으로 판단을 바꾸지 않고, 특정 모델의 판정 건을 모아
+                     * 보는 일은 목록 필터(`modelVersion`)가 할 일입니다.
+                     * 응답 필드(`item.modelVersion`)는 그대로 있어 언제든 되살릴 수 있습니다.
+                     */}
                     <InfoRow label="추론 지연">{item.latencyMs}ms</InfoRow>
                     {/*
                      * 이미지 존재 여부·장수 대신 '처리했고 원본은 남기지 않았다'만 남깁니다.

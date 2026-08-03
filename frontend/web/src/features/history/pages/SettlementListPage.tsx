@@ -48,7 +48,7 @@ import { cn } from '@/lib/utils';
 type StatusFilter = 'ALL' | SettlementStatus;
 
 const STATUS_OPTIONS: readonly FilterOption<StatusFilter>[] = [
-    { value: 'ALL', label: '상태 · 전체' },
+    { value: 'ALL', label: '전체' },
     { value: 'PENDING', label: '미정산' },
     { value: 'PAID', label: '정산완료' },
     { value: 'CANCELLED', label: '취소' },

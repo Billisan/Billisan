@@ -1,15 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 
 import { DetailLink } from '@/features/stations/components/DetailLink';
-import { DeviceBadge } from '@/features/stations/components/DeviceBadge';
 import {
     getStationStatus,
-    isDeviceOnline,
+    isDeviceOffline,
     STATION_STATUS_META,
     type Station,
 } from '@/features/stations/types';
 import { DataTable, TBody, Td, TableCard, Th, THead, Tr } from '@/shared/components/DataTable';
-import { RefId } from '@/shared/components/RefId';
 import { cn } from '@/lib/utils';
 
 export function StationTable({ stations }: { stations: Station[] }) {
@@ -21,20 +19,29 @@ export function StationTable({ stations }: { stations: Station[] }) {
                 {/* 열 너비는 시안(1280px)의 헤더 x 좌표에서 역산한 값입니다. */}
                 <THead>
                     {/*
-                     * 식별자와 이름을 **각각 다른 열**로 둡니다.
+                     * **대여소 ID 열은 뺐습니다.**
                      *
-                     * 한 칸에 이름 + 그 아래 작은 UUID 로 합쳐 봤는데, 행 높이가 두 줄로
-                     * 늘어나면서 표가 길어지고 UUID 가 부속물처럼 흐려졌습니다. 로그에 찍힌
-                     * 값을 눈으로 훑어 내려가며 대조하려면 **한 열에 세로로 가지런히**
-                     * 놓이는 편이 낫습니다.
+                     * 검수·반납·정산은 사람이 읽을 이름이 없어서 UUID 축약이 유일한 표기지만,
+                     * 대여소는 `name` 이 NOT NULL 로 보장됩니다. 이름이 있는데 옆에 UUID 를
+                     * 나란히 두면 열 하나를 쓰면서 관리자가 읽을 일은 거의 없습니다.
+                     *
+                     * 로그 대조용 전체 값은 **상세 화면에 그대로 남아 있고**, 목록 검색창은
+                     * 여전히 UUID 앞자리로도 걸립니다 — 찾는 경로는 잃지 않았습니다.
                      */}
-                    <Th className="w-[13%]">대여소ID</Th>
-                    {/* 온라인 배지가 ON/OFF/ERR 로 짧아져서 시안 폭(9.12%)으로 되돌리고,
-                        남은 자리는 이름이 긴 대여소가 있는 위치 칸에 넘겼습니다. */}
-                    <Th className="w-[23%]">위치(건물)</Th>
-                    <Th align="center" className="w-[9%]">
-                        온라인
-                    </Th>
+                    {/* ID·온라인 열이 빠진 만큼 이름 칸을 넓혔습니다. */}
+                    <Th className="w-[40%]">위치(건물)</Th>
+                    {/*
+                     * **「온라인」 열을 뺐습니다.**
+                     *
+                     * `STATION.device_status` 는 DB 에 있지만 그걸 내려 주는 관리자 API 가
+                     * 없습니다(스웨거 9개 경로 전수 확인). 그동안은 실 모드에서 `'ONLINE'` 을
+                     * 박아 넣어 **전 대여소가 항상 「ON · 장치 연결됨」**으로 떴습니다.
+                     * 함이 꺼져 있어도 서버는 DB 슬롯 행을 돌려주므로 화면만 거짓말합니다.
+                     *
+                     * 없는 정보를 그럴듯하게 채우느니 열을 비웁니다. 장치 상태가 궁금하면
+                     * 대여소 상세에 「확인 불가」로 정직하게 표시돼 있습니다.
+                     * TODO: 대여소 조회 API 가 `device_status` 를 주면 열을 되살리세요.
+                     */}
                     {/*
                      * `사용 가능 / 전체` 로 함께 보여 줍니다.
                      *
@@ -58,15 +65,27 @@ export function StationTable({ stations }: { stations: Station[] }) {
                      * 대시보드·분포도와 같은 `getStationStatus`(채움 비율)입니다 — 세 화면이
                      * 다른 말을 하면 어느 것도 믿을 수 없게 됩니다.
                      */}
-                    <Th align="center" className="w-[11%]">
+                    <Th align="center" className="w-[16%]">
                         재고
                     </Th>
-                    <Th align="center" className="w-[7%]">
-                        파손
-                    </Th>
-                    <Th align="center" className="w-[13%]">
-                        관리자 확인
-                    </Th>
+                    {/*
+                     * **「파손 · 관리자 확인 · 센서 이상」 열을 뺐습니다.**
+                     *
+                     * 이 목록의 일은 **어디로 갈지 고르는 것**이고, 그 판단은 왼쪽
+                     * 「사용 가능 / 전체 · 재고」가 이미 해 줍니다. 세 숫자는 대부분 0 이나 1 이라
+                     * 열 셋을 쓰면서 전달하는 정보가 적었습니다.
+                     *
+                     * 어디서 보면 되는지:
+                     *   관리자 확인 — **검수 목록**에 대여소 이름·슬롯 번호까지 다 있습니다.
+                     *                 대시보드 「파손 검수 대기」를 눌러도 그리로 갑니다.
+                     *   파손·센서 이상 — 대여소 상세(우산 재고)의 집계 카드 6종.
+                     *
+                     * 파손·센서 이상은 대여소를 가로질러 보는 화면이 아직 없다는 걸 알고
+                     * 뺍니다. 급해서 목록에서 봐야 하는 일이 아니라 순찰 때 처리하는 일이고,
+                     * 그때는 어차피 상세를 엽니다.
+                     * TODO: 「파손이 쌓인 대여소」를 한눈에 보려는 요구가 생기면 이 표에 열을
+                     *       늘리지 말고 **대여소를 가로지르는 목록 화면**을 새로 만드세요.
+                     */}
                     <Th className="w-[9%]">
                         <span className="sr-only">상세 보기</span>
                     </Th>
@@ -80,30 +99,20 @@ export function StationTable({ stations }: { stations: Station[] }) {
                         return (
                             <Tr
                                 key={station.stationId}
-                                accent={isDeviceOnline(station) ? undefined : 'red'}
+                                /*
+                                 * 끊긴 것이 **확인된** 대여소만 붉게 칠합니다.
+                                 * `!isDeviceOnline()` 이면 장치 상태를 모르는 대여소까지
+                                 * 전부 빨간 줄이 돼서, 실 API 모드에서 표 전체가 경고가 됩니다.
+                                 */
+                                accent={isDeviceOffline(station) ? 'red' : undefined}
                                 // 라우트에는 UUID 가 들어갑니다. 표시 코드('ST-003')는 화면 글자일 뿐입니다.
                                 onClick={() => navigate(`/stations/${station.stationId}`)}
                             >
-                                {/*
-                                 * 예전에는 `stationCode`('ST-003')를 깔았는데 ERD v3.0 이 그
-                                 * 컬럼을 P0 필수에서 뺐습니다. 신원은 `station_id` 뿐이라
-                                 * 다른 화면과 같은 축약 표기(앞 8자 + 복사)로 보여 줍니다.
-                                 *
-                                 * 앞 8자만 보면 대여소끼리 비슷해 보이지만, 이 열의 용도는
-                                 * "눈으로 읽기"가 아니라 **로그에 찍힌 값과 대조하고 복사하기**
-                                 * 입니다. 이름은 옆 칸이 맡습니다.
-                                 */}
-                                <Td>
-                                    <RefId id={station.stationId} label="대여소 ID" />
-                                </Td>
                                 {/*
                                  * 링크를 걷어냈습니다. 행 전체가 이미 눌리고 맨 오른쪽에 '상세'
                                  * 링크도 있어서, 이름까지 파랗게 두면 누를 곳이 셋으로 보입니다.
                                  */}
                                 <Td className="font-bold text-brand-ink">{station.name}</Td>
-                                <Td align="center">
-                                    <DeviceBadge status={station.deviceStatus} />
-                                </Td>
                                 <Td align="center" className="tabular-nums">
                                     <span className="font-bold text-brand-ink">
                                         {station.available}
@@ -128,12 +137,6 @@ export function StationTable({ stations }: { stations: Station[] }) {
                                         />
                                         {statusMeta.label}
                                     </span>
-                                </Td>
-                                <Td align="center" className="tabular-nums">
-                                    {station.damaged}
-                                </Td>
-                                <Td align="center" className="tabular-nums">
-                                    {station.adminReview}
                                 </Td>
                                 <Td align="center">
                                     <DetailLink to={`/stations/${station.stationId}`} />
