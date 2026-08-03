@@ -43,4 +43,29 @@ class UserAccountRepositoryTests {
         assertThat(reloaded.getRentalEligibilityUpdatedAt())
                 .isEqualTo(expectedUpdatedAt);
     }
+
+    @Test
+    void calculatesUserEligibilityWithoutStationInventoryOrDeviceData() {
+        UserAccount user = UserAccount.create(
+                "876543210",
+                "fixture-e176c4623cc6@example.invalid",
+                "encoded-password",
+                "Eligibility Source Test User");
+        userAccountRepository.saveAndFlush(user);
+
+        assertThat(userAccountRepository.calculateRentalEligibility(user.getUserId()))
+                .isZero();
+
+        entityManager.createNativeQuery("""
+                        UPDATE user_account
+                        SET face_registered = TRUE
+                        WHERE user_id = :userId
+                        """)
+                .setParameter("userId", user.getUserId())
+                .executeUpdate();
+        entityManager.clear();
+
+        assertThat(userAccountRepository.calculateRentalEligibility(user.getUserId()))
+                .isEqualTo(1);
+    }
 }
