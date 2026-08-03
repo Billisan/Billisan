@@ -1,6 +1,6 @@
 import { RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { env } from '@/config/env';
 import { cn } from '@/lib/utils';
@@ -45,11 +45,18 @@ import { PageTitle } from '@/shared/components/PageTitle';
  * 라벨을 손으로 적지 않고 공용 매핑에서 가져와 표의 AI 결과 배지와 어긋나지 않게 합니다
  * (ERD §2.4.1 "관리자 웹의 배지·표·상세 화면은 한글 명칭 우선").
  *
- * 목록에 `정상 판정` 행이 없는 건 정상입니다 — AI 가 정상으로 본 반납은 관리자 검수로
- * 넘어오지 않습니다. 선택지는 계약 Enum 을 다 열어 둡니다.
+ * **AI 가 정상으로 본 반납은 관리자 판정 대상이 아닙니다** — `DECIDED` 로 바로 처리되어
+ * 「검수 대기」에는 올라오지 않습니다. 관리자에게 넘어오는 건 파손·불확실·실패 건입니다.
+ *
+ * 다만 검수 **레코드 자체는 반납 시도마다 남습니다**(DB 유니크 제약 `uk_damage_inspection_
+ * return_attempt_id`). 그래서 처리 상태를 「전체」로 두면 이미 끝난 `정상 판정 · 검수 완료`
+ * 행이 함께 보입니다 (EC2 시드의 `7aa9f1b8…`). 기록으로 남기는 건 맞고, 기본 화면에
+ * 섞이지 않게 아래에서 기본값을 「검수 대기」로 둡니다.
+ *
+ * 선택지는 계약 Enum 을 다 열어 둡니다 — 지난 정상 건도 필요하면 찾아볼 수 있어야 합니다.
  */
 const AI_RESULT_OPTIONS: readonly FilterOption<AiResultFilter>[] = [
-    { value: 'ALL', label: 'AI 결과' },
+    { value: 'ALL', label: '전체' },
     { value: 'NORMAL', label: AI_RESULT_LABEL.NORMAL },
     { value: 'DAMAGED', label: AI_RESULT_LABEL.DAMAGED },
     { value: 'UNCERTAIN', label: AI_RESULT_LABEL.UNCERTAIN },
@@ -57,14 +64,21 @@ const AI_RESULT_OPTIONS: readonly FilterOption<AiResultFilter>[] = [
 ];
 
 const REVIEW_OPTIONS: readonly FilterOption<ReviewStatusFilter>[] = [
-    { value: 'ALL', label: '처리 상태' },
+    { value: 'ALL', label: '전체' },
     // 처리 상태 배지와 같은 매핑을 씁니다.
     { value: 'PENDING', label: REVIEW_STATUS_LABEL.PENDING },
     { value: 'DECIDED', label: REVIEW_STATUS_LABEL.DECIDED },
 ];
 
+/**
+ * 처리 상태의 기본값. **URL 에서 생략됐을 때 쓰는 값이라 두 곳이 같은 상수를 봐야 합니다** —
+ * 읽을 때(`parseOption` 의 fallback)와 쓸 때(`applyFilters` 가 생략할 값)가 어긋나면
+ * 「전체」를 골라도 파라미터가 빠져 다시 이 값으로 돌아옵니다.
+ */
+const REVIEW_DEFAULT: ReviewStatusFilter = 'PENDING';
+
 const PERIOD_OPTIONS: readonly FilterOption<string>[] = [
-    { value: 'ALL', label: '전체 기간' },
+    { value: 'ALL', label: '전체' },
     { value: '1', label: '최근 1일' },
     { value: '7', label: '최근 7일' },
     { value: '30', label: '최근 30일' },
@@ -90,18 +104,38 @@ function fromDateOf(period: string): string {
     return `${at.getUTCFullYear()}-${pad(at.getUTCMonth() + 1)}-${pad(at.getUTCDate())}`;
 }
 
+/**
+ * URL Query 값 → 선택지 값. 목록에 없는 값이면 `fallback` 으로 떨어집니다.
+ *
+ * `fallback` 을 따로 받는 이유는 **드롭다운 첫 줄과 기본값이 서로 달라야 하는 필터**가
+ * 있어서입니다. 처리 상태는 선택지 순서를 「전체 → 검수 대기 → 검수 완료」로 두면서도
+ * 처음 들어왔을 때는 「검수 대기」로 시작합니다.
+ */
 function parseOption<T extends string>(
     value: string | null,
     options: readonly FilterOption<T>[],
+    fallback: T = options[0].value,
 ): T {
-    return options.some((option) => option.value === value) ? (value as T) : options[0].value;
+    return options.some((option) => option.value === value) ? (value as T) : fallback;
 }
 
 export function InspectionListPage() {
+    const navigate = useNavigate();
     // 확정된 조회 조건은 URL Query 에만 둡니다 (화면흐름 §6.2).
     const [searchParams, setSearchParams] = useSearchParams();
     const aiResult = parseOption(searchParams.get('ai'), AI_RESULT_OPTIONS);
-    const reviewStatus = parseOption(searchParams.get('review'), REVIEW_OPTIONS);
+    /*
+     * **기본값은 「검수 대기」입니다.**
+     *
+     * 관리자가 이 화면에 오는 목적은 **판정할 게 남았는지 보는 것**입니다. 그런데 검수
+     * 레코드는 반납 시도마다 남고 AI 가 정상으로 본 건은 `DECIDED` 로 바로 처리되므로,
+     * 운영이 쌓이면 「전체」 목록의 대부분이 손댈 필요 없는 완료 건이 됩니다. 처리할 것이
+     * 그 안에 파묻히지 않게 처음부터 미처리만 보여 줍니다.
+     *
+     * 전부 보고 싶으면 드롭다운에서 「전체」를 고르면 되고, 그 선택은 URL 에 남습니다.
+     * 대시보드의 「파손 검수 대기」 바로가기(`review=PENDING`)와도 같은 화면이 됩니다.
+     */
+    const reviewStatus = parseOption(searchParams.get('review'), REVIEW_OPTIONS, REVIEW_DEFAULT);
     const period = parseOption(searchParams.get('period'), PERIOD_OPTIONS);
 
     const [aiInput, setAiInput] = useState(aiResult);
@@ -158,12 +192,26 @@ export function InspectionListPage() {
 
         const params = new URLSearchParams();
         if (nextAi !== 'ALL') params.set('ai', nextAi);
-        if (nextReview !== 'ALL') params.set('review', nextReview);
+        /*
+         * 생략 기준이 `'ALL'` 이 아니라 **기본값**입니다.
+         *
+         * 처리 상태는 기본이 「검수 대기」라, 예전처럼 `'ALL'` 일 때 파라미터를 빼면
+         * 「전체」를 고른 순간 주소에서 조건이 사라지고 다시 「검수 대기」로 읽힙니다 —
+         * 드롭다운은 「전체」인데 목록은 미처리만 나오는 상태가 됩니다.
+         */
+        if (nextReview !== REVIEW_DEFAULT) params.set('review', nextReview);
         if (nextPeriod !== 'ALL') params.set('period', nextPeriod);
         setSearchParams(params);
     };
 
-    /** 확정된 조회 조건이 걸려 있는지 (기본값은 셋 다 '전체') */
+    /**
+     * 목록이 조건으로 **좁혀져 있는지**. 빈 화면에서 「조건에 맞는 검수가 없습니다」와
+     * 초기화 버튼을 보일지 정합니다.
+     *
+     * 기본값인 「검수 대기」도 좁힌 것으로 셉니다 — 처리할 게 없어서 비었을 때 관리자가
+     * 「전체」로 넓혀 볼 수 있어야 하기 때문입니다. 여기서 빼면 초기화 버튼이 사라져,
+     * 지난 검수 기록이 있는데도 아무것도 없는 화면처럼 보입니다.
+     */
     const hasFilter = aiResult !== 'ALL' || reviewStatus !== 'ALL' || period !== 'ALL';
 
     return (
@@ -257,11 +305,33 @@ export function InspectionListPage() {
                             {items.map((item) => {
                                 const pending = item.reviewStatus === 'PENDING';
 
+                                /*
+                                 * **행 전체 클릭은 「상세」 행에만 답니다.**
+                                 *
+                                 * 대여소·슬롯 표와 같은 편의인데, 여기서는 미처리(`PENDING`)
+                                 * 행을 뺍니다. 그 행의 목적지는 판정 폼이라 **관리자가 값을
+                                 * 확정하는 자리**입니다. 표를 훑다가 행을 잘못 스쳐 눌러 판정
+                                 * 화면이 열리면, 되돌릴 수 없는 작업 앞에 실수로 서게 됩니다.
+                                 * 미처리 행은 지금처럼 「검수」 버튼을 정확히 눌러야 갑니다.
+                                 *
+                                 * 판정이 끝난 행은 읽기만 하는 화면이라 잘못 눌러도 손해가
+                                 * 없습니다. 오히려 UUID 축약값을 확인하려고 좁은 「상세」
+                                 * 링크를 겨냥해야 했던 쪽이 불편했습니다.
+                                 *
+                                 * 행 안의 링크·버튼(`RefId` 복사, 「상세」)은 `Tr` 이 이미
+                                 * 걸러 줍니다 — 텍스트를 드래그해 고른 경우도 이동하지 않습니다.
+                                 */
                                 return (
                                     <Tr
                                         key={item.inspectionId}
                                         className="h-[57px]"
                                         accent={pending ? 'amber' : undefined}
+                                        onClick={
+                                            pending
+                                                ? undefined
+                                                : () =>
+                                                      navigate(`/inspections/${item.inspectionId}`)
+                                        }
                                     >
                                         <Td>
                                             <span className="block font-medium tabular-nums text-brand-ink-soft">
