@@ -1,3 +1,4 @@
+import * as mock from './piSocket.mock'
 import type {
   CancelReasonCode,
   CancelResult,
@@ -20,6 +21,10 @@ import type {
 // 구형(플로우당 재연결·flat {stage} 메시지) 구현을 전부 대체한다 — 이제 지속 연결 1개로
 // 세션 열기 → 인증 → 대여/반납까지 순차 처리한다(문서 §3 "한 연결에서 Operation은 순차 처리").
 const PI_WS_URL = import.meta.env.VITE_PI_WS_URL
+
+// 실 Pi가 연결 안 될 때 뒤쪽 화면 테스트용 — .env.local에 VITE_PI_MOCK=true로만 켠다.
+// 실제 Pi 연동 로직(아래 request/connect)은 건드리지 않고 각 export 진입점에서만 위임한다.
+const USE_MOCK = import.meta.env.VITE_PI_MOCK === 'true'
 
 export class PiOperationError extends Error {
   errorCode: string
@@ -185,6 +190,7 @@ export function getStationSummary(): Promise<StationSummaryResult> {
 
 // KSK-SESSION-001 — 항상 이 흐름의 첫 Operation. Envelope sessionId=null로 보낸다.
 export function openSession(mode: KioskMode): Promise<SessionOpenResult> {
+  if (USE_MOCK) return mock.openSession(mode)
   return request('KIOSK.SESSION.OPEN.REQUEST', null, {
     mode,
     stationId: null,
@@ -203,6 +209,7 @@ export function startFaceAuth(
   sessionId: string,
   onEvent: (event: FaceAuthEvent) => void,
 ): Promise<FaceAuthResult> {
+  if (USE_MOCK) return mock.startFaceAuth(sessionId, onEvent)
   const authRequestId = crypto.randomUUID()
   return request(
     'KIOSK.FACE_AUTH.REQUEST',
@@ -217,6 +224,7 @@ export function startRent(
   sessionId: string,
   onEvent: (event: RentEvent) => void,
 ): Promise<RentResult> {
+  if (USE_MOCK) return mock.startRent(sessionId, onEvent)
   const rentalRequestId = crypto.randomUUID()
   return request(
     'KIOSK.RENT.REQUEST',
@@ -231,6 +239,7 @@ export function startReturn(
   sessionId: string,
   onEvent: (event: ReturnEvent) => void,
 ): Promise<ReturnResult> {
+  if (USE_MOCK) return mock.startReturn(sessionId, onEvent)
   return request(
     'KIOSK.RETURN.REQUEST',
     sessionId,
@@ -241,6 +250,7 @@ export function startReturn(
 
 // KSK-SESSION-002 — 재연결·복구용 상태 조회. 상태 변경 없음, 여러 번 호출해도 안전.
 export function getSessionState(sessionId: string): Promise<SessionStateResult> {
+  if (USE_MOCK) return mock.getSessionState(sessionId)
   return request('KIOSK.SESSION.STATE.REQUEST', sessionId, {})
 }
 
@@ -249,5 +259,6 @@ export function cancelSession(
   sessionId: string,
   reasonCode: CancelReasonCode,
 ): Promise<CancelResult> {
+  if (USE_MOCK) return mock.cancelSession(sessionId, reasonCode)
   return request('KIOSK.SESSION.CANCEL.REQUEST', sessionId, { reasonCode })
 }

@@ -68,6 +68,11 @@ export interface FaceAuthResult {
   kioskStep: string
   userMessageCode: string | null
   retryable: boolean
+  // TEMP: 임베디드 문서(2026-07-31) 실 wire 스펙에는 없는 필드. 팀 결정(2026-08-03)으로
+  // AuthSuccessScreen에 실명 확인 단계("OOO님이 맞으신가요?")를 추가하기로 하면서 임시로
+  // 얹었다 — 실제 Pi가 이 필드를 보내줄지, 필드명이 무엇일지는 아직 명세서에 반영 전이라
+  // 실 서버 연동 시 undefined로 온다(Mock에서만 값 채움).
+  displayName?: string | null
 }
 
 // --- KSK-RENT-001 ---
