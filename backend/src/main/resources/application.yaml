@@ -10,16 +10,6 @@ spring:
       connect-timeout: 5s
       read-timeout: 20s
 
-  ai:
-    openai:
-      # 환경변수로만 주입한다 — 커밋된 파일에 실키를 두지 않는다(JWT_SECRET과 동일 원칙).
-      api-key: ${GMS_KEY:}
-      base-url: http://localhost:9999/v1
-      chat:
-        options:
-          model: gpt-5.4-nano
-          temperature: 0.2
-
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/billisan?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul}
     username: ${SPRING_DATASOURCE_USERNAME}
@@ -60,6 +50,15 @@ admin:
 mqtt:
   broker-url: ${MQTT_BROKER_URL:tcp://localhost:1883}
   client-id: ${MQTT_CLIENT_ID:billisan-server}
+
+# 챗봇 LLM 게이트웨이 — 2026-08-03: Spring AI(spring.ai.openai.*)를 걷어내고 RestClient로
+# 직접 호출하면서 이 프로젝트 자체 설정 블록으로 옮겼다. GMS_KEY 환경변수명은 그대로 유지
+# (배포 배선이 이미 이 이름으로 GitLab CI/CD 변수·docker-compose.yml에 연결돼 있음).
+gms:
+  api-key: ${GMS_KEY:}
+  base-url: http://localhost:9999/v1
+  model: gpt-5.4-nano
+  temperature: 0.2
 
 chatbot:
   knowledge-location: "classpath:knowledge/*.md"

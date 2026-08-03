@@ -1,12 +1,15 @@
 package dev.billisan.chatbot.service;
 
 import java.time.Instant;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
+
+import tools.jackson.databind.ObjectMapper;
 
 import dev.billisan.chatbot.dto.ChatCta;
 import dev.billisan.chatbot.dto.ChatIntent;
@@ -22,14 +25,15 @@ import dev.billisan.global.exception.ChatbotMessageTooLongException;
  * <p>{@code CHATBOT-001}은 통합 API 계약(12-R)에서 {@code CONFIRMED · P0}다. 대화 기록·세션
  * 상태를 서버에 저장하지 않는다 — 매 요청을 독립적인 단발 질의응답으로 처리하고, 지식은
  * 기동 시 1회 로딩한 {@link FaqKnowledge}를 시스템 프롬프트에 그대로 주입한다(별도 RAG·벡터
- * 검색 없음). 모델에는 답변 본문과 함께 {@code intent}·{@code cta}도 같은 호출에서 구조화
- * JSON으로 받아 별도 분류기 없이 분류를 겸한다.
+ * 검색 없음).
  *
- * <p>독립 프로토타입(구 {@code chatbot-service/}) 코드를 이 프로젝트의 {@code auth} 모듈
- * 컨벤션(플랫 응답 DTO, {@code global.exception} + {@link dev.billisan.global.exception.GlobalExceptionHandler}
- * 재사용)에 맞춰 옮긴 것이다 — 인증은 이 프로젝트의 실제 Spring Security 필터체인
- * (`SecurityConfig`)이 {@code /api/v1/chatbot/**}를 포함한 모든 인증 필요 경로에 이미
- * 적용하므로, 컨트롤러·서비스 어디에도 별도 Authorization 검사를 두지 않는다.
+ * <p>⚠️ 2026-08-03: Spring AI({@code spring-ai-starter-model-openai})를 걷어내고
+ * {@link RestClient}로 GMS(OpenAI 호환 게이트웨이) {@code /chat/completions}를 직접
+ * 호출하도록 재작성했다 — Spring AI는 공식 OpenAI SDK(42MB)+스트리밍용 WebClient/Reactor
+ * Netty 스택 전체를 끌고 와 부트jar를 90MB+ 불렸는데, 실제로 쓰는 기능은 단발 호출(`.call()`)
+ * 뿐이라 프레임워크 대비 실사용 비율이 낮았다. 모델에는 답변 본문과 함께 {@code intent}·
+ * {@code cta}도 같은 호출에서 JSON으로 받아 별도 분류기 없이 분류를 겸한다 —
+ * {@code response_format: json_object}로 JSON 모드를 강제한다.
  */
 @Service
 public class ChatbotService {
@@ -39,16 +43,30 @@ public class ChatbotService {
     private static final String STATIC_FALLBACK =
             "죄송해요, 지금은 답변을 드리기 어려워요. 자주 묻는 질문(FAQ) 화면을 확인해 주세요.";
 
-    private final ChatClient chatClient;
+    private final RestClient restClient;
+    private final ObjectMapper objectMapper;
+    private final String systemPrompt;
+    private final String model;
+    private final double temperature;
     private final int maxMessageLength;
 
     public ChatbotService(
-            ChatClient.Builder chatClientBuilder,
+            RestClient.Builder restClientBuilder,
+            ObjectMapper objectMapper,
             FaqKnowledge faqKnowledge,
+            @Value("${gms.base-url}") String baseUrl,
+            @Value("${gms.api-key:}") String apiKey,
+            @Value("${gms.model}") String model,
+            @Value("${gms.temperature}") double temperature,
             @Value("${chatbot.max-message-length:500}") int maxMessageLength) {
-        this.chatClient = chatClientBuilder
-                .defaultSystem(buildSystemPrompt(faqKnowledge.content()))
+        this.restClient = restClientBuilder
+                .baseUrl(baseUrl)
+                .defaultHeader("Authorization", "Bearer " + apiKey)
                 .build();
+        this.objectMapper = objectMapper;
+        this.systemPrompt = buildSystemPrompt(faqKnowledge.content());
+        this.model = model;
+        this.temperature = temperature;
         this.maxMessageLength = maxMessageLength;
     }
 
@@ -67,11 +85,24 @@ public class ChatbotService {
 
         long startedAt = System.currentTimeMillis();
         try {
-            StructuredReply structured = chatClient.prompt()
-                    .user(userMessage)
-                    .call()
-                    .entity(StructuredReply.class);
+            ChatCompletionRequest request = new ChatCompletionRequest(
+                    model, temperature,
+                    List.of(new ChatMessage("system", systemPrompt), new ChatMessage("user", userMessage)));
 
+            ChatCompletionResponse response = restClient.post()
+                    .uri("/chat/completions")
+                    .body(request)
+                    .retrieve()
+                    .body(ChatCompletionResponse.class);
+
+            logUsage(requestId, response == null ? null : response.usage());
+
+            String content = extractContent(response);
+            if (content == null || content.isBlank()) {
+                return staticFallback(requestId, "CHATBOT_RESPONSE_FAILED", startedAt);
+            }
+
+            StructuredReply structured = objectMapper.readValue(content, StructuredReply.class);
             if (structured == null || structured.answer() == null || structured.answer().isBlank()) {
                 return staticFallback(requestId, "CHATBOT_RESPONSE_FAILED", startedAt);
             }
@@ -85,6 +116,14 @@ public class ChatbotService {
             log.warn("챗봇 모델 호출 실패({}): {}", e.getClass().getSimpleName(), e.getMessage());
             return staticFallback(requestId, errorCode, startedAt);
         }
+    }
+
+    private static String extractContent(ChatCompletionResponse response) {
+        if (response == null || response.choices() == null || response.choices().isEmpty()) {
+            return null;
+        }
+        ChatMessage message = response.choices().get(0).message();
+        return message == null ? null : message.content();
     }
 
     private ChatMessageResponse staticFallback(String requestId, String errorCode, long startedAt) {
@@ -107,6 +146,21 @@ public class ChatbotService {
         long latencyMs = System.currentTimeMillis() - startedAt;
         log.info("chatbot_request requestId={} intent={} latencyMs={} providerStatus={} fallback={} errorCode={} createdAt={}",
                 requestId, intent, latencyMs, providerStatus, fallback, errorCode, Instant.now());
+    }
+
+    /**
+     * 매 요청마다 시스템 프롬프트(FAQ 포함, ~4,100자)를 통째로 다시 보내는 게 실제로 얼마나
+     * 비싼지·게이트웨이가 캐싱을 적용하는지 실측하기 위한 로그(2026-08-03, 사용자 지적으로
+     * 추가). 질문·답변 원문은 포함하지 않는다.
+     */
+    private static void logUsage(String requestId, ChatCompletionResponse.Usage usage) {
+        if (usage == null) {
+            log.info("chatbot_usage requestId={} usage=unavailable", requestId);
+            return;
+        }
+        Integer cached = usage.promptTokensDetails() == null ? null : usage.promptTokensDetails().cachedTokens();
+        log.info("chatbot_usage requestId={} promptTokens={} completionTokens={} totalTokens={} cachedTokens={}",
+                requestId, usage.promptTokens(), usage.completionTokens(), usage.totalTokens(), cached);
     }
 
     private static String buildSystemPrompt(String knowledge) {
@@ -133,16 +187,17 @@ public class ChatbotService {
                    계속 지키세요.
                 7. 한국어로, 간결하고 친절하게 답하세요.
 
-                답변 본문(answer)과 함께 intent·cta도 반드시 함께 판단해서 반환하세요:
-                - intent: 사용자 질문 의도를 아래 7개 중 정확히 하나로 분류하세요(다른 값 금지).
+                반드시 아래 필드만 있는 JSON 객체 하나로만 답하세요. 코드블록이나 다른 텍스트를
+                덧붙이지 마세요: {"answer": string, "intent": string, "cta": string}
+                - answer: 위 규칙을 지킨 사용자용 답변 본문(한국어).
+                - intent: 사용자 질문 의도를 아래 7개 중 정확히 하나로 분류(다른 값 금지).
                   RENTAL_GUIDE(대여 방법 안내), RETURN_GUIDE(반납 방법 안내),
                   EXTENSION_GUIDE(연장 안내), LOSS_OR_DAMAGE_GUIDE(분실·파손 안내),
                   UNSETTLED_GUIDE(미정산·연체료·요금 안내), STATION_GUIDE(대여소 위치·재고 안내),
-                  GENERAL_INQUIRY(그 외 일반 문의). 애매하면 GENERAL_INQUIRY를 쓰세요.
+                  GENERAL_INQUIRY(그 외 일반 문의). 애매하면 GENERAL_INQUIRY.
                 - cta: 사용자가 다음에 보면 좋을 화면을 아래 5개 중 정확히 하나로 고르세요.
                   OPEN_MAP(대여소 지도), OPEN_MY_PAGE(내 정보·미정산 현황),
-                  OPEN_HISTORY(대여 이력), OPEN_INQUIRY(문의하기), NONE(해당 없음).
-                  애매하면 NONE을 쓰세요.
+                  OPEN_HISTORY(대여 이력), OPEN_INQUIRY(문의하기), NONE(해당 없음). 애매하면 NONE.
 
                 [지식 문서]
                 %s

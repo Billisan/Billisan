@@ -17,22 +17,14 @@ repositories {
 	mavenCentral()
 }
 
-ext {
-	springAiVersion = '2.0.0'
-}
-
-dependencyManagement {
-	imports {
-		mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
-	}
-}
-
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
-	// 챗봇(CHATBOT-001) — GMS 게이트웨이(OpenAI 호환, gpt-5.4-nano)로 호출한다. 개인
-	// Anthropic 구독 키는 팀 프로젝트에 쓰지 않기로 확정했으므로 anthropic 스타터는 추가하지
-	// 않는다(chatbot-service/README.md "모델 임시 전환" 절 참고, 원래 프로토타입 기록).
-	implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+	// 챗봇(CHATBOT-001) — GMS 게이트웨이(OpenAI 호환, gpt-5.4-nano) /chat/completions를
+	// RestClient로 직접 호출한다. 2026-08-03: 원래 spring-ai-starter-model-openai를 썼는데,
+	// 실제로 쓰는 기능(단발 호출 + JSON 응답 파싱)에 비해 공식 OpenAI SDK(42MB)와 스트리밍용
+	// WebClient/Reactor Netty 스택까지 끌고 와 부트jar가 90MB+ 불어나는 걸 확인하고 제거했다
+	// (RestClient.Builder는 아래 spring-boot-starter-restclient가 자동설정해준다).
+	implementation 'org.springframework.boot:spring-boot-starter-restclient'
 	implementation 'org.springframework.boot:spring-boot-starter-integration'
 	implementation 'org.springframework.integration:spring-integration-mqtt'
 	implementation 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5'

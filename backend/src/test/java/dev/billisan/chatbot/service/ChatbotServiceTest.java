@@ -1,15 +1,15 @@
 package dev.billisan.chatbot.service;
 
-import java.util.List;
-
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.messages.AssistantMessage;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.chat.model.Generation;
-import org.springframework.ai.chat.prompt.ChatOptions;
-import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.RestClient;
+
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import dev.billisan.chatbot.dto.ChatCta;
 import dev.billisan.chatbot.dto.ChatIntent;
@@ -21,46 +21,58 @@ import dev.billisan.global.exception.ChatbotMessageTooLongException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 /**
  * {@link ChatbotService}의 검증/성공/빈 응답/잘못된 intent/예외 경로를 직접 검증한다.
  *
- * <p>{@link ChatClient} 체인을 직접 목으로 만들지 않고, {@link ChatModel}만 목으로 만들어
- * 실제 {@link ChatClient}(구조화 출력 파싱 로직 포함) 위에서 검증한다.
+ * <p>2026-08-03: Spring AI 제거로 {@link ChatModel} 목킹 대신 {@link MockRestServiceServer}로
+ * 실제 {@link RestClient} 호출·JSON (역)직렬화 경로를 그대로 검증한다.
  */
 class ChatbotServiceTest {
 
     private static final String STATIC_FALLBACK =
             "죄송해요, 지금은 답변을 드리기 어려워요. 자주 묻는 질문(FAQ) 화면을 확인해 주세요.";
     private static final int MAX_MESSAGE_LENGTH = 500;
+    private static final String BASE_URL = "https://gms.example.test";
 
-    private ChatbotService newService(ChatModel chatModel) {
+    private final ObjectMapper objectMapper = JsonMapper.builder().build();
+
+    private MockRestServiceServer mockServer;
+    private ChatbotService service;
+
+    @BeforeEach
+    void setUp() {
         FaqKnowledge faqKnowledge = mock(FaqKnowledge.class);
         when(faqKnowledge.content()).thenReturn("과금 규칙 등 지식 문서 더미");
-        // ChatClient가 옵션 병합 시 getOptions()를 실제로 호출한다 — Mockito 기본값(null)을
-        // 두면 내부에서 NPE가 나므로 빈 옵션을 명시적으로 스텁한다.
-        when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
-        return new ChatbotService(ChatClient.builder(chatModel), faqKnowledge, MAX_MESSAGE_LENGTH);
+
+        RestClient.Builder builder = RestClient.builder();
+        mockServer = MockRestServiceServer.bindTo(builder).build();
+
+        service = new ChatbotService(builder, objectMapper, faqKnowledge,
+                BASE_URL, "test-key", "gpt-5.4-nano", 0.2, MAX_MESSAGE_LENGTH);
     }
 
-    private static ChatResponse responseWithText(String text) {
-        return new ChatResponse(List.of(new Generation(new AssistantMessage(text))));
+    private String chatCompletionJson(String content) {
+        return """
+                {"choices":[{"message":{"role":"assistant","content":%s}}],
+                 "usage":{"prompt_tokens":1200,"completion_tokens":80,"total_tokens":1280}}
+                """.formatted(objectMapper.writeValueAsString(content));
     }
 
     @Test
     void throwsWhenMessageBlank() {
-        ChatbotService service = newService(mock(ChatModel.class));
-
         assertThatThrownBy(() -> service.reply("req-blank", "   "))
                 .isInstanceOf(ChatbotMessageRequiredException.class);
     }
 
     @Test
     void throwsWhenMessageTooLong() {
-        ChatbotService service = newService(mock(ChatModel.class));
         String tooLong = "가".repeat(MAX_MESSAGE_LENGTH + 1);
 
         assertThatThrownBy(() -> service.reply("req-toolong", tooLong))
@@ -69,11 +81,12 @@ class ChatbotServiceTest {
 
     @Test
     void returnsModelContentOnSuccess() {
-        ChatModel chatModel = mock(ChatModel.class);
-        when(chatModel.call(any(Prompt.class))).thenReturn(responseWithText(
-                "{\"answer\":\"24시간은 무료예요.\",\"intent\":\"UNSETTLED_GUIDE\",\"cta\":\"OPEN_MY_PAGE\"}"));
+        String content = "{\"answer\":\"24시간은 무료예요.\",\"intent\":\"UNSETTLED_GUIDE\",\"cta\":\"OPEN_MY_PAGE\"}";
+        mockServer.expect(requestTo(BASE_URL + "/chat/completions"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess(chatCompletionJson(content), MediaType.APPLICATION_JSON));
 
-        ChatMessageResponse response = newService(chatModel).reply("req-1", "이용 요금이 얼마야?");
+        ChatMessageResponse response = service.reply("req-1", "이용 요금이 얼마야?");
 
         assertThat(response.answer()).isEqualTo("24시간은 무료예요.");
         assertThat(response.intent()).isEqualTo(ChatIntent.UNSETTLED_GUIDE);
@@ -81,15 +94,16 @@ class ChatbotServiceTest {
         assertThat(response.action().label()).isEqualTo("내 정보 보기");
         assertThat(response.source()).isEqualTo(ChatSource.EXTERNAL_LLM);
         assertThat(response.fallback()).isFalse();
+        mockServer.verify();
     }
 
     @Test
     void fallsBackToGeneralInquiryAndNoneWhenModelReturnsUnknownEnumValues() {
-        ChatModel chatModel = mock(ChatModel.class);
-        when(chatModel.call(any(Prompt.class))).thenReturn(responseWithText(
-                "{\"answer\":\"안내드릴게요.\",\"intent\":\"NOT_A_REAL_INTENT\",\"cta\":\"NOT_A_REAL_CTA\"}"));
+        String content = "{\"answer\":\"안내드릴게요.\",\"intent\":\"NOT_A_REAL_INTENT\",\"cta\":\"NOT_A_REAL_CTA\"}";
+        mockServer.expect(requestTo(BASE_URL + "/chat/completions"))
+                .andRespond(withSuccess(chatCompletionJson(content), MediaType.APPLICATION_JSON));
 
-        ChatMessageResponse response = newService(chatModel).reply("req-x", "질문");
+        ChatMessageResponse response = service.reply("req-x", "질문");
 
         assertThat(response.answer()).isEqualTo("안내드릴게요.");
         assertThat(response.intent()).isEqualTo(ChatIntent.GENERAL_INQUIRY);
@@ -99,11 +113,11 @@ class ChatbotServiceTest {
 
     @Test
     void returnsStaticFallbackWhenAnswerFieldEmpty() {
-        ChatModel chatModel = mock(ChatModel.class);
-        when(chatModel.call(any(Prompt.class))).thenReturn(responseWithText(
-                "{\"answer\":\"\",\"intent\":\"GENERAL_INQUIRY\",\"cta\":\"NONE\"}"));
+        String content = "{\"answer\":\"\",\"intent\":\"GENERAL_INQUIRY\",\"cta\":\"NONE\"}";
+        mockServer.expect(requestTo(BASE_URL + "/chat/completions"))
+                .andRespond(withSuccess(chatCompletionJson(content), MediaType.APPLICATION_JSON));
 
-        ChatMessageResponse response = newService(chatModel).reply("req-empty", "질문");
+        ChatMessageResponse response = service.reply("req-empty", "질문");
 
         assertThat(response.answer()).isEqualTo(STATIC_FALLBACK);
         assertThat(response.source()).isEqualTo(ChatSource.STATIC_FAQ_FALLBACK);
@@ -111,11 +125,22 @@ class ChatbotServiceTest {
     }
 
     @Test
-    void returnsStaticFallbackWhenModelCallThrows() {
-        ChatModel chatModel = mock(ChatModel.class);
-        when(chatModel.call(any(Prompt.class))).thenThrow(new RuntimeException("gateway timeout"));
+    void returnsStaticFallbackWhenNoChoicesReturned() {
+        mockServer.expect(requestTo(BASE_URL + "/chat/completions"))
+                .andRespond(withSuccess("{\"choices\":[]}", MediaType.APPLICATION_JSON));
 
-        ChatMessageResponse response = newService(chatModel).reply("req-3", "아무 질문");
+        ChatMessageResponse response = service.reply("req-nochoice", "질문");
+
+        assertThat(response.answer()).isEqualTo(STATIC_FALLBACK);
+        assertThat(response.fallback()).isTrue();
+    }
+
+    @Test
+    void returnsStaticFallbackWhenServerErrors() {
+        mockServer.expect(requestTo(BASE_URL + "/chat/completions"))
+                .andRespond(withServerError());
+
+        ChatMessageResponse response = service.reply("req-3", "아무 질문");
 
         assertThat(response.answer()).isEqualTo(STATIC_FALLBACK);
         assertThat(response.intent()).isEqualTo(ChatIntent.GENERAL_INQUIRY);
