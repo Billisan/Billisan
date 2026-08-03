@@ -3,7 +3,7 @@ import { PanelState } from '@/features/dashboard/components/PanelState';
 import { useStations } from '@/features/stations/hooks/useStations';
 import {
     getStationStatus,
-    isDeviceOnline,
+    isDeviceOffline,
     sortByStock,
     STATION_STATUS_META,
     type Station,
@@ -64,7 +64,12 @@ export function StationStockCard({ className }: { className?: string }) {
     const stations = data ?? [];
     const ranked = sortByStock(stations);
     const shortageCount = ranked.filter((s) => getStationStatus(s) === 'SHORTAGE').length;
-    const offlineCount = ranked.filter((s) => !isDeviceOnline(s)).length;
+    /*
+     * **끊긴 것이 확인된 대여소만 셉니다.** `!isDeviceOnline()` 이면 장치 상태를 모르는
+     * (`device_status` API 가 없어 `null` 인) 대여소까지 전부 오프라인으로 세어,
+     * 실 API 모드에서 「오프라인 8개소」 같은 거짓 경고가 뜹니다.
+     */
+    const offlineCount = ranked.filter(isDeviceOffline).length;
 
     return (
         <Panel className={cn('p-5', className)}>
