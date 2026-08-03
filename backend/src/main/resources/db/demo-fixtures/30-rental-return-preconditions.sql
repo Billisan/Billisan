@@ -88,11 +88,11 @@ INSERT INTO `_fixture_expected_rental` VALUES
 		NULL,
 		NULL,
 		NULL,
-		TIMESTAMP('2026-08-03 01:00:00.000000'),
-		TIMESTAMP('2026-08-03 01:01:00.000000'),
-		TIMESTAMP('2026-08-04 01:01:00.000000'),
+		TIMESTAMP('2026-08-01 01:00:00.000000'),
+		TIMESTAMP('2026-08-01 01:01:00.000000'),
+		TIMESTAMP('2026-08-02 01:01:00.000000'),
 		NULL,
-		TIMESTAMP('2026-08-03 01:00:00.000000'),
+		TIMESTAMP('2026-08-01 01:00:00.000000'),
 		TIMESTAMP('2026-08-03 01:01:00.000000')
 	),
 	(
@@ -148,6 +148,24 @@ INSERT INTO `_fixture_expected_rental` VALUES
 		TIMESTAMP('2026-08-03 03:30:00.000000'),
 		TIMESTAMP('2026-08-03 03:00:00.000000'),
 		TIMESTAMP('2026-08-03 03:40:00.000000')
+	),
+	(
+		'payment-partial-parent',
+		'44000000-0000-4000-8000-000000000007',
+		'202600002',
+		'33000000-0000-4000-8000-000000000004',
+		'fixture-rental-payment-partial',
+		'RETURNING',
+		'COMPLETED',
+		NULL,
+		NULL,
+		NULL,
+		TIMESTAMP('2026-08-01 04:00:00.000000'),
+		TIMESTAMP('2026-08-01 04:01:00.000000'),
+		TIMESTAMP('2026-08-02 04:01:00.000000'),
+		TIMESTAMP('2026-08-03 04:30:00.000000'),
+		TIMESTAMP('2026-08-01 04:00:00.000000'),
+		TIMESTAMP('2026-08-03 04:30:00.000000')
 	);
 
 CREATE TEMPORARY TABLE `_fixture_expected_return` (
@@ -237,6 +255,20 @@ INSERT INTO `_fixture_expected_return` VALUES
 		NULL,
 		TIMESTAMP('2026-08-03 03:25:00.000000'),
 		TIMESTAMP('2026-08-03 03:30:00.000000')
+	),
+	(
+		60,
+		'payment-partial-parent',
+		'55000000-0000-4000-8000-000000000006',
+		'44000000-0000-4000-8000-000000000007',
+		'33000000-0000-4000-8000-000000000004',
+		'fixture-return-payment-partial',
+		'COMPLETED',
+		TIMESTAMP('2026-08-03 04:29:00.000000'),
+		TIMESTAMP('2026-08-03 04:30:00.000000'),
+		NULL,
+		TIMESTAMP('2026-08-03 04:25:00.000000'),
+		TIMESTAMP('2026-08-03 04:30:00.000000')
 	);
 
 CREATE TEMPORARY TABLE `_fixture_expected_inspection` (
@@ -918,7 +950,7 @@ WHERE (
 	FROM `rental` AS `actual`
 	INNER JOIN `_fixture_expected_rental` AS `expected`
 		ON `expected`.`rental_id` = `actual`.`rental_id`
-) <> 6;
+) <> 7;
 
 INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
 SELECT CONCAT('rental-failure-shape:', `rental_id`), 1
