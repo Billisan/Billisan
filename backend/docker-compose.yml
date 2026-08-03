@@ -11,6 +11,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
       MQTT_BROKER_URL: tcp://mosquitto:1883
+      GMS_KEY: ${GMS_KEY}
     depends_on:
       db:
         condition: service_healthy
