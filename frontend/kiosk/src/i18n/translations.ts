@@ -12,6 +12,7 @@ export interface Translations {
     slotNumberLabel: string
     checking: string
     notAvailable: string
+    secondsRemaining: (seconds: number) => string
   }
   header: {
     schoolName: string
@@ -91,6 +92,7 @@ const ko: Translations = {
     slotNumberLabel: '우산함 번호',
     checking: '확인 중',
     notAvailable: '-',
+    secondsRemaining: (seconds: number) => `${seconds}초 남았습니다`,
   },
   header: {
     schoolName: '빌리대학교',
@@ -200,6 +202,7 @@ const en: Translations = {
     slotNumberLabel: 'Slot Number',
     checking: 'Checking...',
     notAvailable: '-',
+    secondsRemaining: (seconds: number) => `${seconds}s remaining`,
   },
   header: {
     schoolName: 'Billi University',
