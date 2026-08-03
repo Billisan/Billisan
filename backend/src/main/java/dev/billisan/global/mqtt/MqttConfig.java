@@ -1,5 +1,6 @@
 package dev.billisan.global.mqtt;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -20,6 +21,12 @@ public class MqttConfig {
 
 	@Value("${mqtt.client-id}")
 	private String clientId;
+
+	/** EDGE-* 요청/응답 페이로드를 JSON으로 주고받는 MQTT 핸들러들이 공용으로 쓴다. */
+	@Bean
+	public ObjectMapper objectMapper() {
+		return new ObjectMapper();
+	}
 
 	@Bean
 	public MqttPahoClientFactory mqttClientFactory() {
