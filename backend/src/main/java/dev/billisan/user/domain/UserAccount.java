@@ -31,6 +31,12 @@ public class UserAccount {
     @Column(name = "face_registered", nullable = false)
     private boolean faceRegistered;
 
+    @Column(name = "rental_eligible", nullable = false)
+    private boolean rentalEligible;
+
+    @Column(name = "rental_eligibility_evaluated_at")
+    private LocalDateTime rentalEligibilityEvaluatedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -47,7 +53,9 @@ public class UserAccount {
         this.passwordHash = passwordHash;
         this.name = name;
         this.faceRegistered = false;
+        this.rentalEligible = false;
         LocalDateTime now = LocalDateTime.now();
+        this.rentalEligibilityEvaluatedAt = now;
         this.createdAt = now;
         this.updatedAt = now;
     }
@@ -83,6 +91,19 @@ public class UserAccount {
 
     public boolean isFaceRegistered() {
         return faceRegistered;
+    }
+
+    public boolean isRentalEligible() {
+        return rentalEligible;
+    }
+
+    public void changeRentalEligibility(boolean eligible) {
+        this.rentalEligible = eligible;
+        this.rentalEligibilityEvaluatedAt = LocalDateTime.now();
+    }
+
+    public LocalDateTime getRentalEligibilityEvaluatedAt() {
+        return rentalEligibilityEvaluatedAt;
     }
 
     public LocalDateTime getCreatedAt() {

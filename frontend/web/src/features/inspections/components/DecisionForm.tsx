@@ -48,8 +48,17 @@ export function DecisionForm({
     const [confirmed, setConfirmed] = useState(false);
 
     const decided = detail.reviewStatus === 'DECIDED';
-    // 화면흐름 §10.2: 판정·사유·현장 실물 확인이 다 있어야 저장할 수 있습니다.
-    const canSubmit = !decided && !pending && decision !== null && note.trim() !== '' && confirmed;
+    /*
+     * 화면흐름 §10.2: 판정·사유·현장 실물 확인이 다 있어야 저장할 수 있습니다.
+     *
+     * **`note` 가 아니라 `reasonCode` 를 봅니다.** 예전에는 반대였습니다 — 선택 필드인
+     * 메모를 채워야 버튼이 열리고, 정작 필수인 사유 코드는 비어도 통과했습니다.
+     * 화면은 「사유 코드 *」로 필수 표시를 하고 있어서 말과 동작이 어긋났고,
+     * 서버는 빈 `reasonCode` 에 `422 ADMIN_REASON_REQUIRED` 를 냅니다 (12-R B-5).
+     * 관리자가 시키는 대로 채웠는데 저장이 실패하는 자리였습니다.
+     */
+    const canSubmit =
+        !decided && !pending && decision !== null && reasonCode.trim() !== '' && confirmed;
 
     if (decided) {
         return (
@@ -83,6 +92,33 @@ export function DecisionForm({
                 <p className="mt-[6px] rounded-lg bg-brand-surface px-3 py-[11px] text-[12.5px] font-medium leading-[1.5] text-brand-ink">
                     {detail.decisionNote ?? '—'}
                 </p>
+
+                {/*
+                 * **누가 언제 판정했는지.** `ADMIN-INSPECTION-002` 가 `decidedBy`·`decidedAt`
+                 * 을 주는데 화면에 안 그리고 있었습니다. 판정은 슬롯·정산을 함께 바꾸는
+                 * 확정 행위라, 나중에 "이 파손 정산이 왜 생겼나"를 되짚을 때 사유·메모만으로는
+                 * 부족합니다. 관리자 UUID 는 축약해 보여주고 전체 값은 복사할 수 있게 둡니다
+                 * (36자를 그대로 깔면 줄이 넘칩니다).
+                 */}
+                <dl className="mt-[14px] flex gap-6">
+                    <div>
+                        <dt className="text-[11.5px] font-semibold text-brand-body">판정 시각</dt>
+                        <dd className="mt-[5px] text-[12.5px] font-bold tabular-nums text-brand-ink">
+                            {detail.decidedAt
+                                ? `${detail.decidedAt.slice(0, 10)} ${detail.decidedAt.slice(11, 19)}`
+                                : '—'}
+                        </dd>
+                    </div>
+                    <div className="min-w-0">
+                        <dt className="text-[11.5px] font-semibold text-brand-body">판정 관리자</dt>
+                        <dd
+                            className="mt-[5px] select-all truncate font-mono text-[11.5px] font-semibold text-brand-ink"
+                            title={detail.decidedBy ?? undefined}
+                        >
+                            {detail.decidedBy ? `${detail.decidedBy.slice(0, 8)}…` : '—'}
+                        </dd>
+                    </div>
+                </dl>
 
                 {/*
                  * 이미 판정된 검수는 다시 저장할 수 없습니다.

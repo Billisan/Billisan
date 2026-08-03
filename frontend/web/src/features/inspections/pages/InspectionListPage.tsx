@@ -2,6 +2,7 @@ import { RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
+import { env } from '@/config/env';
 import { cn } from '@/lib/utils';
 import { AI_RESULT_LABEL, REVIEW_STATUS_LABEL } from '@/shared/constants/statusLabels';
 
@@ -23,6 +24,7 @@ import { InspectLink } from '@/features/stations/components/InspectLink';
 import { DataTable, TBody, TableCard, Td, Th, THead, Tr } from '@/shared/components/DataTable';
 import { FilterSelect, type FilterOption } from '@/shared/components/FilterSelect';
 import { PageBar } from '@/shared/components/PageBar';
+import { shortId } from '@/shared/lib/shortId';
 import { mockSyncedAt, syncedAtLabel } from '@/shared/lib/syncedAt';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/components/PageState';
 import { RefId } from '@/shared/components/RefId';
@@ -68,11 +70,21 @@ const PERIOD_OPTIONS: readonly FilterOption<string>[] = [
     { value: '30', label: '최근 30일' },
 ];
 
-/** 기간 선택 → `from` 날짜. 목업 기준 시각에서 거꾸로 셉니다. */
+/**
+ * 기간 선택 → `from` 날짜.
+ *
+ * 기준일이 모드에 따라 다릅니다 — 목업은 데이터가 목업 기준 시각(07-24)에 고정돼 있어
+ * 거기서 거꾸로 세야 하고, 실 API 는 오늘부터 셉니다. 서버가 시각을 UTC 로 기록하는 것이
+ * 실측돼서(팀 확인 중) 실모드 기준일도 UTC 로 만듭니다 — 문자열 비교 대상이 같은 축이어야
+ * 경계일이 안 밀립니다.
+ */
 function fromDateOf(period: string): string {
     if (period === 'ALL') return '';
 
-    const [y, m, d] = INSPECTIONS_SYNCED_AT.slice(0, 10).split('-').map(Number);
+    const base = env.useMockData
+        ? INSPECTIONS_SYNCED_AT.slice(0, 10)
+        : new Date().toISOString().slice(0, 10);
+    const [y, m, d] = base.split('-').map(Number);
     const at = new Date(Date.UTC(y, m - 1, d - Number(period)));
     const pad = (value: number) => String(value).padStart(2, '0');
     return `${at.getUTCFullYear()}-${pad(at.getUTCMonth() + 1)}-${pad(at.getUTCDate())}`;
@@ -260,11 +272,14 @@ export function InspectionListPage() {
                                             </span>
                                         </Td>
                                         <Td>
+                                            {/* 표시 보강(이름 명부)이 실패하면 축약 ID 로 버팁니다. */}
                                             <span className="block font-medium text-brand-ink-soft">
-                                                {item.stationName}
+                                                {item.stationName ?? shortId(item.stationId)}
                                             </span>
                                             <span className="mt-[3px] block text-[10.8px] font-medium text-brand-muted">
-                                                {item.slotNumber}번 슬롯
+                                                {item.slotNumber != null
+                                                    ? `${item.slotNumber}번 슬롯`
+                                                    : `슬롯 ${shortId(item.slotId)}`}
                                             </span>
                                         </Td>
                                         {/*

@@ -18,13 +18,17 @@ import type { LoginRequest, LoginResponse } from '@/features/auth/types';
  */
 
 describe('요청 규격', () => {
-    it('baseURL 이 /api/v1/admin 이라 경로가 계약과 맞는다', () => {
+    it('baseURL 이 /api/v1/admin 으로 끝나 경로가 계약과 맞는다', () => {
         /*
          * 각 API 는 `/auth/login` 처럼 짧게 부르므로 baseURL 이 접두사를 맡습니다.
          * `/api` 로 잘못 두면 `/api/auth/login` 이 되어 404 입니다.
+         *
+         * **동등 비교가 아니라 접미 비교입니다.** 로컬 프록시는 `/api/v1/admin`,
+         * 실서버 직결·배포는 `http://…/api/v1/admin` 처럼 오리진이 붙습니다
+         * (`.env.local` 을 vitest 도 읽습니다). 불변식은 "admin 경계로 끝난다"입니다.
          */
-        expect(env.apiBaseUrl).toBe('/api/v1/admin');
-        expect(`${env.apiBaseUrl}/auth/login`).toBe('/api/v1/admin/auth/login');
+        expect(env.apiBaseUrl.endsWith('/api/v1/admin')).toBe(true);
+        expect(`${env.apiBaseUrl}/auth/login`.endsWith('/api/v1/admin/auth/login')).toBe(true);
     });
 
     it('Accept · Content-Type 을 계약대로 보낸다', () => {

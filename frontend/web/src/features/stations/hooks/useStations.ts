@@ -90,11 +90,21 @@ export function useChangeSlotStatus() {
          */
         onError: (error) => {
             const code = errorCodeOf(error);
+            /*
+             * **충돌 코드는 `SLOT_STATUS_CONFLICT` 입니다.**
+             *
+             * 검수 판정은 `CONCURRENT_MODIFICATION`, 슬롯 상태 변경은
+             * `SLOT_STATUS_CONFLICT` 로 서버가 갈라 씁니다(백엔드 GlobalExceptionHandler).
+             * 여기서 `CONCURRENT_MODIFICATION` 만 보고 있어서, 실제 충돌이 나면 안내 대신
+             * 원시 코드가 그대로 떴습니다 — 관리자가 뭘 해야 하는지 모릅니다.
+             * 둘 다 받아 두면 서버가 어느 쪽을 주든 같은 안내가 나갑니다.
+             */
+            const conflict = code === 'SLOT_STATUS_CONFLICT' || code === 'CONCURRENT_MODIFICATION';
             toast.error(
-                code === 'CONCURRENT_MODIFICATION'
+                conflict
                     ? '다른 관리자가 먼저 상태를 변경했습니다'
                     : '슬롯 상태를 변경하지 못했습니다',
-                code === 'CONCURRENT_MODIFICATION'
+                conflict
                     ? '최신 상태를 다시 확인한 뒤 진행하세요.'
                     : `${error.message}${code ? ` (${code})` : ''}`,
             );

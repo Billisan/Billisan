@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
+import { RETURN_STATUS_LABEL, RETURN_STATUS_TONE } from '@/features/history/types';
 import { formatScore } from '@/features/inspections/mocks/aiVerdict';
 import { DeviceBadge } from '@/features/stations/components/DeviceBadge';
 import { SlotLockIcon } from '@/features/stations/components/SlotLockIcon';
@@ -16,14 +17,15 @@ import {
     type SlotHistoryEntry,
 } from '@/features/stations/mocks/slotDetail';
 import {
-    AI_RESULT_TONE,
     aiResultText,
+    aiResultTone,
     DECISION_TONE,
     decisionHint,
     decisionText,
     deriveSlotDisplayStatus,
     formatSlotLabel,
     formatUpdatedAt,
+    ITEM_CONDITION_TONE,
     pendingInspectionId,
     SLOT_DISPLAY_TONE,
     slotStatusHint,
@@ -35,7 +37,12 @@ import { DataTable, TBody, Td, TableCard, Th, THead, Tr } from '@/shared/compone
 import { PageBar } from '@/shared/components/PageBar';
 import { ErrorState, LoadingState, NotFoundState } from '@/shared/components/PageState';
 import { PageTitle } from '@/shared/components/PageTitle';
-import { LOCK_STATUS_LABEL } from '@/shared/constants/statusLabels';
+import {
+    ITEM_CONDITION_LABEL,
+    LOCK_STATUS_LABEL,
+    OCCUPANCY_STATUS_LABEL,
+    SLOT_SERVICE_LABEL,
+} from '@/shared/constants/statusLabels';
 
 export function SlotDetailPage() {
     const { slotId } = useParams();
@@ -181,10 +188,47 @@ export function SlotDetailPage() {
             {/* 2단 카드 */}
             <div className="mb-[46px] grid grid-cols-2 gap-[18px]">
                 {/*
-                 * 우산 상태 줄은 없습니다. 바로 위 요약 줄의 배지와 같은 값(`display`)이라
-                 * 한 화면에 두 번 그릴 이유가 없습니다.
+                 * **점유·우산 상태를 따로 적습니다.**
+                 *
+                 * 예전에는 "요약 줄 배지와 같은 값이라 두 번 그릴 이유가 없다"고 뺐는데,
+                 * 그 전제가 틀렸습니다. `deriveSlotDisplayStatus` 는 4축을 배지 하나로
+                 * 뭉개면서 `serviceStatus` 를 가장 먼저 봅니다 — `ADMIN_REVIEW` 가 걸리면
+                 * `itemCondition` 이 무엇이든 「관리자 확인」 하나로 나옵니다.
+                 *
+                 * 그래서 성격이 아주 다른 두 슬롯이 화면에서 똑같아 보였습니다.
+                 *   - 반납 뒤 AI 가 파손 의심해 격리한 슬롯 (`UNKNOWN`, 검수 있음)
+                 *   - 관리자가 순찰 중 수리 대상으로 지정한 슬롯 (`REPAIRABLE`, 검수 없음)
+                 * 관리자가 할 일이 「판정하기」와 「수리 보내기」로 갈리는데 화면이 그 차이를
+                 * 말해 주지 않았습니다. 라벨은 ERD 표시 기준 그대로입니다.
                  */}
                 <InfoCard title="슬롯 상태">
+                    <InfoRow label="점유">
+                        <span className="text-[13px] font-semibold text-brand-ink">
+                            {OCCUPANCY_STATUS_LABEL[slot.occupancyStatus]}
+                        </span>
+                    </InfoRow>
+                    <InfoRow label="우산 상태">
+                        {/*
+                         * 이 줄만 배지입니다. 3번(확인 필요)과 5번(수리 가능)처럼 **할 일이
+                         * 갈리는 축**이라 훑을 때 색으로 먼저 걸려야 합니다. 점유·잠금은
+                         * 사실 진술이라 글자로 충분합니다.
+                         *
+                         * 빈 슬롯이면 `itemCondition` 이 null 입니다 — 없는 값을 지어내지
+                         * 않고, 배지도 안 답니다(색은 상태가 있다는 뜻입니다).
+                         */}
+                        {slot.itemCondition ? (
+                            <Badge tone={ITEM_CONDITION_TONE[slot.itemCondition]}>
+                                {ITEM_CONDITION_LABEL[slot.itemCondition]}
+                            </Badge>
+                        ) : (
+                            <span className="text-[13px] font-semibold text-brand-muted">—</span>
+                        )}
+                    </InfoRow>
+                    <InfoRow label="서비스">
+                        <span className="text-[13px] font-semibold text-brand-ink">
+                            {SLOT_SERVICE_LABEL[slot.serviceStatus]}
+                        </span>
+                    </InfoRow>
                     <InfoRow label="잠금 여부">
                         {/*
                          * 표와 달리 상세는 자리가 넉넉합니다. 아이콘만 두면 `잠금 확인 불가`와
@@ -213,7 +257,7 @@ export function SlotDetailPage() {
                             {/* AI·관리자·슬롯은 값 집합이 셋 다 다릅니다. 라벨로도 구분해 둡니다. */}
                             <InfoRow label="AI 판정 (참고) / 신뢰도">
                                 <span className="flex items-center gap-[7px]">
-                                    <Badge tone={AI_RESULT_TONE[inspection.aiResult]}>
+                                    <Badge tone={aiResultTone(inspection.aiResult)}>
                                         {aiResultText(inspection.aiResult)}
                                     </Badge>
                                     <span className="text-brand-muted">/</span>
@@ -249,9 +293,6 @@ export function SlotDetailPage() {
                              * 값입니다. 반납 상세(P1)는 목업 식별자 체계가 달라 아직 링크하지 않고
                              * 마우스오버·복사로 전체 값을 꺼낼 수 있게 둡니다.
                              */}
-                            <InfoRow label="연결 반납 시도">
-                                <RefId id={slot.latestReturnAttempt?.returnAttemptId} />
-                            </InfoRow>
                             <InfoRow label="판정 사유">
                                 <Link
                                     to={`/inspections/${inspection.inspectionId}`}
@@ -265,6 +306,28 @@ export function SlotDetailPage() {
                         <p className="pt-1 text-[13px] font-medium text-brand-muted">
                             이 슬롯에는 아직 검수 결과가 없습니다.
                         </p>
+                    )}
+
+                    {/*
+                     * **반납 시도는 검수 바깥에 둡니다.**
+                     *
+                     * 예전에는 `inspection` 이 있을 때만 그렸는데, 둘은 생기는 시점이
+                     * 다릅니다 — 반납이 `PROCESSING` 인 동안에는 검수가 아직 없어서 이
+                     * 슬롯이 왜 묶여 있는지 화면이 아무 말도 못 했습니다.
+                     *
+                     * `status` 는 응답에 있는데 안 쓰고 있던 값입니다. 이게 있어야 「물리
+                     * 반납은 끝났고 서버 반영이 남았다」와 「복구가 필요하다」가 갈립니다.
+                     * 라벨·톤은 이력 화면과 같은 표를 씁니다 (ERD 「반납 상태도 보조 표시 기준」).
+                     */}
+                    {slot.latestReturnAttempt && (
+                        <InfoRow label="연결 반납 시도">
+                            <span className="flex items-center gap-[7px]">
+                                <Badge tone={RETURN_STATUS_TONE[slot.latestReturnAttempt.status]}>
+                                    {RETURN_STATUS_LABEL[slot.latestReturnAttempt.status]}
+                                </Badge>
+                                <RefId id={slot.latestReturnAttempt.returnAttemptId} />
+                            </span>
+                        </InfoRow>
                     )}
                 </InfoCard>
             </div>

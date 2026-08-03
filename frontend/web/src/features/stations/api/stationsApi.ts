@@ -1,6 +1,8 @@
 import { env } from '@/config/env';
 import { http } from '@/lib/axios';
+import { errorStatusOf } from '@/lib/api-error';
 import { MODEL_VERSION, aiResultOf, aiScoreOf } from '@/features/inspections/mocks/aiVerdict';
+import { REAL_STATIONS, type StationSeedEntry } from '@/features/stations/api/stationSeed';
 import type { SlotStatusChange } from '@/features/stations/components/SlotStatusDialog';
 import { MOCK_NS, mockUuid } from '@/features/stations/mocks/ids';
 import { buildSlots, inspectionStateOf, slotSeq } from '@/features/stations/mocks/slots';
@@ -91,19 +93,58 @@ function toDetail(station: Station, slot: SlotSummary): SlotDetail {
     };
 }
 
+/**
+ * 시드 명부 + `ADMIN-INVENTORY-001` 로 Station 을 짜 맞춥니다.
+ *
+ * 목록 API 가 없는 실 모드에서 재고 집계가 유일한 대여소 단위 실데이터입니다.
+ * `serviceStatus`·`deviceStatus` 는 어떤 관리자 API 도 주지 않아서(스웨거 실측),
+ * **재고 응답이 온 대여소를 운영·연결 중으로 간주합니다.** 재고를 못 받으면 이 함수까지
+ * 오지 못하고 목록 조회 자체가 실패해 오류 화면이 뜹니다 — 죽은 대여소를 ONLINE 으로
+ * 그리는 일은 없습니다. TODO: 대여소 목록 API 가 오면 응답값으로 바꾸세요.
+ */
+function composeStation(seed: StationSeedEntry, inventory: InventorySummary): Station {
+    return {
+        stationId: seed.stationId,
+        name: seed.name,
+        position: seed.position,
+        serviceStatus: 'AVAILABLE',
+        deviceStatus: 'ONLINE',
+        slotCount: inventory.totalSlotCount,
+        capacity: inventory.totalSlotCount,
+        available: inventory.availableUmbrellaCount,
+        damaged: inventory.damagedUmbrellaCount,
+        adminReview: inventory.adminReviewSlotCount,
+    };
+}
+
 export const stationsApi = {
     /**
      * 대여소 목록.
      *
-     * **P0 계약에 없는 API 입니다.** 관리자 10개에 대여소 목록이 없어서 목업만 돌려줍니다.
-     * 대시보드·대여소 관리 화면은 P1 이라 계약이 비구체화 상태입니다.
+     * **P0 계약에 없는 API 입니다.** 관리자 10개에 대여소 목록이 없어서, 실 모드는
+     * 시드 명부(stationSeed.ts)의 대여소마다 재고 집계를 받아 조립합니다.
      * TODO: 대여소 목록 API 가 계약에 들어오면 여기서 http 를 호출하세요.
      */
-    list: async (): Promise<Station[]> => delay(listStations()),
+    list: async (): Promise<Station[]> => {
+        if (!env.useMockData) {
+            return Promise.all(
+                REAL_STATIONS.map(async (seed) =>
+                    composeStation(seed, await stationsApi.inventory(seed.stationId)),
+                ),
+            );
+        }
+        return delay(listStations());
+    },
 
-    /** 대여소 하나. 위와 같은 이유로 목업입니다. */
-    detail: async (stationId: string): Promise<Station | null> =>
-        delay(findStation(stationId) ?? null),
+    /** 대여소 하나. 목록과 같은 방식입니다. */
+    detail: async (stationId: string): Promise<Station | null> => {
+        if (!env.useMockData) {
+            const seed = REAL_STATIONS.find((entry) => entry.stationId === stationId);
+            if (!seed) return null;
+            return composeStation(seed, await stationsApi.inventory(stationId));
+        }
+        return delay(findStation(stationId) ?? null);
+    },
 
     /** ADMIN-INVENTORY-001 — `GET /stations/{stationId}/inventory` */
     inventory: async (stationId: string): Promise<InventorySummary> => {
@@ -177,8 +218,18 @@ export const stationsApi = {
     /** ADMIN-SLOT-DETAIL-001 — `GET /slots/{slotId}` */
     slotDetail: async (slotId: string): Promise<SlotDetail | null> => {
         if (!env.useMockData) {
-            const { data } = await http.get<SlotDetail>(`/slots/${slotId}`);
-            return data;
+            try {
+                const { data } = await http.get<SlotDetail>(`/slots/${slotId}`);
+                return data;
+            } catch (error) {
+                /*
+                 * 404(`SLOT_NOT_FOUND`, EC2 실측)는 "정말 없음"입니다. 예외로 두면 화면이
+                 * 「조회 실패 · 다시 시도」를 띄우는데, 없는 슬롯은 다시 시도해도 없습니다.
+                 * null 로 돌려 NotFoundState(목록으로 돌아가기)로 가릅니다.
+                 */
+                if (errorStatusOf(error) === 404) return null;
+                throw error;
+            }
         }
 
         for (const station of listStations()) {

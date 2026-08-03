@@ -9,6 +9,21 @@ import {
     ScoreBar,
 } from '@/features/inspections/components/InspectionParts';
 import { useDecideInspection, useInspection } from '@/features/inspections/hooks/useInspections';
+import type { InspectionDetail } from '@/features/inspections/types';
+import {
+    deriveSlotDisplayStatus,
+    ITEM_CONDITION_TONE,
+    SLOT_DISPLAY_TONE,
+    slotStatusHint,
+    slotStatusText,
+} from '@/features/stations/types';
+import { Badge } from '@/shared/components/Badge';
+import {
+    ITEM_CONDITION_LABEL,
+    LOCK_STATUS_LABEL,
+    OCCUPANCY_STATUS_LABEL,
+    SLOT_SERVICE_LABEL,
+} from '@/shared/constants/statusLabels';
 import { PageBar } from '@/shared/components/PageBar';
 import { ErrorState, LoadingState, NotFoundState } from '@/shared/components/PageState';
 import { PageTitle } from '@/shared/components/PageTitle';
@@ -70,7 +85,12 @@ export function InspectionDetailPage() {
     }
 
     // 화면에는 사람이 읽는 값을, 라우트·API 에는 UUID 를 씁니다.
-    const slotLabel = `${detail.slotNumber}번 슬롯`;
+    // 표시 보강(이름 명부)이 실패하면 축약 ID 로 버팁니다 (types 주석 참고).
+    const slotLabel =
+        detail.slotNumber != null
+            ? `${detail.slotNumber}번 슬롯`
+            : `슬롯 ${shortId(detail.slotId)}`;
+    const stationLabel = detail.stationName ?? shortId(detail.stationId);
 
     return (
         <div>
@@ -91,7 +111,7 @@ export function InspectionDetailPage() {
                     {slotLabel}
                 </PageTitle>
                 <p className="ml-[8px] truncate text-[12px] font-medium text-brand-muted">
-                    · {detail.stationName}
+                    · {stationLabel}
                 </p>
                 <Link
                     to={`/slots/${detail.slotId}`}
@@ -151,11 +171,13 @@ export function InspectionDetailPage() {
                             </MetaRow>
                             <MetaRow label="반납 ID">{shortId(detail.returnAttemptId)}</MetaRow>
                             <MetaRow label="대여 ID">{shortId(detail.rentalId)}</MetaRow>
-                            <MetaRow label="대여소">{detail.stationName}</MetaRow>
+                            <MetaRow label="대여소">{stationLabel}</MetaRow>
                             <MetaRow label="슬롯">{slotLabel}</MetaRow>
                             <MetaRow label="최근 갱신">{detail.updatedAt.slice(11, 19)}</MetaRow>
                         </dl>
                     </section>
+
+                    <SlotStateCard detail={detail} />
 
                     <DecisionForm
                         detail={detail}
@@ -174,6 +196,61 @@ export function InspectionDetailPage() {
                 만들고, 관리자가 정산완료로 직접 바꾸거나 금액을 손대지 않습니다.
             </p>
         </div>
+    );
+}
+
+/**
+ * 판정 시점의 슬롯 4축.
+ *
+ * `ADMIN-INSPECTION-002` 가 `slotOccupancyStatus` 등 네 축을 함께 주는데 화면에 안 그리고
+ * 있었습니다. **이미지가 없는 판정 화면에서 이건 관리자가 가진 몇 안 되는 근거입니다** —
+ * AI 결과와 신뢰도 말고는, 그 슬롯이 지금 어떤 상태로 잠겨 있는지가 판단 재료입니다.
+ * 없으면 슬롯 상세로 넘어갔다 돌아와야 하고, 그 사이 판정 폼에 입력한 값이 날아갑니다.
+ *
+ * 배지는 `deriveSlotDisplayStatus` 로 뽑아 재고·슬롯 화면과 **같은 함수·같은 말**을 씁니다.
+ * 네 축을 따로도 적는 이유는 파생 배지 하나로는 뭉개지는 정보가 있어서입니다 —
+ * 「관리자 확인」 배지만으로는 우산이 들었는지, 잠겨 있는지 알 수 없습니다.
+ */
+function SlotStateCard({ detail }: { detail: InspectionDetail }) {
+    const axes = {
+        occupancyStatus: detail.slotOccupancyStatus,
+        itemCondition: detail.slotItemCondition,
+        serviceStatus: detail.slotServiceStatus,
+        lockStatus: detail.slotLockStatus,
+    };
+    const display = deriveSlotDisplayStatus(axes);
+
+    return (
+        <section className="rounded-lg bg-white px-5 pb-[18px] pt-[18px]">
+            <div className="flex items-center justify-between gap-4">
+                <h3 className="text-[14.5px] font-extrabold leading-none text-brand-ink">
+                    현재 슬롯 상태
+                </h3>
+                <Badge tone={SLOT_DISPLAY_TONE[display]} title={slotStatusHint(display)}>
+                    {slotStatusText(display)}
+                </Badge>
+            </div>
+
+            <dl className="mt-[10px]">
+                <MetaRow label="점유">{OCCUPANCY_STATUS_LABEL[detail.slotOccupancyStatus]}</MetaRow>
+                <MetaRow label="우산 상태">
+                    {/* 슬롯 상세와 같은 배지·같은 톤을 씁니다 — 두 화면이 같은 말을 해야 합니다. */}
+                    {detail.slotItemCondition ? (
+                        <Badge tone={ITEM_CONDITION_TONE[detail.slotItemCondition]}>
+                            {ITEM_CONDITION_LABEL[detail.slotItemCondition]}
+                        </Badge>
+                    ) : (
+                        '—'
+                    )}
+                </MetaRow>
+                <MetaRow label="서비스">{SLOT_SERVICE_LABEL[detail.slotServiceStatus]}</MetaRow>
+                <MetaRow label="잠금">{LOCK_STATUS_LABEL[detail.slotLockStatus]}</MetaRow>
+            </dl>
+
+            <p className="mt-[8px] text-[11px] font-medium leading-[1.6] text-brand-muted">
+                판정을 저장하면 이 상태가 함께 바뀝니다.
+            </p>
+        </section>
     );
 }
 
