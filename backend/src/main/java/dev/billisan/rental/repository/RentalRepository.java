@@ -1,8 +1,11 @@
 package dev.billisan.rental.repository;
 
 import dev.billisan.rental.domain.Rental;
-import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface RentalRepository extends JpaRepository<Rental, UUID> {
+
+    Optional<Rental> findByRentalRequestId(String rentalRequestId);
 }

@@ -13,11 +13,11 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * ⚠️ 관리자 페이지 API가 참조하는 데 필요한 최소 컬럼만 매핑한다. 대여 도메인 전체(원자
- * 슬롯 선정·상태 머신·멱등성)는 이 패키지 범위 밖이며, 실제 스키마(V1/V6 등)엔
- * {@code rental_request_id}·{@code failure_code}·{@code active_user_guard} 등 여기 없는
- * 컬럼이 더 있다 — 이 엔티티는 그 컬럼들에 INSERT하지 않으므로(읽기 전용 참조) 매핑 누락이
- * 문제가 되지 않는다.
+ * EDGE-RENT-001부터 대여 생성(REQUESTED) 쓰기를 지원한다. {@code failure_code}는 아직
+ * 매핑하지 않았다 — 실패 상태로의 전이는 이 오퍼레이션 범위 밖이라 이 엔티티가 그 컬럼에
+ * 쓰지 않으므로 매핑 누락이 문제가 되지 않는다. {@code active_user_guard}·
+ * {@code requested_slot_guard}는 DB 생성 컬럼이라 애초에 매핑 대상이 아니다(V2
+ * 마이그레이션의 UNIQUE 제약으로 중복 방지).
  */
 @Entity
 @Table(name = "rental")
@@ -34,6 +34,9 @@ public class Rental {
     @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "checkout_slot_id", columnDefinition = "CHAR(36)", updatable = false, nullable = false)
     private UUID checkoutSlotId;
+
+    @Column(name = "rental_request_id", updatable = false, nullable = false, length = 100)
+    private String rentalRequestId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
@@ -60,6 +63,22 @@ public class Rental {
     protected Rental() {
     }
 
+    private Rental(UUID rentalId, String userId, UUID checkoutSlotId, String rentalRequestId, LocalDateTime requestedAt) {
+        this.rentalId = rentalId;
+        this.userId = userId;
+        this.checkoutSlotId = checkoutSlotId;
+        this.rentalRequestId = rentalRequestId;
+        this.status = Status.REQUESTED;
+        this.requestedAt = requestedAt;
+        this.createdAt = requestedAt;
+        this.updatedAt = requestedAt;
+    }
+
+    /** EDGE-RENT-001 — 원자 선정된 checkoutSlotId로 새 대여를 REQUESTED 상태로 생성한다. */
+    public static Rental request(String userId, UUID checkoutSlotId, String rentalRequestId) {
+        return new Rental(UUID.randomUUID(), userId, checkoutSlotId, rentalRequestId, LocalDateTime.now());
+    }
+
     public UUID getRentalId() {
         return rentalId;
     }
@@ -70,6 +89,10 @@ public class Rental {
 
     public UUID getCheckoutSlotId() {
         return checkoutSlotId;
+    }
+
+    public String getRentalRequestId() {
+        return rentalRequestId;
     }
 
     public Status getStatus() {
