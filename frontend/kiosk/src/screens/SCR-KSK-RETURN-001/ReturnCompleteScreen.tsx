@@ -29,6 +29,7 @@ export function ReturnCompleteScreen({
     [INSPECTION_RESULT.UNCERTAIN]: t.return.resultNeedsReview,
     [INSPECTION_RESULT.FAILED]: t.return.resultNeedsReview,
   }
+  const needsReview = inspectionResult !== INSPECTION_RESULT.NORMAL
   const [secondsLeft, setSecondsLeft] = useState(AUTO_CONFIRM_SECONDS)
 
   useEffect(() => {
@@ -49,7 +50,13 @@ export function ReturnCompleteScreen({
         <div className="flex flex-col items-center gap-6">
           <img src={checkCircleIcon} alt="" className="h-40 w-40" />
           <h2 className="text-3xl font-bold text-black">{t.return.completeTitle}</h2>
-          <p className="text-tertiary-text max-w-100 text-center text-lg">
+          <p
+            className={
+              needsReview
+                ? 'text-error-text max-w-160 text-center text-xl font-semibold whitespace-pre-line'
+                : 'text-tertiary-text max-w-100 text-center text-lg'
+            }
+          >
             {resultMessage[inspectionResult]}
           </p>
 

@@ -173,7 +173,8 @@ const ko: Translations = {
     completeTitle: '반납 완료!',
     returnedAtLabel: '반납 시각',
     resultNormal: '반납이 완료되었습니다.',
-    resultNeedsReview: '반납은 완료되었으며 우산 상태는 관리자가 확인합니다.',
+    resultNeedsReview:
+      '반납은 완료되었으며, 관리자 최종 검증 후 파손 여부가 확정됩니다\n자세한 내용은 앱에서 확인하세요!',
     autoReturnHome: '5초 후 자동으로 홈 화면으로 돌아갑니다',
     guideSteps: [
       '① 우산을 끝까지 펼쳐주세요.',
@@ -302,7 +303,7 @@ const en: Translations = {
     returnedAtLabel: 'Returned At',
     resultNormal: 'Your return is complete.',
     resultNeedsReview:
-      'Your return is complete. An admin will review the umbrella condition.',
+      'Your return is complete. Damage status will be confirmed after final review by an admin.\nCheck the app for details!',
     autoReturnHome: 'Returning to the home screen in 5 seconds',
     guideSteps: [
       '① Open the umbrella all the way.',
