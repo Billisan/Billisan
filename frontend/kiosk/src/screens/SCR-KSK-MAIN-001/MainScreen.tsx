@@ -1,12 +1,15 @@
 import { useEffect } from "react";
+import reloadAnimation from "../../assets/reload.json?url";
+import weatherAnimation from "../../assets/weather.json?url";
+import { useTranslation } from "../../i18n/useTranslation";
 import { ActionCard } from "../../components/common/ActionCard";
-import { InfoNoticeBar } from "../../components/common/InfoNoticeBar";
+import { DotLottieAnimation } from "../../components/common/DotLottieAnimation";
 import { RentalBlockModal } from "../../components/common/RentalBlockModal";
-import { AlertCircleIcon } from "../../components/icons/AlertCircleIcon";
-import { ClockIcon } from "../../components/icons/ClockIcon";
 import { ReturnIcon } from "../../components/icons/ReturnIcon";
+import { ReturnIllustrationIcon } from "../../components/icons/ReturnIllustrationIcon";
+import { TouchIcon } from "../../components/icons/TouchIcon";
 import { UmbrellaIcon } from "../../components/icons/UmbrellaIcon";
-import { UserIcon } from "../../components/icons/UserIcon";
+import { UmbrellaIllustrationIcon } from "../../components/icons/UmbrellaIllustrationIcon";
 import { KioskLayout } from "../../components/layout/KioskLayout";
 import {
   selectMainScreenVariant,
@@ -19,29 +22,8 @@ interface MainScreenProps {
   onReturn?: () => void;
 }
 
-const INFO_NOTICE_ITEMS = [
-  {
-    icon: UserIcon,
-    title: "학생 인증이 필요합니다",
-    subtitle: "간편한 얼굴 인증으로 바로 이용할 수 있습니다",
-  },
-  {
-    icon: ClockIcon,
-    title: "24시간 운영",
-    subtitle: "빌리산 앱을 통해 추가 문의가 가능합니다",
-  },
-  {
-    icon: AlertCircleIcon,
-    title: "우산을 소중히 사용해주세요",
-    subtitle: "분실 및 파손 시 비용이 발생할 수 있습니다",
-  },
-];
-
 export function MainScreen({ onRent, onReturn }: MainScreenProps) {
-  const usableSlotCount = useKioskMainStore((state) => state.usableSlotCount);
-  const returnableSlotCount = useKioskMainStore(
-    (state) => state.returnableSlotCount,
-  );
+  const t = useTranslation();
   const variant = useKioskMainStore(selectMainScreenVariant);
   const fetchStationSummary = useKioskMainStore(
     (state) => state.fetchStationSummary,
@@ -61,33 +43,22 @@ export function MainScreen({ onRent, onReturn }: MainScreenProps) {
 
   return (
     <KioskLayout fullBleed>
-      <div className="flex w-full flex-1 flex-col justify-center gap-30 p-14">
+      <div className="flex w-full flex-1 flex-col justify-center px-4">
         <div className="flex w-full flex-col gap-12">
-          <div className="border-disabled divide-disabled bg-white flex w-full divide-x rounded-2xl border">
-            <div className="flex flex-1 items-center justify-center gap-3 py-6">
-              <span className="text-tertiary-text text-xl font-medium">
-                현재 대여 가능한 우산
-              </span>
-              <span className="text-3xl font-bold text-black">
-                {usableSlotCount ?? 0}개
-              </span>
-            </div>
-            <div className="flex flex-1 items-center justify-center gap-3 py-6">
-              <span className="text-tertiary-text text-xl font-medium">
-                현재 반납 가능한 우산함
-              </span>
-              <span className="text-3xl font-bold text-black">
-                {returnableSlotCount ?? 0}개
-              </span>
-            </div>
-          </div>
-
-          <div className="flex w-full flex-row gap-8">
+          <div className="mx-auto flex w-9/10 flex-row gap-10">
             <ActionCard
               variant="primary"
               icon={UmbrellaIcon}
-              title="대여"
-              subtitle="학생 인증 후 우산을 대여합니다"
+              decorativeIcon={UmbrellaIllustrationIcon}
+              badgeIcon={
+                <DotLottieAnimation
+                  src={weatherAnimation}
+                  width={54}
+                  height={54}
+                />
+              }
+              title={t.main.rentTitle}
+              subtitle={t.main.rentSubtitle}
               disabled={isRentDisabled}
               onClick={onRent}
               className="flex-1"
@@ -95,15 +66,30 @@ export function MainScreen({ onRent, onReturn }: MainScreenProps) {
             <ActionCard
               variant="secondary"
               icon={ReturnIcon}
-              title="반납"
-              subtitle="대여한 우산을 반납합니다"
+              decorativeIcon={ReturnIllustrationIcon}
+              badgeIcon={
+                <DotLottieAnimation
+                  src={reloadAnimation}
+                  width={46}
+                  height={46}
+                />
+              }
+              title={t.main.returnTitle}
+              subtitle={t.main.returnSubtitle}
               onClick={onReturn}
               className="flex-1"
             />
           </div>
-        </div>
 
-        <InfoNoticeBar items={INFO_NOTICE_ITEMS} />
+          <div className="border-disabled mx-auto mb-10 flex w-1/3 items-center justify-center gap-3 rounded-full border-2 border-dashed py-5">
+            <div className="animate-gentle-pulse flex items-center gap-3">
+              <TouchIcon className="text-tertiary-text h-9 w-9" />
+              <span className="text-tertiary-text text-xl font-medium">
+                {t.main.touchHint}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {rentalBlockReason && (
