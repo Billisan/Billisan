@@ -14,8 +14,8 @@ const SCENARIOS: Record<'AVAILABLE' | 'EMPTY' | 'STALE', StockScenario> = {
 
 const MOCK_SCENARIO: StockScenario = SCENARIOS.AVAILABLE
 
-const MIN_DELAY_MS = 300
-const MAX_DELAY_MS = 800
+const MIN_DELAY_MS = 200
+const MAX_DELAY_MS = 500
 
 // KSK-STATION-001(PROJECT_GUIDE.md §5.4) 대응 Mock. 실제 네트워크 호출 없음.
 export function fetchStationSummary(): Promise<StationSummary> {
