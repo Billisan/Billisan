@@ -19,6 +19,10 @@ export type EligibilityReasonCode = 'ELIGIBLE' | RentalBlockReason
 export interface KioskStageMessage {
   stage: KioskStage
   message?: string
+  // GUIDANCE stage 전용 — 원본 코드('NONE'|'CENTER_FACE' 등)를 그대로 전달한다. 한국어 문구로
+  // 미리 resolve하지 않는 이유는 이 값이 i18n(useTranslation)이 없는 API/store 레이어를 거치기
+  // 때문 — 실제 문구 매핑은 이 값을 쓰는 화면 컴포넌트(AuthScreen)가 t.auth로 담당한다.
+  guidanceCode?: string
   eligible?: boolean
   reasonCode?: EligibilityReasonCode
   sessionId?: string

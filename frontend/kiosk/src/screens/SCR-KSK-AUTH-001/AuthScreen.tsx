@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { FaceGuideOverlay } from '../../components/common/FaceGuideOverlay'
 import type { StepFlow } from '../../components/layout/StepIndicator'
 import { useTranslation } from '../../i18n/useTranslation'
@@ -13,11 +12,6 @@ import { FaceAuthGuideScreen } from './FaceAuthGuideScreen'
 
 const FACE_STREAM_TOKEN = import.meta.env.VITE_FACE_STREAM_TOKEN
 const CAMERA_STREAM_BASE_URL = import.meta.env.VITE_CAMERA_STREAM_BASE_URL
-
-// AUTH_TIMEOUT(PROJECT_GUIDE.md §17) 대응 — 캠 화면 진입 후 인증이 오래 걸리면 입력을 폐기하고 홈으로 돌아간다.
-// 정확한 시간은 DEC-SF-010(09-screen-flow.md §6)이 아직 DECISION_REQUIRED라 임시값. 실서버가 GUIDANCE를
-// 계속 보내는 동안(안내가 살아있는 동안)은 타임아웃을 미루도록 guidanceMessage도 의존성에 둔다.
-const AUTH_TIMEOUT_MS = 30_000
 
 interface AuthScreenProps {
   onBack: () => void
@@ -34,20 +28,22 @@ export function AuthScreen({
 }: AuthScreenProps) {
   const t = useTranslation()
   const variant = useFaceAuthStore((state) => state.variant)
-  const guidanceMessage = useFaceAuthStore((state) => state.guidanceMessage)
+  const guidanceCode = useFaceAuthStore((state) => state.guidanceCode)
   const displayName = useFaceAuthStore((state) => state.displayName)
+
+  // 임베디드 문서(2026-07-31) §4.3 guidanceCode 문구 매핑 — 코드→문구 변환은 t(useTranslation)가
+  // 있는 이 화면 레이어에서 담당한다(kioskStageStream.ts/faceAuthStore.ts는 원본 코드만 전달).
+  const guidanceMessages: Record<string, string> = {
+    NONE: t.auth.guidanceNone,
+    CENTER_FACE: t.auth.guidanceCenterFace,
+  }
+  const guidanceMessage = guidanceCode
+    ? (guidanceMessages[guidanceCode] ?? t.auth.guidanceDefault)
+    : null
   const startCapture = useFaceAuthStore((state) => state.startCapture)
   const retry = useFaceAuthStore((state) => state.retry)
   const confirmIdentity = useFaceAuthStore((state) => state.confirmIdentity)
-
-  // 카메라 화면(FACE_CAPTURE)에서 서버 응답(GUIDANCE 포함)이 오래 끊기면 홈으로 돌아간다.
-  // GUIDANCE가 올 때마다 타이머를 리셋해 — 실제로 안내가 계속되는 중인데 끊어버리지 않도록 한다.
-  useEffect(() => {
-    if (variant !== AUTH_SCREEN_VARIANT.FACE_CAPTURE) return
-
-    const timer = setTimeout(onBack, AUTH_TIMEOUT_MS)
-    return () => clearTimeout(timer)
-  }, [variant, guidanceMessage, onBack])
+  const resetToGuide = useFaceAuthStore((state) => state.reset)
 
   switch (variant) {
     case AUTH_SCREEN_VARIANT.GUIDE:
@@ -62,13 +58,17 @@ export function AuthScreen({
       )
 
     case AUTH_SCREEN_VARIANT.FACE_CAPTURE:
+      // stepIndicator 기준 이전 단계(1단계, 안내 화면)로 돌아간다 — Main으로 나가지 않는다.
+      // 카메라 Capture Lease는 아직 시작 전이라 취소가 안전하고(12-I KSK-AUTH-001 취소 경계),
+      // 다시 "준비되었습니다"를 누르면 retry()와 동일하게 startCapture가 새로 시작된다.
       return (
         <CameraCaptureScreen
           streamUrl={`${CAMERA_STREAM_BASE_URL}?token=${encodeURIComponent(FACE_STREAM_TOKEN)}`}
           guide={<FaceGuideOverlay message={guidanceMessage} />}
-          onBack={onBack}
+          onBack={resetToGuide}
           currentStep={2}
           flow={mode}
+          resetSignal={guidanceMessage}
         />
       )
 

@@ -11,12 +11,6 @@ type StageListener = (message: KioskStageMessage) => void
 
 const KNOWN_BLOCK_REASONS = new Set<string>(Object.values(RENTAL_BLOCK_REASON))
 
-// 임베디드 문서(2026-07-31) §4.3 guidanceCode 권장 문구.
-const GUIDANCE_MESSAGES: Record<string, string> = {
-  NONE: '카메라를 바라봐 주세요',
-  CENTER_FACE: '얼굴을 가이드 안으로 맞춰주세요',
-}
-
 // 세션 열기(KSK-SESSION-001) → 얼굴 인증(KSK-AUTH-001) 순서로 처리한다(문서 §5 필수 순서).
 // 반환 함수는 화면 이탈·재시도 시 이후 단계 진행을 막는다(WebSocket 자체는 지속 연결이라 안 끊음).
 export function startKioskStageStream(
@@ -37,9 +31,7 @@ export function startKioskStageStream(
         if (event.status === 'GUIDANCE') {
           onStage({
             stage: KIOSK_STAGE.GUIDANCE,
-            message:
-              (event.guidanceCode && GUIDANCE_MESSAGES[event.guidanceCode]) ??
-              '얼굴을 인식하고 있어요',
+            guidanceCode: event.guidanceCode ?? undefined,
           })
         }
       })

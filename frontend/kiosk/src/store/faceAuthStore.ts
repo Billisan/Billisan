@@ -13,7 +13,7 @@ import type { RentalBlockReason } from '../types/eligibility'
 
 interface FaceAuthState {
   variant: AuthScreenVariant
-  guidanceMessage: string | null
+  guidanceCode: string | null
   displayName: string | null
   startCapture: (
     mode: KioskMode,
@@ -48,14 +48,14 @@ function clearPendingTimers() {
 
 export const useFaceAuthStore = create<FaceAuthState>((set, get) => ({
   variant: AUTH_SCREEN_VARIANT.GUIDE,
-  guidanceMessage: null,
+  guidanceCode: null,
   displayName: null,
 
   startCapture: (mode, onEligible, onBlocked) => {
     closeStream?.()
     clearPendingTimers()
     confirmIdentityRef = null
-    set({ variant: AUTH_SCREEN_VARIANT.FACE_CAPTURE, guidanceMessage: null, displayName: null })
+    set({ variant: AUTH_SCREEN_VARIANT.FACE_CAPTURE, guidanceCode: null, displayName: null })
 
     let pendingEligibility: KioskStageMessage | null = null
 
@@ -73,7 +73,7 @@ export const useFaceAuthStore = create<FaceAuthState>((set, get) => ({
         return
       }
 
-      set({ variant: AUTH_SCREEN_VARIANT.FACE_NOT_MATCHED, guidanceMessage: null })
+      set({ variant: AUTH_SCREEN_VARIANT.FACE_NOT_MATCHED, guidanceCode: null })
     }
 
     confirmIdentityRef = () => {
@@ -90,13 +90,13 @@ export const useFaceAuthStore = create<FaceAuthState>((set, get) => ({
           return
 
         case KIOSK_STAGE.GUIDANCE:
-          set({ guidanceMessage: message.message ?? null })
+          set({ guidanceCode: message.guidanceCode ?? null })
           return
 
         case KIOSK_STAGE.AUTH_SUCCEEDED:
           set({
             variant: AUTH_SCREEN_VARIANT.AUTH_SUCCESS,
-            guidanceMessage: null,
+            guidanceCode: null,
             displayName: message.displayName ?? null,
           })
           return
@@ -107,7 +107,7 @@ export const useFaceAuthStore = create<FaceAuthState>((set, get) => ({
           return
 
         case KIOSK_STAGE.AUTH_FAILED:
-          set({ variant: AUTH_SCREEN_VARIANT.FACE_NOT_MATCHED, guidanceMessage: null })
+          set({ variant: AUTH_SCREEN_VARIANT.FACE_NOT_MATCHED, guidanceCode: null })
       }
     })
   },
@@ -125,6 +125,6 @@ export const useFaceAuthStore = create<FaceAuthState>((set, get) => ({
     closeStream = null
     clearPendingTimers()
     confirmIdentityRef = null
-    set({ variant: AUTH_SCREEN_VARIANT.GUIDE, guidanceMessage: null, displayName: null })
+    set({ variant: AUTH_SCREEN_VARIANT.GUIDE, guidanceCode: null, displayName: null })
   },
 }))
