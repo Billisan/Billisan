@@ -2,6 +2,7 @@ import dayjs from 'dayjs'
 import { useEffect, useState } from 'react'
 import { startRent } from '../../api/piSocket'
 import { useTranslation } from '../../i18n/useTranslation'
+import { useFaceAuthStore } from '../../store/faceAuthStore'
 import type { RentResult } from '../../types/piProtocol'
 import { ErrorScreen } from '../common/ErrorScreen'
 import { LoadingScreen } from '../common/LoadingScreen'
@@ -21,6 +22,7 @@ interface RentFlowProps {
 // 실제 완료는 서버가 물리 제거를 감지해 보내는 RESULT(terminalStatus=SUCCEEDED)로만 판단한다.
 export function RentFlow({ sessionId, onBack }: RentFlowProps) {
   const t = useTranslation()
+  const displayName = useFaceAuthStore((state) => state.displayName)
   const [slotNumber, setSlotNumber] = useState<number | null>(null)
   const [result, setResult] = useState<RentResult | null>(null)
   const [failed, setFailed] = useState(false)
@@ -87,9 +89,11 @@ export function RentFlow({ sessionId, onBack }: RentFlowProps) {
     )
   }
 
+  // 슬롯 배정 전까지는 AuthScreen의 FACE_PROCESSING("환영합니다!") 화면이 그대로 이어지는 것처럼
+  // 보이도록 동일한 문구를 쓴다 — 별도의 "대여를 준비하고 있어요" 로딩 화면을 두지 않는다.
   return (
     <LoadingScreen
-      title={t.rent.preparingTitle}
+      title={t.auth.welcome(displayName)}
       subtitle={t.common.pleaseWait}
       currentStep={3}
       flow="RENT"

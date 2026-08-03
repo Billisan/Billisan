@@ -47,11 +47,13 @@ export interface Translations {
     confirmSubtitle: string
     confirmYes: (flow: 'RENT' | 'RETURN') => string
     confirmNo: string
+    guidanceNone: string
+    guidanceCenterFace: string
+    guidanceDefault: string
   }
   rent: {
     pickupMessage: (slotNumber: number) => string
     failedTitle: string
-    preparingTitle: string
     completeTitle: string
     rentedAtLabel: string
     dueAtLabel: string
@@ -138,12 +140,14 @@ const ko: Translations = {
     confirmYes: (flow: 'RENT' | 'RETURN') =>
       `예, 우산 ${flow === 'RETURN' ? '반납' : '대여'} 계속하기`,
     confirmNo: '아니요, 안면 인식 다시하기',
+    guidanceNone: '카메라를 바라봐 주세요',
+    guidanceCenterFace: '얼굴을 가이드 안으로 맞춰주세요',
+    guidanceDefault: '얼굴을 인식하고 있어요',
   },
   rent: {
     pickupMessage: (slotNumber: number) =>
       `${slotNumber}번 우산함에서 우산을 꺼내주세요`,
     failedTitle: '대여를 완료하지 못했습니다',
-    preparingTitle: '대여를 준비하고 있어요',
     completeTitle: '대여 완료!',
     rentedAtLabel: '대여 시각',
     dueAtLabel: '반납 기한',
@@ -248,12 +252,14 @@ const en: Translations = {
     confirmYes: (flow: 'RENT' | 'RETURN') =>
       `Yes, continue with ${flow === 'RETURN' ? 'return' : 'rental'}`,
     confirmNo: 'No, scan again',
+    guidanceNone: 'Please look at the camera',
+    guidanceCenterFace: 'Position your face inside the guide',
+    guidanceDefault: 'Recognizing your face',
   },
   rent: {
     pickupMessage: (slotNumber: number) =>
       `Take the umbrella from slot ${slotNumber}`,
     failedTitle: 'Rental Could Not Be Completed',
-    preparingTitle: 'Preparing your rental',
     completeTitle: 'Rental Complete!',
     rentedAtLabel: 'Rented At',
     dueAtLabel: 'Due By',
