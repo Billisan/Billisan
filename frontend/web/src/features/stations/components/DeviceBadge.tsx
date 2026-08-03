@@ -25,7 +25,28 @@ const DESCRIPTION: Record<DeviceStatus, string> = {
     ERROR: '장치 오류',
 };
 
-export function DeviceBadge({ status }: { status: DeviceStatus }) {
+export function DeviceBadge({ status }: { status: DeviceStatus | null }) {
+    /*
+     * **모르면 모른다고 합니다.**
+     *
+     * `STATION.device_status` 를 내려 주는 관리자 API 가 없어서 실 모드에서는 `null` 이
+     * 옵니다. 예전에는 그 자리에 `ONLINE` 을 넣어 「연결됨」이라고 그렸는데, 함이 꺼져
+     * 있어도 서버는 슬롯 행을 돌려주므로 화면만 거짓말하는 상태였습니다.
+     * 초록 배지 대신 회색 「확인 불가」를 두어, 관리자가 이 값을 근거로 삼지 않게 합니다.
+     */
+    if (status === null) {
+        return (
+            <Badge
+                tone="slate"
+                className="whitespace-nowrap"
+                title="장치 상태를 제공하는 API가 없습니다"
+            >
+                확인 불가
+                <span className="sr-only"> — 장치 상태 정보 없음</span>
+            </Badge>
+        );
+    }
+
     return (
         <Badge tone={TONE[status]} className="whitespace-nowrap" title={DESCRIPTION[status]}>
             {DEVICE_STATUS_LABEL[status]}

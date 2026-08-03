@@ -61,7 +61,7 @@ type StatusFilter =
  * `DRYING` 은 DB Enum 이 아니고 채택 전까지 미표시입니다 (WF-WEB-CHANGE-004 · DEC-WEB-001).
  */
 const STATUS_OPTIONS: readonly FilterOption<StatusFilter>[] = [
-    { value: 'ALL', label: '우산 상태' },
+    { value: 'ALL', label: '전체' },
     /*
      * 라벨을 손으로 적지 않고 공용 매핑에서 가져옵니다.
      * `AVAILABLE` 을 '사용 가능'이라고 따로 적어 뒀었는데, 표의 배지는 '이용 가능'이라
@@ -173,38 +173,40 @@ export function InventoryPage() {
     }, [allSlots, keyword, status, station?.name]);
 
     /*
-     * 집계는 `ADMIN-INVENTORY-001` 필드 그대로입니다.
-     * '대여 중' 집계는 없습니다 — 관리자 API 는 활성 대여를 노출하지 않습니다.
-     * 명세 주석: "집계 항목은 서로 겹칠 수 있으므로 모든 count를 단순 합산하지 않는다."
+     * 집계는 **표에 보이는 슬롯 목록에서 직접 셉니다.**
+     *
+     * 예전에는 `ADMIN-INVENTORY-001` 의 필드를 카드마다 그대로 걸었습니다. 그 값들은 서로
+     * 다른 축을 세는 것이라 **슬롯 하나가 여러 카드에 동시에 잡혔습니다** — 이용 중지된
+     * 슬롯의 점유까지 확인 불가면 「이용 중지」와 「센서 이상」에 함께 들어갔습니다.
+     * 그래서 합이 전체와 맞지 않았고, 화면 아래에 "합계가 다를 수 있습니다"라는 변명을
+     * 달아야 했습니다. 관리자 입장에서는 같은 슬롯을 두 번 세는 표가 됩니다.
+     *
+     * `deriveSlotDisplayStatus` 는 4축을 순서대로 훑어 **슬롯 하나당 상태 하나**를
+     * 돌려줍니다(순차 return). 그걸로 세면 카드 여섯 개가 서로 겹치지 않고, 합이 곧 전체
+     * 슬롯 수입니다. 표의 상태 배지와 상태 필터도 같은 함수를 쓰므로 **카드 숫자와 필터
+     * 결과 건수가 언제나 일치**합니다 — 예전에는 어긋날 수 있었습니다.
+     *
+     * 필터 결과(`slots`)가 아니라 `allSlots` 를 셉니다. 카드는 대여소 전체 현황이라
+     * 검색어·상태 필터에 따라 흔들리면 안 됩니다.
+     *
+     * 서버 집계(`summary`)는 이제 마지막 동기화 시각(`asOf`)에만 씁니다.
      */
-    const counts = {
-        available: summary?.availableUmbrellaCount ?? 0,
-        empty: summary?.emptySlotCount ?? 0,
-        review: summary?.adminReviewSlotCount ?? 0,
-        damaged: summary?.damagedUmbrellaCount ?? 0,
-        /*
-         * 이 둘이 빠져 있었습니다. 표에는 「이용 중지」·「확인 필요」 배지가 보이는데
-         * 위 카드 어디에도 안 잡혀서, 슬롯 5개짜리 대여소에서 카드 합이 4가 됐습니다.
-         * 남는 1개가 어디로 갔는지 화면만 봐서는 알 수 없었습니다.
-         *
-         * 하필 빠진 둘이 **사람이 손대야 풀리는 상태**입니다. 이용 중지는 관리자가
-         * 되돌려야 하고, 확인 필요는 센서·DB 가 어긋나 판단이 필요한 자리입니다.
-         */
-        outOfService: summary?.outOfServiceSlotCount ?? 0,
-        unknown: summary?.unknownOccupancySlotCount ?? 0,
-        total: summary?.totalSlotCount ?? 0,
-        /*
-         * 우산이 물리적으로 들어 있는 슬롯 수. **카드를 따로 두지 않고 보조 문구로 씁니다.**
-         *
-         * 「대여 가능 1 · 전체 5」만 보면 우산이 하나뿐인 것처럼 읽히는데, 실제로는 4개가
-         * 들어 있고 그중 3개가 검수·파손으로 묶여 못 나가는 상황일 수 있습니다. 관리자가
-         * 할 일이 '채우러 가기'와 '묶인 것 풀기'로 갈리므로 그 차이가 보여야 합니다.
-         *
-         * 다른 집계와 축이 겹쳐서(점유 ⊃ 대여 가능) 카드로 나란히 두면 더해 보게 되고,
-         * 계약도 "단순 합산 금지"라고 합니다. 그래서 카드가 아니라 문구입니다.
-         */
-        occupied: summary?.occupiedSlotCount ?? 0,
-    };
+    const counts = useMemo(() => {
+        const tally: Record<SlotDisplayStatus, number> = {
+            AVAILABLE: 0,
+            EMPTY: 0,
+            DAMAGED: 0,
+            ADMIN_REVIEW: 0,
+            OUT_OF_SERVICE: 0,
+            UNKNOWN: 0,
+        };
+
+        for (const slot of allSlots) {
+            tally[deriveSlotDisplayStatus(slot)] += 1;
+        }
+
+        return tally;
+    }, [allSlots]);
 
     // 대여소당 SLOT 이 3~5개라 페이지를 나누지 않습니다 (ADMIN-SLOT-001 도 cursor 없음).
     const rows = slots;
@@ -314,17 +316,8 @@ export function InventoryPage() {
                 <StatCard
                     tone="green"
                     icon={<Umbrella className="size-[17px]" strokeWidth={2.1} aria-hidden />}
-                    label="대여 가능 재고"
-                    value={counts.available}
-                    /*
-                     * 우산이 든 슬롯 수가 대여 가능 수보다 많으면 그 차이를 말해 줍니다 —
-                     * 「우산 4 중 · 전체 5」. 차이가 없으면 군더더기라 전체만 씁니다.
-                     */
-                    sub={
-                        counts.occupied > counts.available
-                            ? `우산 ${counts.occupied} 중 · 전체 ${counts.total}`
-                            : `전체 ${counts.total}`
-                    }
+                    label="대여 가능"
+                    value={counts.AVAILABLE}
                 />
                 {/*
                  * '대여 중' 카드는 뺐습니다. `ADMIN-INVENTORY-001` 에 그런 집계가 없고,
@@ -344,15 +337,13 @@ export function InventoryPage() {
                     tone="slate"
                     icon={<SquareDashed className="size-[17px]" strokeWidth={2.1} aria-hidden />}
                     label="빈 슬롯"
-                    value={counts.empty}
-                    sub="반납 가능"
+                    value={counts.EMPTY}
                 />
                 <StatCard
                     tone="amber"
                     icon={<ShieldCheck className="size-[17px]" strokeWidth={2.1} aria-hidden />}
-                    label="관리자 확인 대상"
-                    value={counts.review}
-                    sub="검수 필요"
+                    label="판정 대기"
+                    value={counts.ADMIN_REVIEW}
                 />
                 {/*
                  * 시안의 네 번째 카드는 '파손 · 분실'인데 분실은 뺐습니다.
@@ -363,7 +354,7 @@ export function InventoryPage() {
                     tone="red"
                     icon={<TriangleAlert className="size-[17px]" strokeWidth={2.1} aria-hidden />}
                     label="파손"
-                    value={counts.damaged}
+                    value={counts.DAMAGED}
                 />
                 {/*
                  * 이용 중지·확인 필요는 표에 배지로는 보이는데 집계에는 없었습니다.
@@ -374,43 +365,42 @@ export function InventoryPage() {
                     tone="violet"
                     icon={<CircleSlash className="size-[17px]" strokeWidth={2.1} aria-hidden />}
                     label="이용 중지"
-                    value={counts.outOfService}
-                    sub="관리자 해제"
+                    value={counts.OUT_OF_SERVICE}
                 />
                 {/*
-                 * **표 배지의 「확인 필요」와 다른 값입니다.** 라벨을 그대로 쓰면 안 됩니다.
+                 * **제목이 「센서 이상」에서 표 배지와 같은 `UNKNOWN` 으로 바뀌었습니다.**
                  *
-                 *   표 배지 「확인 필요」 = `deriveSlotDisplayStatus` 가 4축 조합을 판정하지
-                 *       못해 마지막으로 떨어진 상태
-                 *   이 카드          = `occupancyStatus === 'UNKNOWN'`, 즉 **점유 센서를
-                 *       못 읽은** 슬롯 수
+                 * 세는 값이 달라졌기 때문입니다. 예전에는 `occupancyStatus === 'UNKNOWN'`
+                 * (점유 센서를 못 읽은 슬롯)이라 다른 카드와 축이 겹쳤습니다. 지금은
+                 * `deriveSlotDisplayStatus` 가 4축을 다 훑고도 어느 상태에도 못 넣은 슬롯,
+                 * 즉 **나머지 다섯에 들어가지 못한 나머지**입니다.
                  *
-                 * 둘은 겹칠 수도, 한쪽에만 잡힐 수도 있습니다. 같은 이름을 붙이면 표에
-                 * 「확인 필요」가 없는데 카드에는 숫자가 뜨는 일이 생기고, 그러면 관리자가
-                 * 없는 슬롯을 찾아다닙니다. `occupancy_status` 의 뜻 그대로 적습니다.
+                 * 그 값의 이름은 표 배지에 이미 있습니다(`SLOT_DISPLAY_LABEL.UNKNOWN`).
+                 * 카드만 따로 이름 붙이면 같은 슬롯이 카드와 표에서 다르게 불립니다 —
+                 * 상수를 그대로 써서 앞으로도 어긋나지 않게 합니다.
+                 *
+                 * 점유 센서를 못 읽었다는 사실 자체(ERD 의 「점유 확인 불가」)는 슬롯 상세의
+                 * 「점유」 행에 그대로 남아 있습니다.
                  */}
                 <StatCard
                     tone="blue"
                     icon={<CircleHelp className="size-[17px]" strokeWidth={2.1} aria-hidden />}
-                    label="점유 확인 불가"
-                    value={counts.unknown}
-                    sub="센서 미확인"
+                    label={SLOT_DISPLAY_LABEL.UNKNOWN}
+                    value={counts.UNKNOWN}
                 />
             </div>
 
             {/*
-             * 계약 주석: "집계 항목은 서로 겹칠 수 있으므로 모든 count 를 단순 합산해 전체
-             * 수를 계산하지 않는다."
+             * "집계는 서로 겹칠 수 있어 합계가 전체 슬롯 수와 다를 수 있습니다." 안내를
+             * 뺐습니다. 카드를 `deriveSlotDisplayStatus` 로 세면서 **실제로 겹치지 않게**
+             * 됐기 때문입니다 — 슬롯 하나는 정확히 한 카드에만 들어가고 합은 전체 슬롯
+             * 수입니다. 겹치지 않는데 겹칠 수 있다고 적어 두면 관리자가 맞는 숫자를
+             * 의심하게 됩니다.
              *
-             * 실제로 겹칩니다 — 이용 중지 슬롯이 점유까지 확인 불가면 두 카드에 함께
-             * 잡힙니다. 카드 여섯 개가 나란히 있으면 더해 보고 싶어지고, 합이 전체와
-             * 안 맞으면 화면이 틀린 줄 압니다. 더하지 말라고 적어 둡니다.
+             * 계약 주석("모든 count 를 단순 합산하지 않는다")은 서버 집계 필드에 대한
+             * 경고이며, 그 필드들은 이제 카드에 쓰지 않습니다.
              */}
-            <p className="mb-4 text-[11px] font-medium text-brand-muted">
-                집계는 서로 겹칠 수 있어 합계가 전체 슬롯 수와 다를 수 있습니다.
-            </p>
-
-            <div className="overflow-hidden rounded-lg bg-white">
+            <div className="mb-4 overflow-hidden rounded-lg bg-white">
                 {/* 열 폭은 시안 좌표 그대로입니다: 302 / 474 / 813.8(중앙) / 933 / 1149~1205 */}
                 <div className="grid h-[42px] grid-cols-[172px_220px_183px_216px_112px] items-center bg-brand-surface pl-[14px] pr-[39px] text-[11.5px] font-bold text-brand-body">
                     <span>슬롯</span>
@@ -564,14 +554,11 @@ function StatCard({
     icon,
     label,
     value,
-    sub,
 }: {
     tone: keyof typeof CARD_TONE;
     icon: ReactNode;
     label: string;
     value: number;
-    /** 큰 숫자와 같은 줄 오른쪽 끝에 붙는 보조 문구 (시안의 '전체 352' 자리) */
-    sub?: string;
 }) {
     return (
         <div className="h-[96px] rounded-[10px] border border-brand-line-soft bg-white px-[18px] pt-4">
@@ -595,7 +582,6 @@ function StatCard({
                 >
                     {value}
                 </p>
-                {sub && <span className="text-[11px] font-semibold text-brand-muted">{sub}</span>}
             </div>
         </div>
     );

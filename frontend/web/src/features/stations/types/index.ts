@@ -36,8 +36,15 @@ export interface Station {
     /**
      * `device_status`. 값이 셋이라 boolean 으로 접지 않습니다 —
      * `ERROR` 를 `OFFLINE` 과 같이 취급하면 장치 오류가 화면에서 사라집니다.
+     *
+     * **`null` 은 「알 수 없음」입니다.** DB(`STATION.device_status`)에는 있는 값인데
+     * 이걸 내려 주는 관리자 API 가 없습니다(스웨거 9개 경로 전수 확인). 예전에는 실 모드에서
+     * `'ONLINE'` 을 박아 넣었는데, 재고 API 가 응답한 건 **서버가 살아 있다**는 뜻이지
+     * **현장의 함이 살아 있다**는 뜻이 아닙니다. 함이 꺼져 있어도 DB 행은 그대로라
+     * 서버는 200 을 돌려주고, 화면만 「연결됨」이라고 거짓말하게 됩니다.
+     * TODO: 대여소 조회 API 가 `device_status`·`last_seen_at` 을 주면 그 값으로 바꾸세요.
      */
-    deviceStatus: DeviceStatus;
+    deviceStatus: DeviceStatus | null;
 
     /**
      * 이 대여소에 설치된 SLOT 행 수.
@@ -55,6 +62,14 @@ export interface Station {
     capacity: number;
     damaged: number;
     adminReview: number;
+    /**
+     * 점유 센서를 못 읽은 슬롯 수 (`unknownOccupancySlotCount`).
+     *
+     * 대여소 단위 「온라인」과 다릅니다 — 그건 함 전체가 서버와 통신되느냐이고, 이건
+     * **함은 멀쩡한데 그 칸 센서만 우산 유무를 못 읽는** 상태입니다. 조치도 갈립니다
+     * (통신 복구 vs 슬롯 점검). 평소엔 0 이고, 0 이 아닌 순간이 곧 나가 봐야 한다는 신호입니다.
+     */
+    unknownOccupancy: number;
 
     /**
      * 분포도 좌표 (0~100 백분율).
@@ -66,9 +81,20 @@ export interface Station {
     position: { x: number; y: number };
 }
 
-/** 장치가 붙어 있는지. `ERROR` 는 연결로 치지 않습니다. */
+/** 장치가 붙어 있는지. `ERROR` 는 연결로 치지 않고, `null`(정보 없음)도 확신할 수 없습니다. */
 export function isDeviceOnline(station: Station): boolean {
     return station.deviceStatus === 'ONLINE';
+}
+
+/**
+ * 장치가 **끊겼다고 말할 수 있는지.** `isDeviceOnline` 의 반대가 아닙니다.
+ *
+ * `null` 은 「알 수 없음」이라 어느 쪽으로도 단정하면 안 됩니다. `!isDeviceOnline()` 으로
+ * 판단하면 정보가 없는 대여소를 전부 **오프라인으로 몰아** 재고가 멀쩡한 곳까지
+ * 「연결 끊김」으로 그리게 됩니다.
+ */
+export function isDeviceOffline(station: Station): boolean {
+    return station.deviceStatus === 'OFFLINE' || station.deviceStatus === 'ERROR';
 }
 
 /** 대여소 재고 상태 */
@@ -109,8 +135,12 @@ export function stockRatio(station: Station): number {
 }
 
 export function getStationStatus(station: Station): StationStatus {
-    // 장치가 끊긴 대여소는 재고를 믿을 수 없습니다. 비율보다 먼저 봅니다.
-    if (!isDeviceOnline(station)) return 'OFFLINE';
+    /*
+     * 장치가 끊긴 대여소는 재고를 믿을 수 없습니다. 비율보다 먼저 봅니다.
+     * **`!isDeviceOnline()` 이 아니라 `isDeviceOffline()` 입니다** — 장치 상태를 모르는
+     * (`null`) 대여소까지 오프라인으로 몰면 실 API 모드에서 전 대여소가 「연결 끊김」이 됩니다.
+     */
+    if (isDeviceOffline(station)) return 'OFFLINE';
 
     const ratio = stockRatio(station);
     if (ratio >= STOCK_RATIO_THRESHOLD.surplus) return 'SURPLUS';
@@ -136,12 +166,17 @@ export const STATION_STATUS_META: Record<
 /** 지도 범례에 노출할 상태 (오프라인은 범례에서 제외) */
 export const LEGEND_STATUSES: StationStatus[] = ['SHORTAGE', 'NORMAL', 'SURPLUS'];
 
-/** 재고 순위 정렬: 운영 중인 대여소를 잔량 많은 순으로, 오프라인은 맨 뒤로 */
+/**
+ * 재고 순위 정렬: 잔량 많은 순으로, **끊긴 것이 확인된** 대여소만 맨 뒤로.
+ *
+ * 장치 상태를 모르는(`null`) 대여소는 뒤로 밀지 않습니다 — 모른다는 이유로 순위를
+ * 떨어뜨리면 실제로는 재고가 제일 많은 곳이 맨 아래에 깔립니다.
+ */
 export function sortByStock(stations: Station[]): Station[] {
     return [...stations].sort((a, b) => {
-        const aOn = isDeviceOnline(a);
-        const bOn = isDeviceOnline(b);
-        if (aOn !== bOn) return aOn ? -1 : 1;
+        const aOff = isDeviceOffline(a);
+        const bOff = isDeviceOffline(b);
+        if (aOff !== bOff) return aOff ? 1 : -1;
         return b.available - a.available;
     });
 }
@@ -297,6 +332,13 @@ export function slotStatusText(status: SlotDisplayStatus): string {
 
 /** 같은 상태의 마우스오버용 `한글 · CODE`. 로그·백엔드와 대조할 때 씁니다. */
 export function slotStatusHint(status: SlotDisplayStatus): string {
+    /*
+     * `UNKNOWN` 은 배지 글자가 이미 코드입니다(의도한 예외, `SLOT_DISPLAY_LABEL` 주석 참고).
+     * 그대로 `codeHint` 를 태우면 'UNKNOWN · UNKNOWN' 이 나와서 마우스오버가 아무것도
+     * 보태지 않습니다. 이 값만 **한글 뜻을 마우스오버로 돌립니다** — 배지는 눈에 걸리게,
+     * 뜻은 필요할 때. 다른 배지의 `한글 · CODE` 모양은 그대로 지킵니다.
+     */
+    if (status === 'UNKNOWN') return `상태 불명 · ${status}`;
     return codeHint(SLOT_DISPLAY_LABEL, status);
 }
 

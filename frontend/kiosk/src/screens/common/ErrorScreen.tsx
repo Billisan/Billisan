@@ -1,12 +1,14 @@
-import aiScanFail from '../../assets/ai-scan-fail.svg'
+import errorAnimation from '../../assets/error.json?url'
 import { Button } from '../../components/common/Button'
+import { DotLottieAnimation } from '../../components/common/DotLottieAnimation'
 import { KioskLayout } from '../../components/layout/KioskLayout'
 import type { StepFlow } from '../../components/layout/StepIndicator'
+import { useTranslation } from '../../i18n/useTranslation'
 
 interface ErrorScreenProps {
   title: string
   subtitle?: string
-  tips?: string[]
+  tips?: readonly string[]
   actionLabel?: string
   onAction: () => void
   secondaryActionLabel?: string
@@ -19,18 +21,24 @@ export function ErrorScreen({
   title,
   subtitle,
   tips,
-  actionLabel = '홈으로',
+  actionLabel,
   onAction,
   secondaryActionLabel,
   onSecondaryAction,
   currentStep,
   flow,
 }: ErrorScreenProps) {
+  const t = useTranslation()
   return (
     <KioskLayout currentStep={currentStep} flow={flow}>
-      <div className="flex w-full flex-1 flex-col items-center justify-center gap-10">
-        <div className="flex w-full flex-col items-center gap-8">
-          <img src={aiScanFail} alt="" className="h-40 w-40" />
+      <div className="flex w-full flex-1 flex-col items-center gap-20">
+        <div className="flex w-full flex-col items-center gap-10">
+          <DotLottieAnimation
+            src={errorAnimation}
+            width={160}
+            height={160}
+            speed={0.7}
+          />
 
           <div className="text-center">
             <h2 className="text-3xl font-bold text-black">{title}</h2>
@@ -40,11 +48,11 @@ export function ErrorScreen({
           </div>
 
           {tips !== undefined && (
-            <ul className="border-disabled flex w-104 flex-col gap-3 rounded-2xl border bg-white p-6">
+            <ul className="border-disabled flex w-108 flex-col gap-3 rounded-2xl border bg-white p-6">
               {tips.map((tip) => (
                 <li
                   key={tip}
-                  className="flex items-start gap-3 text-base text-black"
+                  className="flex items-start gap-3 text-lg text-black"
                 >
                   <span className="bg-error-text mt-2 h-1.5 w-1.5 shrink-0 rounded-full" />
                   {tip}
@@ -56,7 +64,7 @@ export function ErrorScreen({
 
         <div className="flex w-full flex-col items-center gap-4">
           <Button onClick={onAction} className="w-100">
-            {actionLabel}
+            {actionLabel ?? t.common.home}
           </Button>
           {secondaryActionLabel && onSecondaryAction && (
             <Button

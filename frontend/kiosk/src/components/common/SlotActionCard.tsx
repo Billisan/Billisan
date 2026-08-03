@@ -4,21 +4,19 @@ interface SlotActionCardProps {
   slotNumber: number
   label: string
   message: string
-  actionLabel: string
   type: 'rental' | 'return'
-  onAction: () => void
 }
 
+// 완료 전환은 Pi RESULT 신호로만 판단한다("꺼냈어요"/"넣었어요" 클릭은 완료 API가 아님) —
+// 그래서 버튼 없이 안내만 보여주고, 화면 전환은 RentFlow/ReturnFlow가 자동으로 처리한다.
 export function SlotActionCard({
   slotNumber,
   label,
   message,
-  actionLabel,
   type,
-  onAction,
 }: SlotActionCardProps) {
   return (
-    <div className="flex h-full min-h-0 w-full flex-1 flex-col items-center justify-evenly">
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col items-center justify-center">
       <div className="flex flex-col items-center gap-12">
         <UmbrellaSlotAnimationIcon direction={type} speed={3} scale={1.4} />
 
@@ -31,14 +29,6 @@ export function SlotActionCard({
 
         <p className="text-2xl font-medium text-black">{message}</p>
       </div>
-
-      <button
-        type="button"
-        onClick={onAction}
-        className="bg-primary h-18 w-100 rounded-2xl text-2xl font-bold text-white transition-colors active:brightness-95"
-      >
-        {actionLabel}
-      </button>
     </div>
   )
 }

@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { startRental, type RentalStart } from './api/rentalApi'
 import { AuthScreen } from './screens/SCR-KSK-AUTH-001/AuthScreen'
 import { MainScreen } from './screens/SCR-KSK-MAIN-001/MainScreen'
 import { RentFlow } from './screens/SCR-KSK-RENT-001/RentFlow'
@@ -20,24 +19,19 @@ function App() {
     (state) => state.setRentalBlockReason,
   )
   const [mode, setMode] = useState<Mode>('RENT')
-  const [rental, setRental] = useState<RentalStart | null>(null)
+  const [sessionId, setSessionId] = useState<string | null>(null)
 
   const goToMain = () => {
     resetFaceAuth()
-    setRental(null)
+    setSessionId(null)
     goTo(SCREEN_ID.MAIN)
   }
 
   // 자격 판정은 faceAuthStore가 수신한 ELIGIBILITY_RESULT stage로 끝난 상태다.
-  // 슬롯 배정은 기존 대여 flow Mock을 유지한다.
-  const handleRentAuthenticated = async () => {
-    const startResult = await startRental()
-    setRental(startResult)
-    goTo(SCREEN_ID.RENT)
-  }
-
-  const handleReturnAuthenticated = () => {
-    goTo(SCREEN_ID.RETURN)
+  // KSK-SESSION-001이 발급한 sessionId를 이후 RENT/RETURN Operation에 그대로 재사용한다(문서 §5).
+  const handleAuthenticated = (openedSessionId: string) => {
+    setSessionId(openedSessionId)
+    goTo(mode === 'RENT' ? SCREEN_ID.RENT : SCREEN_ID.RETURN)
   }
 
   const handleEligibilityBlocked = (reason: RentalBlockReason) => {
@@ -49,21 +43,19 @@ function App() {
     return (
       <AuthScreen
         onBack={goToMain}
-        onAuthenticated={
-          mode === 'RENT' ? handleRentAuthenticated : handleReturnAuthenticated
-        }
+        onAuthenticated={handleAuthenticated}
         onEligibilityBlocked={handleEligibilityBlocked}
         mode={mode}
       />
     )
   }
 
-  if (currentScreen === SCREEN_ID.RENT && rental !== null) {
-    return <RentFlow rental={rental} onBack={goToMain} />
+  if (currentScreen === SCREEN_ID.RENT && sessionId !== null) {
+    return <RentFlow sessionId={sessionId} onBack={goToMain} />
   }
 
-  if (currentScreen === SCREEN_ID.RETURN) {
-    return <ReturnFlow onBack={goToMain} />
+  if (currentScreen === SCREEN_ID.RETURN && sessionId !== null) {
+    return <ReturnFlow sessionId={sessionId} onBack={goToMain} />
   }
 
   return (

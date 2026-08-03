@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom';
 
 import { StationTable } from '@/features/stations/components/StationTable';
 import { useStations } from '@/features/stations/hooks/useStations';
-import { getStationStatus } from '@/features/stations/types';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
 import { STATIONS_SYNCED_AT } from '@/features/stations/mocks/stations';
@@ -67,44 +66,18 @@ export function StationListPage() {
         );
     }, [keyword, stations]);
 
-    /**
-     * 조회 결과 전체의 합계. **한 쪽이 아니라 `filtered` 전체를 셉니다.**
+    /*
+     * 전 대여소 합계 줄은 없앴습니다.
      *
-     * 계약이 이 값을 따로 주지는 않습니다. `ADMIN-INVENTORY-001` 은 대여소 하나의 집계라
-     * 전 대여소 합계를 내려면 목록을 받아 더하는 수밖에 없습니다.
-     * TODO: 운영 집계 API(`WEB-API-CAND-001 · P1`)가 확정되면 그 값으로 바꾸세요.
+     * 「대여소 N개소 · 사용 가능 X / 전체 슬롯 Y · 파손 · 관리자 확인 · 부족 N개소」를
+     * 표 아래에 깔고 있었는데, **캠퍼스 전체를 요약하는 건 대시보드의 일입니다.**
+     * `StationStockCard` 가 재고 순위와 「부족 N개소 · 오프라인 N개소」를 이미 보여 주고,
+     * `StationMapCard` 가 대여소 수를 말합니다. 같은 숫자를 두 화면에서 따로 세면
+     * 언젠가 어긋나고, 어긋나면 어느 쪽이 맞는지 알 수 없습니다.
+     *
+     * 이 화면의 일은 **찾아서 들어가는 것**입니다. 표의 각 행이 그 대여소의 재고·상태를
+     * 이미 말하고 있어서, 아래 합계는 한 줄 더 읽게 만들 뿐 행동을 바꾸지 않았습니다.
      */
-    const totals = useMemo(
-        () =>
-            filtered.reduce(
-                (acc, station) => {
-                    const status = getStationStatus(station);
-                    return {
-                        available: acc.available + station.available,
-                        capacity: acc.capacity + station.capacity,
-                        damaged: acc.damaged + station.damaged,
-                        adminReview: acc.adminReview + station.adminReview,
-                        /*
-                         * 채워야 할 곳이 몇 군데인지. 합계만 있으면 "전체로는 넉넉한데
-                         * 특정 대여소만 비어 있는" 상황이 숫자에 묻힙니다. 표에 재고 열이
-                         * 생겼어도 다음 쪽까지 세어 보려면 결국 넘겨 봐야 합니다.
-                         */
-                        shortage: acc.shortage + (status === 'SHORTAGE' ? 1 : 0),
-                        offline: acc.offline + (status === 'OFFLINE' ? 1 : 0),
-                    };
-                },
-                {
-                    available: 0,
-                    capacity: 0,
-                    damaged: 0,
-                    adminReview: 0,
-                    shortage: 0,
-                    offline: 0,
-                },
-            ),
-        [filtered],
-    );
-
     const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
     const currentPage = Math.min(page, totalPages);
     const start = (currentPage - 1) * PAGE_SIZE;
@@ -192,22 +165,8 @@ export function StationListPage() {
              * `filtered`(조회 조건이 걸린 전체) 기준입니다 — 검색 중이면 그 결과의 합계여야
              * 표와 아귀가 맞습니다.
              */}
-            <div className="mt-[22px] flex items-center justify-between pr-2">
-                <p className="text-xs font-semibold text-brand-body">
-                    {`대여소 ${filtered.length}개소 · `}
-                    <span className="text-brand-ink">사용 가능 {totals.available}</span>
-                    {` / 전체 슬롯 ${totals.capacity}`}
-                    {totals.damaged > 0 && ` · 파손 ${totals.damaged}`}
-                    {totals.adminReview > 0 && ` · 관리자 확인 ${totals.adminReview}`}
-                    {/*
-                     * 손봐야 하는 곳만 색을 씁니다. 0 이면 아예 적지 않습니다 —
-                     * 「부족 0개소」는 읽을 때 한 번 멈추게 만드는데 알려주는 건 없습니다.
-                     */}
-                    {totals.shortage > 0 && (
-                        <span className="text-status-shortage"> · 부족 {totals.shortage}개소</span>
-                    )}
-                    {totals.offline > 0 && ` · 오프라인 ${totals.offline}개소`}
-                </p>
+            {/* 쪽 이동은 오른쪽 끝에 둡니다 — 왼쪽 합계 줄이 없어져 자리만 비웠습니다. */}
+            <div className="mt-[22px] flex items-center justify-end pr-2">
                 <Pagination
                     page={currentPage}
                     totalPages={totalPages}

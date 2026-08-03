@@ -102,6 +102,7 @@ const CONFIGS: Station[] = SEEDS.map((seed, index) => ({
     capacity: seed.slotCount,
     damaged: 0,
     adminReview: 0,
+    unknownOccupancy: 0,
 }));
 
 /**
@@ -114,15 +115,25 @@ export function stationWithStock(station: Station): Station {
     let available = 0;
     let damaged = 0;
     let adminReview = 0;
+    let unknownOccupancy = 0;
 
     for (const slot of slots) {
         const display = deriveSlotDisplayStatus(slot);
         if (display === 'AVAILABLE') available += 1;
         if (display === 'DAMAGED') damaged += 1;
         if (display === 'ADMIN_REVIEW') adminReview += 1;
+        // 파생 배지가 아니라 점유 축 원값을 셉니다 — 실 API 의 `unknownOccupancySlotCount` 와 같은 기준.
+        if (slot.occupancyStatus === 'UNKNOWN') unknownOccupancy += 1;
     }
 
-    return { ...station, capacity: slots.length, available, damaged, adminReview };
+    return {
+        ...station,
+        capacity: slots.length,
+        available,
+        damaged,
+        adminReview,
+        unknownOccupancy,
+    };
 }
 
 /** 집계까지 채운 전체 목록. 화면은 `stationsApi` 를 거쳐 이 값을 받습니다. */

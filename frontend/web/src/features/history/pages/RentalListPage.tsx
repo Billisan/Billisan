@@ -52,7 +52,7 @@ type StatusFilter = 'ALL' | RentalDisplayStatus;
  * 필요해지면 줄만 더하면 됩니다 — 라벨은 이미 `RENTAL_STATUS_LABEL` 에 다 있습니다.
  */
 const STATUS_OPTIONS: readonly FilterOption<StatusFilter>[] = [
-    { value: 'ALL', label: '상태 · 전체' },
+    { value: 'ALL', label: '전체' },
     { value: 'ACTIVE', label: RENTAL_STATUS_LABEL.ACTIVE },
     { value: 'OVERDUE', label: RENTAL_STATUS_LABEL.OVERDUE },
     { value: 'COMPLETED', label: RENTAL_STATUS_LABEL.COMPLETED },

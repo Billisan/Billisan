@@ -73,13 +73,37 @@
 }
 
 @theme {
-  --color-primary: #fdcb24;
-  --color-kiosk-bg: #fdfae9;
+  --color-primary: #ffd700;
+  --color-kiosk-bg: #fdfaea;
   --color-secondary-text: #111827;
   --color-tertiary-text: #6b6b6b;
+  --color-border: #efefef;
   --color-disabled: #d9d9d9;
   --color-error-bg: #ffd8d3;
   --color-error-text: #c34e4b;
+  --animate-gentle-pulse: gentle-pulse 4s ease-in-out infinite;
+  --animate-rise-in: rise-in 500ms ease-out both;
+}
+
+@keyframes gentle-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 :root {
