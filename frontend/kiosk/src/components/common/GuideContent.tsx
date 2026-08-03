@@ -25,7 +25,7 @@ export function GuideContent({
   footer,
 }: GuideContentProps) {
   return (
-    <div className="flex h-full min-h-0 w-full flex-1 flex-col items-center justify-evenly">
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col items-center justify-between">
       <div className="flex w-full flex-col items-center gap-12">
         <div className="w-full text-center">
           <h2 className="text-3xl font-bold text-black">{title}</h2>
@@ -54,7 +54,7 @@ export function GuideContent({
         <button
           type="button"
           onClick={onAction}
-          className="bg-primary h-18 w-100 m-4 rounded-2xl text-2xl font-bold text-white transition-colors active:brightness-95"
+          className="bg-primary h-18 w-100 mb-12 rounded-2xl text-2xl font-bold text-white transition-colors active:brightness-95"
         >
           {actionLabel}
         </button>
