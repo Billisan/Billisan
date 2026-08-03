@@ -15,7 +15,6 @@ import { ReturnListPage } from '@/features/history/pages/ReturnListPage';
 import { SettlementDetailPage } from '@/features/history/pages/SettlementDetailPage';
 import { SettlementListPage } from '@/features/history/pages/SettlementListPage';
 import { InventoryPage } from '@/features/inventory/pages/InventoryPage';
-import { MapPage } from '@/features/map/pages/MapPage';
 import { UserHistoryPage } from '@/features/users/pages/UserHistoryPage';
 import { SlotDetailPage } from '@/features/stations/pages/SlotDetailPage';
 import { StationDetailPage } from '@/features/stations/pages/StationDetailPage';
@@ -84,18 +83,22 @@ export const router = createBrowserRouter([
                     { path: 'inspections', element: <InspectionListPage /> },
                     { path: 'inspections/:inspectionId', element: <InspectionDetailPage /> },
                     /*
-                     * 지도·분포도 — `SCR-WEB-MAP-001`.
+                     * 지도·분포도 — `SCR-WEB-MAP-001`. **지금은 화면에 걸지 않습니다.**
                      *
-                     * 좌표 출처가 없어 실제 지도 SDK 는 못 붙입니다. ERD `STATION` 컬럼은
-                     * `station_id`·`name`·`service_status`·`device_status`·
+                     * 라우트와 사이드바 항목만 뺐고 `features/map` 코드는 그대로 둡니다.
+                     * 되살리려면 아래 줄과 import 를 다시 넣고, `shared/constants/navigation.ts`
+                     * 의 사이드바 항목도 함께 여세요:
+                     *   import { MapPage } from '@/features/map/pages/MapPage';
+                     *   { path: 'map', element: <MapPage /> },
+                     *
+                     * 원래 메모 — 좌표 출처가 없어 실제 지도 SDK 는 못 붙입니다. ERD `STATION`
+                     * 컬럼은 `station_id`·`name`·`service_status`·`device_status`·
                      * `current_boot_id`·`boot_synced_at`·`last_seen_at` 뿐이고 위도·경도가
                      * 없습니다. 그래서 캠퍼스 배치를 도식으로 그리고 마커를 백분율 좌표에
                      * 놓습니다 — 실제 지도 위에 목업 좌표를 찍으면 맞는 위치처럼 보이는데
                      * 그건 근거가 없습니다.
-                     *
                      * 좌표 컬럼이 생기면 `MapBackdrop` 만 SDK 로 갈아 끼우면 됩니다.
                      */
-                    { path: 'map', element: <MapPage /> },
                     /*
                      * `settlements` 는 지웠습니다.
                      *

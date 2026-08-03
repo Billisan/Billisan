@@ -19,20 +19,30 @@ import { SearchInput } from '@/shared/components/SearchInput';
 import { PageTitle } from '@/shared/components/PageTitle';
 import { SLOT_DISPLAY_LABEL } from '@/shared/constants/statusLabels';
 
-type StatusFilter =
-    'ALL' | Extract<SlotDisplayStatus, 'AVAILABLE' | 'EMPTY' | 'ADMIN_REVIEW' | 'DAMAGED'>;
+/** `SlotDisplayStatus` 전체 + 전체보기. 표에 뜨는 배지는 전부 걸러낼 수 있어야 합니다. */
+type StatusFilter = 'ALL' | SlotDisplayStatus;
 
 /**
  * '건조 중'은 넣지 않습니다. `DRYING` 은 DB Enum 이 아니고 채택 전까지 미표시입니다
  * (WF-WEB-CHANGE-004 · DEC-WEB-001).
  */
 const STATUS_OPTIONS: readonly FilterOption<StatusFilter>[] = [
-    { value: 'ALL', label: '우산 상태' },
+    { value: 'ALL', label: '전체' },
     // 라벨은 손으로 적지 않고 공용 매핑에서 가져옵니다. 표의 배지와 어긋나면 안 됩니다.
     { value: 'AVAILABLE', label: SLOT_DISPLAY_LABEL.AVAILABLE },
     { value: 'EMPTY', label: SLOT_DISPLAY_LABEL.EMPTY },
     { value: 'ADMIN_REVIEW', label: SLOT_DISPLAY_LABEL.ADMIN_REVIEW },
     { value: 'DAMAGED', label: SLOT_DISPLAY_LABEL.DAMAGED },
+    /*
+     * **이 둘이 빠져 있었습니다.** 우산 재고 화면은 지난 티켓에서 6종으로 맞췄는데
+     * 이 화면을 같이 안 고쳤습니다. 표에는 「이용 중지」·「확인 필요」 배지가 그대로
+     * 뜨는데 필터로는 좁힐 수 없어서, 그 슬롯만 보려면 눈으로 찾아야 했습니다.
+     *
+     * 같은 값 집합을 두 화면이 다르게 들고 있으면 또 어긋납니다. 이제 타입을
+     * `SlotDisplayStatus` 전체로 열어 두어, 상태가 늘면 타입 오류로 잡히게 했습니다.
+     */
+    { value: 'OUT_OF_SERVICE', label: SLOT_DISPLAY_LABEL.OUT_OF_SERVICE },
+    { value: 'UNKNOWN', label: SLOT_DISPLAY_LABEL.UNKNOWN },
 ];
 
 function parseStatus(value: string | null): StatusFilter {

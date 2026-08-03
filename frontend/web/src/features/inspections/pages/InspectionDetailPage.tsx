@@ -10,6 +10,7 @@ import {
 } from '@/features/inspections/components/InspectionParts';
 import { useDecideInspection, useInspection } from '@/features/inspections/hooks/useInspections';
 import type { InspectionDetail } from '@/features/inspections/types';
+import { SlotLockIcon } from '@/features/stations/components/SlotLockIcon';
 import {
     deriveSlotDisplayStatus,
     ITEM_CONDITION_TONE,
@@ -20,13 +21,13 @@ import {
 import { Badge } from '@/shared/components/Badge';
 import {
     ITEM_CONDITION_LABEL,
-    LOCK_STATUS_LABEL,
     OCCUPANCY_STATUS_LABEL,
     SLOT_SERVICE_LABEL,
 } from '@/shared/constants/statusLabels';
 import { PageBar } from '@/shared/components/PageBar';
 import { ErrorState, LoadingState, NotFoundState } from '@/shared/components/PageState';
 import { PageTitle } from '@/shared/components/PageTitle';
+import { RefId } from '@/shared/components/RefId';
 
 /**
  * 파손 검수 상세 — `SCR-WEB-INSPECTION-DETAIL-001` → `ADMIN-INSPECTION-002` · `003`.
@@ -97,8 +98,8 @@ export function InspectionDetailPage() {
             <PageBar
                 breadcrumb={[
                     { label: '파손 검수', to: '/inspections' },
-                    // 빵부스러기에 36자 UUID 를 그대로 깔면 줄이 넘칩니다. 앞 8자만 보여주고
-                    // 전체 값은 아래 '검수 ID' 행에서 복사할 수 있게 둡니다.
+                    // 빵부스러기에 36자 UUID 를 그대로 깔면 줄이 넘쳐서 앞 8자만 보여줍니다.
+                    // 전체 값은 주소창에 있습니다 — 그래서 아래 카드에 '검수 ID' 행을 두지 않습니다.
                     { label: shortId(detail.inspectionId) },
                 ]}
                 meta={`최근 갱신 ${detail.updatedAt.slice(0, 10)} ${detail.updatedAt.slice(11, 16)}`}
@@ -145,8 +146,23 @@ export function InspectionDetailPage() {
                             />
                         </div>
 
+                        {/*
+                         * 「모델 버전」(`patchcore-v1`)은 화면에서 뺐습니다.
+                         *
+                         * `WF-WEB-CHANGE-001` 이 이 화면의 항목으로 "AI 결과, 신뢰도, 모델 버전,
+                         * 추론 시각·지연" 을 정해 두었지만, **관리자가 이 값으로 할 수 있는 일이
+                         * 없습니다.** 우산이 파손됐는지 판단하는 데 쓰는 건 결과와 신뢰도이고,
+                         * 모델 이름은 판정을 바꾸지 않습니다.
+                         *
+                         * 값이 필요해지는 경우는 "특정 모델이 잘못 판정했으니 그 모델로 처리된
+                         * 건을 모아 보자" 인데, 그건 한 건씩 여는 상세가 아니라 목록에서 거를
+                         * 일입니다 — 계약 query 에 `modelVersion` 필터가 이미 있습니다.
+                         * 그때가 오면 목록에 필터를 붙이는 쪽이 맞습니다.
+                         *
+                         * 응답 필드(`detail.modelVersion`)는 그대로 들어옵니다. 되살리려면
+                         * 이 자리에 한 줄 다시 넣으면 됩니다.
+                         */}
                         <dl className="mt-[18px]">
-                            <MetaRow label="모델 버전">{detail.modelVersion}</MetaRow>
                             <MetaRow label="처리 시각">
                                 {detail.processedAt.slice(5, 10)} {detail.processedAt.slice(11, 16)}
                             </MetaRow>
@@ -162,18 +178,49 @@ export function InspectionDetailPage() {
                         <h3 className="text-[14.5px] font-extrabold leading-none text-brand-ink">
                             검수 정보
                         </h3>
+                        {/*
+                         * 세 줄 다 `RefId` 로 통일했습니다.
+                         *
+                         * 예전에는 검수 ID 만 36자를 그대로 깔고, 반납·대여 ID 는 `shortId` 로
+                         * 자른 **글자만** 뒀습니다. 잘린 쪽은 마우스오버도 복사 버튼도 없어서
+                         * **전체 값에 닿을 방법이 아예 없었습니다** — 백엔드 로그와 대조하려면
+                         * 36자가 필요한데 화면에서 꺼낼 수가 없었습니다.
+                         *
+                         * `RefId` 는 앞 8자만 보이고 전체 값은 세 갈래로 남깁니다:
+                         * 마우스오버(title) · 클릭 한 번(select-all) · 복사 버튼.
+                         * 검수 ID 도 같은 표시로 맞춥니다 — 한 카드 안에서 같은 종류의 값이
+                         * 서로 다른 모양이면 어느 쪽이 온전한 값인지 알 수 없습니다.
+                         *
+                         * `to` 는 주지 않습니다. 이력 화면(`/history/*`)은 아직 목업뿐이라
+                         * (`historyApi` — P1 미계약) 링크를 걸면 EC2 실 UUID 로는 항상
+                         * 「찾을 수 없음」이 뜹니다. 계약이 들어오면 `to` 만 채우면 됩니다.
+                         */}
                         <dl className="mt-[10px]">
-                            {/* 전체 값을 남깁니다 — 백엔드 로그·문의 대조에 쓰는 값입니다. */}
-                            <MetaRow label="검수 ID">
-                                <span className="select-all font-mono text-[11px]">
-                                    {detail.inspectionId}
-                                </span>
+                            {/*
+                             * 「검수 ID」 행은 뺐습니다 — **주소창에 전체 값이 이미 있습니다**
+                             * (`/inspections/{inspectionId}`). 이 화면을 열었다는 건 그 값을
+                             * 이미 들고 있다는 뜻이라, 카드에 또 적으면 한 줄만 늘어납니다.
+                             *
+                             * 반납·대여 ID 는 다릅니다. **이 카드 말고는 화면 어디에도 없고**,
+                             * 관리자는 사용자를 가명 UUID 로만 보기 때문에(학번·이름 비노출)
+                             * 파손 정산 문의가 들어왔을 때 이 두 값이 유일한 추적 통로입니다.
+                             */}
+                            <MetaRow label="반납 ID">
+                                <RefId id={detail.returnAttemptId} label="반납 ID" />
                             </MetaRow>
-                            <MetaRow label="반납 ID">{shortId(detail.returnAttemptId)}</MetaRow>
-                            <MetaRow label="대여 ID">{shortId(detail.rentalId)}</MetaRow>
-                            <MetaRow label="대여소">{stationLabel}</MetaRow>
-                            <MetaRow label="슬롯">{slotLabel}</MetaRow>
-                            <MetaRow label="최근 갱신">{detail.updatedAt.slice(11, 19)}</MetaRow>
+                            <MetaRow label="대여 ID">
+                                <RefId id={detail.rentalId} label="대여 ID" />
+                            </MetaRow>
+                            {/*
+                             * 이 카드에서 뺀 줄들 — 전부 **같은 화면에 이미 있는 값**입니다.
+                             *
+                             *   「대여소」·「슬롯」 → 위쪽 요약 줄. 제목이 `1번 슬롯`,
+                             *                       그 옆이 `· 정문 대여소` 입니다.
+                             *   「최근 갱신」       → 상단 PageBar 의 `최근 갱신 2026-07-31 22:04`.
+                             *                       거기엔 날짜까지 있어 그쪽이 더 나은 표시입니다.
+                             *
+                             * (`slotLabel`·`stationLabel`·`updatedAt` 은 각각 그 자리에서 계속 씁니다)
+                             */}
                         </dl>
                     </section>
 
@@ -190,11 +237,6 @@ export function InspectionDetailPage() {
                     />
                 </div>
             </div>
-
-            <p className="mt-[18px] text-[11px] font-medium leading-[1.6] text-brand-muted">
-                판정 저장은 검수·슬롯·정산을 한 트랜잭션으로 바꿉니다. 파손 확정만 파손 정산을
-                만들고, 관리자가 정산완료로 직접 바꾸거나 금액을 손대지 않습니다.
-            </p>
         </div>
     );
 }
@@ -244,12 +286,17 @@ function SlotStateCard({ detail }: { detail: InspectionDetail }) {
                     )}
                 </MetaRow>
                 <MetaRow label="서비스">{SLOT_SERVICE_LABEL[detail.slotServiceStatus]}</MetaRow>
-                <MetaRow label="잠금">{LOCK_STATUS_LABEL[detail.slotLockStatus]}</MetaRow>
+                {/*
+                 * 값이 왼쪽 라벨과 같은 낱말(「잠금」 / 「잠금」)이라 글자를 아이콘으로 바꿉니다.
+                 * 슬롯 상세·표에서 쓰는 것과 같은 아이콘이라 네 상태(잠금·해제·확인 불가·오류)가
+                 * 모양과 색으로 구분됩니다. 글자가 사라져도 뜻은 남습니다 — `SlotLockIcon` 이
+                 * `<title>`·`aria-label` 로 한글 라벨을 달고 있어 마우스오버와 화면낭독기에
+                 * 그대로 읽힙니다.
+                 */}
+                <MetaRow label="잠금">
+                    <SlotLockIcon status={detail.slotLockStatus} className="ml-auto" />
+                </MetaRow>
             </dl>
-
-            <p className="mt-[8px] text-[11px] font-medium leading-[1.6] text-brand-muted">
-                판정을 저장하면 이 상태가 함께 바뀝니다.
-            </p>
         </section>
     );
 }

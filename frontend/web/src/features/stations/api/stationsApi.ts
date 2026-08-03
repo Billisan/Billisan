@@ -97,10 +97,17 @@ function toDetail(station: Station, slot: SlotSummary): SlotDetail {
  * 시드 명부 + `ADMIN-INVENTORY-001` 로 Station 을 짜 맞춥니다.
  *
  * 목록 API 가 없는 실 모드에서 재고 집계가 유일한 대여소 단위 실데이터입니다.
- * `serviceStatus`·`deviceStatus` 는 어떤 관리자 API 도 주지 않아서(스웨거 실측),
- * **재고 응답이 온 대여소를 운영·연결 중으로 간주합니다.** 재고를 못 받으면 이 함수까지
- * 오지 못하고 목록 조회 자체가 실패해 오류 화면이 뜹니다 — 죽은 대여소를 ONLINE 으로
- * 그리는 일은 없습니다. TODO: 대여소 목록 API 가 오면 응답값으로 바꾸세요.
+ *
+ * **`deviceStatus` 는 `null`(알 수 없음)입니다.** 예전에는 `'ONLINE'` 을 박아 넣었는데,
+ * 재고 API 가 응답한 건 **서버가 살아 있다**는 뜻이지 **현장의 함이 살아 있다**는 뜻이
+ * 아닙니다. 함이 어제부터 꺼져 있어도 DB 슬롯 행은 그대로라 서버는 200 을 돌려주고,
+ * 화면만 「연결됨」이라고 거짓말하게 됩니다. `STATION.device_status` 는 DB 에 있는데
+ * 그걸 내보내는 관리자 API 가 없습니다(스웨거 9개 경로 전수 확인).
+ *
+ * `serviceStatus` 는 `AVAILABLE` 로 둡니다 — 재고 조회가 성공한 대여소이고, 이 값은
+ * 화면에서 판단에 쓰지 않습니다(표시는 슬롯 4축과 재고 비율로 합니다).
+ *
+ * TODO: 대여소 조회 API 가 `device_status`·`last_seen_at` 을 주면 그 값으로 바꾸세요.
  */
 function composeStation(seed: StationSeedEntry, inventory: InventorySummary): Station {
     return {
@@ -108,12 +115,13 @@ function composeStation(seed: StationSeedEntry, inventory: InventorySummary): St
         name: seed.name,
         position: seed.position,
         serviceStatus: 'AVAILABLE',
-        deviceStatus: 'ONLINE',
+        deviceStatus: null,
         slotCount: inventory.totalSlotCount,
         capacity: inventory.totalSlotCount,
         available: inventory.availableUmbrellaCount,
         damaged: inventory.damagedUmbrellaCount,
         adminReview: inventory.adminReviewSlotCount,
+        unknownOccupancy: inventory.unknownOccupancySlotCount,
     };
 }
 

@@ -2,7 +2,6 @@ import {
     GridIcon,
     HomeIcon,
     ListIcon,
-    MapPinIcon,
     ShieldCheckIcon,
     UmbrellaIcon,
     type NavIcon,
@@ -45,7 +44,16 @@ export const NAV_ITEMS: NavItem[] = [
      * TODO: 집계 API 가 확정되면 그 값으로 되살리세요. 상수로는 되살리지 마세요.
      */
     { label: '파손 검수', to: '/inspections', icon: ShieldCheckIcon },
-    { label: '지도·분포도', to: '/map', icon: MapPinIcon },
+    /*
+     * `지도·분포도` 는 **화면에서만 내렸습니다. 코드는 지우지 않았습니다.**
+     *
+     * 되살리려면 이 줄만 다시 넣고 `app/router.tsx` 의 `/map` 라우트를 함께 여세요:
+     *   { label: '지도·분포도', to: '/map', icon: MapPinIcon },
+     * (`MapPinIcon` 도 위 import 에 다시 추가해야 합니다)
+     *
+     * `features/map` 폴더는 그대로 있습니다 — 대시보드의 대여소 분포도 카드가
+     * `MapBackdrop` 을 계속 쓰고 있어서 지우면 대시보드가 깨집니다.
+     */
     /*
      * `조치 이력` 은 뺐습니다. P0 관리자 API 10개 어디에도 없고, 12번 PART C 에서
      * `WEB-API-CAND-007 · P1/P2` 후보로만 남아 있으며 11번 §5 의 MVP 열이

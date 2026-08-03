@@ -39,10 +39,26 @@ const SCREEN_LABELS = {
     LOCK_STATUS_LABEL,
 } as const;
 
+/**
+ * 한글 규칙에서 **일부러** 빼 둔 항목. 여기 적힌 것만 예외이고, 나머지는 전부 위 규칙을 받습니다.
+ *
+ * 늘리기 전에 아래 두 조건을 다 만족하는지 보세요. 하나라도 어긋나면 그냥 규칙 위반입니다.
+ *   1. 그 값이 **API·DB·로그에 없는 FE 파생값**이어야 합니다. §2.4.1 이 금지한 것은
+ *      "API·DB·로그 값을 화면에 직접 노출" 이라, 서버가 준 코드를 그대로 찍는 건 예외가 못 됩니다.
+ *   2. 한글로 이름 붙이는 것 자체가 **오해를 만드는** 자리여야 합니다.
+ *
+ * `SLOT_DISPLAY_LABEL.UNKNOWN` 이 그렇습니다 — `deriveSlotDisplayStatus` 가 4축을 어느
+ * 조합에도 못 맞췄을 때 떨어지는 자리라 ERD 표시 기준 표에 대응 행이 없고, 한글을 붙이면
+ * (「확인 필요」·「상태 불명」 두 번 다) 옆의 다섯 개와 같은 종류의 상태처럼 읽혔습니다.
+ * 한글 뜻은 `slotStatusHint` 의 마우스오버로 돌려 뒀습니다.
+ */
+const NON_KOREAN_LABELS: readonly string[] = ['SLOT_DISPLAY_LABEL.UNKNOWN'];
+
 describe('라벨 사전에 코드 원문이 없다', () => {
     it('모든 표시값이 한글을 담고 있다', () => {
         for (const [dictName, dict] of Object.entries(SCREEN_LABELS)) {
             for (const [code, label] of Object.entries(dict)) {
+                if (NON_KOREAN_LABELS.includes(`${dictName}.${code}`)) continue;
                 expect(label, `${dictName}.${code}`).toMatch(/[가-힣]/);
             }
         }
@@ -51,11 +67,21 @@ describe('라벨 사전에 코드 원문이 없다', () => {
     it('표시값이 자기 코드를 그대로 되풀이하지 않는다', () => {
         for (const [dictName, dict] of Object.entries(SCREEN_LABELS)) {
             for (const [code, label] of Object.entries(dict)) {
+                if (NON_KOREAN_LABELS.includes(`${dictName}.${code}`)) continue;
                 expect(label, `${dictName}.${code}`).not.toBe(code);
                 // 'AVAILABLE + NORMAL' 처럼 코드를 문장에 섞어 둔 경우도 걸립니다.
                 expect(label, `${dictName}.${code}`).not.toMatch(/[A-Z]{3,}/);
             }
         }
+    });
+
+    it('예외는 딱 하나이고, 그것도 의도한 값이어야 한다', () => {
+        /*
+         * 예외 목록이 조용히 늘어나면 규칙이 없는 것과 같습니다. 개수와 값을 함께 못 박아,
+         * 새 항목을 넣으려면 이 줄을 고치면서 위 두 조건을 다시 읽게 만듭니다.
+         */
+        expect(NON_KOREAN_LABELS).toEqual(['SLOT_DISPLAY_LABEL.UNKNOWN']);
+        expect(SLOT_DISPLAY_LABEL.UNKNOWN).toBe('UNKNOWN');
     });
 
     it('한 사전 안에서 같은 글자가 두 코드에 붙어 있지 않다', () => {
@@ -108,11 +134,32 @@ describe('값 집합이 서로 섞이지 않는다', () => {
         expect(AI_RESULT_LABEL.NORMAL).not.toBe(DECISION_LABEL.NORMAL);
         expect(AI_RESULT_LABEL.DAMAGED).not.toBe(DECISION_LABEL.DAMAGED);
     });
+
+    /**
+     * 슬롯 상태 여섯 개는 **필터 드롭다운에 한 줄로 나란히 놓입니다.** 두 항목이 같은
+     * 낱말을 공유하면 관리자가 같은 것으로 읽습니다.
+     *
+     * 실제로 겪은 것 둘:
+     *   「관리자 확인」 vs 「이용 중지」 — 이용 중지도 결국 관리자가 손대야 하는 슬롯이라
+     *       둘이 같은 뜻으로 읽혔습니다. 「판정 대기」로 바꿔 **결론 전 / 결론 후**로 갈랐습니다.
+     *   「관리자 확인」 vs 「확인 필요」 — 둘 다 "확인"이라 구분이 안 됐습니다.
+     *       뒤엣것은 4축 판정 실패라 한글로는 계속 옆 항목과 같은 종류로 읽혔고, 결국
+     *       한글을 버리고 `UNKNOWN` 으로 뒀습니다 (`NON_KOREAN_LABELS` 참고).
+     */
+    it('슬롯 상태 라벨끼리 낱말이 겹치지 않는다', () => {
+        const labels = Object.values(SLOT_DISPLAY_LABEL);
+
+        // 전부 서로 다른 글자여야 합니다.
+        expect(new Set(labels).size).toBe(labels.length);
+
+        // 「확인」을 쓰는 항목이 둘 이상이면 다시 겹칩니다.
+        expect(labels.filter((label) => label.includes('확인'))).toHaveLength(0);
+    });
 });
 
 describe('codeHint', () => {
     it('한글과 코드를 함께 낸다 — 마우스오버 전용이다', () => {
         // 화면 배지에는 한글만, 로그·백엔드 대조가 필요할 때만 코드를 붙입니다.
-        expect(codeHint(SLOT_DISPLAY_LABEL, 'ADMIN_REVIEW')).toBe('관리자 확인 · ADMIN_REVIEW');
+        expect(codeHint(SLOT_DISPLAY_LABEL, 'ADMIN_REVIEW')).toBe('판정 대기 · ADMIN_REVIEW');
     });
 });

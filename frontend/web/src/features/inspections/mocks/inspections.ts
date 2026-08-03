@@ -135,7 +135,13 @@ function buildInspectionSeeds(): InspectionSeed[] {
 
 /* ------------------------------------------------------------------ 목록 조회 */
 
-export type AiResultFilter = 'ALL' | InspectionListItem['aiResult'];
+/*
+ * `NonNullable` 로 감쌉니다. `aiResult` 는 추론이 끝나지 않았으면 `null` 인데,
+ * **`null` 은 고를 수 있는 필터 값이 아닙니다** — 드롭다운 선택지에도 없고, 계약 query 의
+ * `aiResult` enum(`NORMAL|DAMAGED|UNCERTAIN`)에도 없습니다. 벗기지 않으면 필터 타입이
+ * `string | null` 이 되어 `FilterOption<T extends string>` 제약을 못 맞춥니다.
+ */
+export type AiResultFilter = 'ALL' | NonNullable<InspectionListItem['aiResult']>;
 export type ReviewStatusFilter = 'ALL' | InspectionReviewStatus;
 
 export interface InspectionQuery {

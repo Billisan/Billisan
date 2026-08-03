@@ -6,7 +6,10 @@ import {
     formatSlotLabel,
     formatUpdatedAt,
     getStationStatus,
+    isDeviceOffline,
     isDeviceOnline,
+    slotStatusHint,
+    slotStatusText,
     sortByStock,
     STOCK_RATIO_THRESHOLD,
     stockRatio,
@@ -46,6 +49,7 @@ function station(overrides: Partial<Station> = {}): Station {
         capacity: 5,
         damaged: 0,
         adminReview: 0,
+        unknownOccupancy: 0,
         position: { x: 50, y: 50 },
         ...overrides,
     };
@@ -111,6 +115,23 @@ describe('deriveSlotDisplayStatus', () => {
     });
 });
 
+describe('slotStatusHint', () => {
+    it('배지와 같은 글자를 두 번 쓰지 않는다 — UNKNOWN 은 한글 뜻을 돌려준다', () => {
+        /*
+         * `SLOT_DISPLAY_LABEL.UNKNOWN` 만 배지 글자가 이미 코드입니다(의도한 예외).
+         * 그대로 `codeHint` 를 태우면 'UNKNOWN · UNKNOWN' 이라 마우스오버가 아무것도
+         * 보태지 않습니다. 배지에서 뺀 한글 뜻이 여기로 와야 합니다.
+         */
+        expect(slotStatusText('UNKNOWN')).toBe('UNKNOWN');
+        expect(slotStatusHint('UNKNOWN')).toBe('상태 불명 · UNKNOWN');
+    });
+
+    it('나머지는 `한글 · CODE` 모양을 그대로 지킨다', () => {
+        expect(slotStatusHint('ADMIN_REVIEW')).toBe('판정 대기 · ADMIN_REVIEW');
+        expect(slotStatusHint('OUT_OF_SERVICE')).toBe('이용 중지 · OUT_OF_SERVICE');
+    });
+});
+
 describe('formatSlotLabel', () => {
     it('slotNumber 하나로만 만든다', () => {
         // station_code 에 의존하던 'SL-03-01' 표기를 걷어낸 뒤의 계약입니다.
@@ -140,6 +161,28 @@ describe('getStationStatus', () => {
         expect(getStationStatus(station({ deviceStatus: 'OFFLINE', available: 5 }))).toBe(
             'OFFLINE',
         );
+    });
+
+    /**
+     * **장치 상태를 모르는 것과 끊긴 것은 다릅니다.**
+     *
+     * `STATION.device_status` 를 주는 관리자 API 가 없어 실 모드에서는 `null` 이 옵니다.
+     * 이걸 `!isDeviceOnline()` 으로 판단하면 **전 대여소가 오프라인**이 되어, 재고가
+     * 멀쩡한 곳까지 「연결 끊김」으로 그리고 대시보드에 거짓 경고가 뜹니다.
+     */
+    it('장치 상태를 모르면(null) 오프라인으로 단정하지 않는다', () => {
+        const unknown = station({ deviceStatus: null, available: 4, capacity: 5 });
+
+        expect(isDeviceOnline(unknown)).toBe(false); // 연결됐다고도 못 합니다
+        expect(isDeviceOffline(unknown)).toBe(false); // 끊겼다고도 못 합니다
+        // 재고 비율로 판정이 넘어갑니다 (4/5 = 과잉)
+        expect(getStationStatus(unknown)).toBe('SURPLUS');
+    });
+
+    it('끊긴 것이 확인된 경우만 오프라인으로 센다', () => {
+        expect(isDeviceOffline(station({ deviceStatus: 'OFFLINE' }))).toBe(true);
+        expect(isDeviceOffline(station({ deviceStatus: 'ERROR' }))).toBe(true);
+        expect(isDeviceOffline(station({ deviceStatus: 'ONLINE' }))).toBe(false);
     });
 
     /**
