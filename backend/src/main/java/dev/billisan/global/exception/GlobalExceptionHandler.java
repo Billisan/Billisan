@@ -10,6 +10,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -53,6 +54,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiError> handleUnreadableBody(HttpMessageNotReadableException ex) {
         return ResponseEntity.badRequest().body(new ApiError("INVALID_REQUEST", "요청 본문을 읽을 수 없습니다."));
+    }
+
+    /**
+     * 실기 테스트로 발견(2026-08-03): {@code @RequestHeader(...) UUID requestId}처럼 타입이
+     * 지정된 파라미터에 형식이 안 맞는 값(예: {@code X-Request-Id: test-1})이 오면 위 두
+     * 핸들러와 같은 이유로 catch-all에 걸려 400이어야 할 응답이 500이 되고 있었다 —
+     * `UserAuthController`를 포함해 `@RequestHeader UUID`를 쓰는 모든 엔드포인트에 해당.
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiError> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        return ResponseEntity.badRequest().body(new ApiError("INVALID_REQUEST",
+                "%s 값이 올바르지 않습니다.".formatted(ex.getName())));
     }
 
     @ExceptionHandler(AdminAccountRequiredException.class)
