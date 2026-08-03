@@ -55,14 +55,18 @@ class ChatbotServiceTest {
         mockServer = MockRestServiceServer.bindTo(builder).build();
 
         service = new ChatbotService(builder, objectMapper, faqKnowledge,
-                BASE_URL, "test-key", "gpt-5.4-nano", 0.2, MAX_MESSAGE_LENGTH);
+                BASE_URL, "test-key", "gpt-5.4-nano", 0.2, 1000, MAX_MESSAGE_LENGTH);
     }
 
     private String chatCompletionJson(String content) {
+        return chatCompletionJson(content, "stop");
+    }
+
+    private String chatCompletionJson(String content, String finishReason) {
         return """
-                {"choices":[{"message":{"role":"assistant","content":%s}}],
+                {"choices":[{"message":{"role":"assistant","content":%s},"finish_reason":"%s"}],
                  "usage":{"prompt_tokens":1200,"completion_tokens":80,"total_tokens":1280}}
-                """.formatted(objectMapper.writeValueAsString(content));
+                """.formatted(objectMapper.writeValueAsString(content), finishReason);
     }
 
     @Test
@@ -132,6 +136,21 @@ class ChatbotServiceTest {
         ChatMessageResponse response = service.reply("req-nochoice", "질문");
 
         assertThat(response.answer()).isEqualTo(STATIC_FALLBACK);
+        assertThat(response.fallback()).isTrue();
+    }
+
+    @Test
+    void returnsStaticFallbackWhenTruncatedByMaxTokens() {
+        // finish_reason=length면 답변이 max_tokens에 걸려 중간에 끊겼다는 뜻이라, content가
+        // 불완전한 JSON이어도(파싱 시도조차 하지 않고) 곧바로 정적 폴백으로 넘어가야 한다.
+        String truncatedJson = "{\"answer\":\"이 부분까지만 생성되고 잘렸";
+        mockServer.expect(requestTo(BASE_URL + "/chat/completions"))
+                .andRespond(withSuccess(chatCompletionJson(truncatedJson, "length"), MediaType.APPLICATION_JSON));
+
+        ChatMessageResponse response = service.reply("req-truncated", "아주 긴 질문");
+
+        assertThat(response.answer()).isEqualTo(STATIC_FALLBACK);
+        assertThat(response.source()).isEqualTo(ChatSource.STATIC_FAQ_FALLBACK);
         assertThat(response.fallback()).isTrue();
     }
 

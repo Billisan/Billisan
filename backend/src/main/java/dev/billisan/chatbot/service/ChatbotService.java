@@ -48,6 +48,7 @@ public class ChatbotService {
     private final String systemPrompt;
     private final String model;
     private final double temperature;
+    private final int maxTokens;
     private final int maxMessageLength;
 
     public ChatbotService(
@@ -58,6 +59,7 @@ public class ChatbotService {
             @Value("${gms.api-key:}") String apiKey,
             @Value("${gms.model}") String model,
             @Value("${gms.temperature}") double temperature,
+            @Value("${gms.max-tokens:1000}") int maxTokens,
             @Value("${chatbot.max-message-length:500}") int maxMessageLength) {
         this.restClient = restClientBuilder
                 .baseUrl(baseUrl)
@@ -67,6 +69,7 @@ public class ChatbotService {
         this.systemPrompt = buildSystemPrompt(faqKnowledge.content());
         this.model = model;
         this.temperature = temperature;
+        this.maxTokens = maxTokens;
         this.maxMessageLength = maxMessageLength;
     }
 
@@ -87,7 +90,8 @@ public class ChatbotService {
         try {
             ChatCompletionRequest request = new ChatCompletionRequest(
                     model, temperature,
-                    List.of(new ChatMessage("system", systemPrompt), new ChatMessage("user", userMessage)));
+                    List.of(new ChatMessage("system", systemPrompt), new ChatMessage("user", userMessage)),
+                    maxTokens);
 
             ChatCompletionResponse response = restClient.post()
                     .uri("/chat/completions")
@@ -96,6 +100,14 @@ public class ChatbotService {
                     .body(ChatCompletionResponse.class);
 
             logUsage(requestId, response == null ? null : response.usage());
+
+            String finishReason = extractFinishReason(response);
+            if ("length".equals(finishReason)) {
+                // max_tokens에 걸려 잘렸다는 뜻 — JSON이 중간에 끊겨 파싱도 거의 항상 실패한다.
+                // 정적 폴백으로 넘어가기 전에 원인을 명확히 구분해서 로그에 남긴다.
+                log.warn("chatbot_truncated requestId={} maxTokens={}", requestId, maxTokens);
+                return staticFallback(requestId, "CHATBOT_RESPONSE_TRUNCATED", startedAt);
+            }
 
             String content = extractContent(response);
             if (content == null || content.isBlank()) {
@@ -124,6 +136,13 @@ public class ChatbotService {
         }
         ChatMessage message = response.choices().get(0).message();
         return message == null ? null : message.content();
+    }
+
+    private static String extractFinishReason(ChatCompletionResponse response) {
+        if (response == null || response.choices() == null || response.choices().isEmpty()) {
+            return null;
+        }
+        return response.choices().get(0).finishReason();
     }
 
     private ChatMessageResponse staticFallback(String requestId, String errorCode, long startedAt) {

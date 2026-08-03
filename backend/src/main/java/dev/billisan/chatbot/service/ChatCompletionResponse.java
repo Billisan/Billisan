@@ -17,7 +17,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 record ChatCompletionResponse(List<Choice> choices, Usage usage) {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record Choice(ChatMessage message) {
+    record Choice(ChatMessage message, @JsonProperty("finish_reason") String finishReason) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

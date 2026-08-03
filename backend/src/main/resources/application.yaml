@@ -59,6 +59,12 @@ gms:
   base-url: http://localhost:9999/v1
   model: gpt-5.4-nano
   temperature: 0.2
+  # 2026-08-04: 이전엔 상한이 없어서 답변이 잘려도 감지할 방법이 없었다(finish_reason도
+  # 안 받고 있었음 — 같이 추가). 처음엔 1000으로 잡았는데, 실측해보니 "서비스 전체를
+  # 자세히 설명해달라" 같은 포괄적 질문 하나가 completionTokens=939까지 나와 여유가 6%뿐
+  # 이었다 — 조금만 더 복잡한 질문이면 실제로 잘렸을 것. 관측된 최대치의 2배 이상 여유를
+  # 두고 2000으로 올림. 팀 확정 수치는 아님.
+  max-tokens: 2000
 
 chatbot:
   knowledge-location: "classpath:knowledge/*.md"

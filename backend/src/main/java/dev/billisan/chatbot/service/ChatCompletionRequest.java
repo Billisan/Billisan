@@ -2,6 +2,8 @@ package dev.billisan.chatbot.service;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 /**
  * GMS(OpenAI 호환 게이트웨이) {@code POST /chat/completions} 요청 바디.
  *
@@ -18,5 +20,10 @@ import java.util.List;
  * 지시만으로 JSON을 받는 방식(시스템 프롬프트 참고)은 같은 조합에서 한글도 정상 동작함을
  * 실측 확인했다 — 그래서 이 방식을 쓴다.
  */
-record ChatCompletionRequest(String model, double temperature, List<ChatMessage> messages) {
+record ChatCompletionRequest(
+        String model, double temperature, List<ChatMessage> messages,
+        // ⚠️ 2026-08-04 실측: 이 모델(gpt-5.4-nano)은 구식 `max_tokens`를 거부하고
+        // "Unsupported parameter: 'max_tokens'... Use 'max_completion_tokens' instead"로
+        // 400을 반환한다 — 최신 OpenAI 계열 모델 공통 변경사항. `max_completion_tokens`를 쓴다.
+        @JsonProperty("max_completion_tokens") int maxCompletionTokens) {
 }
