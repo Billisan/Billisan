@@ -48,6 +48,6 @@ public class UserAuthService {
                 Map.of(Role.CLAIM_KEY, Role.USER.claimValue()),
                 expirationSeconds);
 
-        return UserLoginResponse.of(token, expiresAt, user.getUserId(), user.isFaceRegistered());
+        return UserLoginResponse.of(token, expiresAt, user.getUserRef().toString(), user.isFaceRegistered());
     }
 }
