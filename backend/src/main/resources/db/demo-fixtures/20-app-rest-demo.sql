@@ -231,12 +231,12 @@ WHERE NOT (
 		<=> `expected`.`rental_eligibility_evaluated_at`
 );
 
--- SQL verification result. Public REST userId corresponds to this user_ref,
+-- SQL verification result. Public REST userRef corresponds to this user_ref,
 -- not to the nine-digit user_id shown only for fixture diagnosis.
 SELECT
 	`expected`.`scenario_key`,
 	`actual`.`user_id` AS `student_number_fixture_only`,
-	`actual`.`user_ref` AS `rest_user_id`,
+	`actual`.`user_ref` AS `rest_user_ref`,
 	`actual`.`face_registered`,
 	`actual`.`rental_eligible`,
 	`actual`.`rental_eligibility_evaluated_at`

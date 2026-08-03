@@ -6,8 +6,7 @@ public record UserLoginResponse(
         String accessToken,
         String tokenType,
         Instant expiresAt,
-        // Public API userId is the opaque USER_ACCOUNT.user_ref, never the student-number PK.
-        String userId,
+        String userRef,
         boolean faceRegistered
 ) {
     public static UserLoginResponse of(String accessToken, Instant expiresAt, String userRef, boolean faceRegistered) {
