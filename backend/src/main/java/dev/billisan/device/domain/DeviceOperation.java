@@ -1,5 +1,7 @@
 package dev.billisan.device.domain;
 
+import dev.billisan.slot.domain.Slot.LockStatus;
+import dev.billisan.slot.domain.Slot.OccupancyStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -15,8 +17,9 @@ import org.hibernate.type.SqlTypes;
  * P0-3 Option A(V1 마이그레이션 주석)에 따라 대여·반납 도메인과 독립된 장치
  * Command/Terminal 원장이다. {@code rental_id}·{@code return_attempt_id} 컬럼이 없다 —
  * 업무 객체와의 상관은 Spring 오케스트레이션 문맥과 {@code command_id}로만 유지한다.
- * EDGE-RENT-001에 필요한 컬럼만 매핑했다(장치 결과 수신용 event_id·evidence_* 등은
- * 아직 매핑하지 않음).
+ * EDGE-DEVICE-001은 이 엔티티를 조회해서 바꾸지 않고 {@code DeviceOperationRepository}의
+ * 벌크 UPDATE로만 갱신한다 — 순수 기록용 테이블이라 업무 판단에 끌어들이지 않기 위해서다.
+ * 그래서 여기 필드들은 그 UPDATE 쿼리가 참조할 컬럼 매핑 용도로만 존재한다.
  */
 @Entity
 @Table(name = "device_operation")
@@ -40,6 +43,10 @@ public class DeviceOperation {
     @Column(name = "command_id", updatable = false, nullable = false, length = 100)
     private String commandId;
 
+    /** EDGE-DEVICE-001이 채우는 장치 이벤트 멱등 키. 최초 REQUESTED 시점엔 없다. */
+    @Column(name = "event_id", length = 100)
+    private String eventId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "operation_type", nullable = false, length = 50)
     private OperationType operationType;
@@ -48,8 +55,45 @@ public class DeviceOperation {
     @Column(name = "status", nullable = false, length = 30)
     private Status status;
 
+    /**
+     * DB의 CK_DEVICE_OPERATION_TERMINAL_EVENT_TYPE은 OPERATION_COMPLETED·
+     * OPERATION_FAILED 2개만 허용한다 — 요청의 eventType엔 TIMED_OUT도 있지만,
+     * 그 경우 이 컬럼은 NULL로 두고 status만 TIMED_OUT으로 기록한다.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "terminal_event_type", length = 50)
+    private TerminalEventType terminalEventType;
+
+    @Column(name = "result_code", length = 100)
+    private String resultCode;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "observed_occupancy_status", length = 30)
+    private OccupancyStatus observedOccupancyStatus;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "observed_lock_status", length = 30)
+    private LockStatus observedLockStatus;
+
+    @Column(name = "evidence_schema_version")
+    private Short evidenceSchemaVersion;
+
+    @Column(name = "evidence_observed_at")
+    private LocalDateTime evidenceObservedAt;
+
+    /** 증거 원문(JSON) — evidence 객체 전체를 그대로 직렬화해 저장한다. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "evidence_payload")
+    private String evidencePayload;
+
     @Column(name = "requested_at", nullable = false)
     private LocalDateTime requestedAt;
+
+    @Column(name = "acked_at")
+    private LocalDateTime ackedAt;
+
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -99,6 +143,10 @@ public class DeviceOperation {
         return commandId;
     }
 
+    public String getEventId() {
+        return eventId;
+    }
+
     public OperationType getOperationType() {
         return operationType;
     }
@@ -107,8 +155,44 @@ public class DeviceOperation {
         return status;
     }
 
+    public TerminalEventType getTerminalEventType() {
+        return terminalEventType;
+    }
+
+    public String getResultCode() {
+        return resultCode;
+    }
+
+    public OccupancyStatus getObservedOccupancyStatus() {
+        return observedOccupancyStatus;
+    }
+
+    public LockStatus getObservedLockStatus() {
+        return observedLockStatus;
+    }
+
+    public Short getEvidenceSchemaVersion() {
+        return evidenceSchemaVersion;
+    }
+
+    public LocalDateTime getEvidenceObservedAt() {
+        return evidenceObservedAt;
+    }
+
+    public String getEvidencePayload() {
+        return evidencePayload;
+    }
+
     public LocalDateTime getRequestedAt() {
         return requestedAt;
+    }
+
+    public LocalDateTime getAckedAt() {
+        return ackedAt;
+    }
+
+    public LocalDateTime getCompletedAt() {
+        return completedAt;
     }
 
     public enum OperationType {
@@ -118,5 +202,10 @@ public class DeviceOperation {
     /** V2 마이그레이션의 {@code CK_DEVICE_OPERATION_STATUS}와 동일한 값 집합. */
     public enum Status {
         REQUESTED, ACKED, SUCCEEDED, FAILED, TIMED_OUT, OUTCOME_UNKNOWN
+    }
+
+    /** V2 마이그레이션의 {@code CK_DEVICE_OPERATION_TERMINAL_EVENT_TYPE}과 동일한 값 집합. */
+    public enum TerminalEventType {
+        OPERATION_COMPLETED, OPERATION_FAILED
     }
 }
