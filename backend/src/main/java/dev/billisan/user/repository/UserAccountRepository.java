@@ -1,8 +1,6 @@
 package dev.billisan.user.repository;
 
 import dev.billisan.user.domain.UserAccount;
-import jakarta.persistence.LockModeType;
-import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,10 +11,6 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, String
     Optional<UserAccount> findByLoginId(String loginId);
 
     Optional<UserAccount> findByUserRef(UUID userRef);
-
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select u from UserAccount u where u.userId = :userId")
-    Optional<UserAccount> findByIdForEligibilityUpdate(@Param("userId") String userId);
 
     /**
      * Calculates only user-level rental eligibility from authoritative business facts.
