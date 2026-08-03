@@ -53,7 +53,7 @@ export function startKioskStageStream(
         return
       }
 
-      onStage({ stage: KIOSK_STAGE.AUTH_SUCCEEDED })
+      onStage({ stage: KIOSK_STAGE.AUTH_SUCCEEDED, displayName: result.displayName })
 
       // blockingReasons에 실제로 어떤 문자열이 오는지 문서에 명시되지 않음 — 사용자 확인(2026-07-31)에
       // 따라 기존 RentalBlockReason 값이 들어있다고 가정하고, 모르는 값은 무시(문서 §3 전방 호환 원칙).
