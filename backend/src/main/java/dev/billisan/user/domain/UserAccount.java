@@ -34,8 +34,8 @@ public class UserAccount {
     @Column(name = "rental_eligible", nullable = false)
     private boolean rentalEligible;
 
-    @Column(name = "rental_eligibility_updated_at", nullable = false)
-    private LocalDateTime rentalEligibilityUpdatedAt;
+    @Column(name = "rental_eligibility_evaluated_at")
+    private LocalDateTime rentalEligibilityEvaluatedAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -55,7 +55,7 @@ public class UserAccount {
         this.faceRegistered = false;
         this.rentalEligible = false;
         LocalDateTime now = LocalDateTime.now();
-        this.rentalEligibilityUpdatedAt = now;
+        this.rentalEligibilityEvaluatedAt = now;
         this.createdAt = now;
         this.updatedAt = now;
     }
@@ -99,11 +99,11 @@ public class UserAccount {
 
     public void changeRentalEligibility(boolean eligible) {
         this.rentalEligible = eligible;
-        this.rentalEligibilityUpdatedAt = LocalDateTime.now();
+        this.rentalEligibilityEvaluatedAt = LocalDateTime.now();
     }
 
-    public LocalDateTime getRentalEligibilityUpdatedAt() {
-        return rentalEligibilityUpdatedAt;
+    public LocalDateTime getRentalEligibilityEvaluatedAt() {
+        return rentalEligibilityEvaluatedAt;
     }
 
     public LocalDateTime getCreatedAt() {
