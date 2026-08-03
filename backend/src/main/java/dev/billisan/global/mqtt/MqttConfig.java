@@ -8,16 +8,12 @@ import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.integration.channel.DirectChannel;
 import org.springframework.integration.mqtt.core.DefaultMqttPahoClientFactory;
 import org.springframework.integration.mqtt.core.MqttPahoClientFactory;
-import org.springframework.integration.mqtt.inbound.MqttPahoMessageDrivenChannelAdapter;
 import org.springframework.integration.mqtt.outbound.MqttPahoMessageHandler;
-import org.springframework.integration.mqtt.support.DefaultPahoMessageConverter;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
 
 @Configuration
 public class MqttConfig {
-
-	private static final String TEST_REQUEST_TOPIC = "umbrella/test/request";
 
 	@Value("${mqtt.broker-url}")
 	private String brokerUrl;
@@ -34,25 +30,6 @@ public class MqttConfig {
 		options.setAutomaticReconnect(true);
 		factory.setConnectionOptions(options);
 		return factory;
-	}
-
-	@Bean
-	public MessageChannel mqttInputChannel() {
-		return new DirectChannel();
-	}
-
-	@Bean
-	public MqttPahoMessageDrivenChannelAdapter mqttInboundAdapter() {
-		MqttPahoMessageDrivenChannelAdapter adapter = new MqttPahoMessageDrivenChannelAdapter(
-			clientId + "-sub",
-			mqttClientFactory(),
-			TEST_REQUEST_TOPIC
-		);
-		adapter.setCompletionTimeout(5000);
-		adapter.setConverter(new DefaultPahoMessageConverter());
-		adapter.setQos(1);
-		adapter.setOutputChannel(mqttInputChannel());
-		return adapter;
 	}
 
 	@Bean
