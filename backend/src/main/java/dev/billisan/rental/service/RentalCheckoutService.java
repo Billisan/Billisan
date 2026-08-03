@@ -11,13 +11,10 @@ import dev.billisan.rental.domain.Rental;
 import dev.billisan.rental.dto.RentalCheckoutResponse;
 import dev.billisan.rental.dto.RentalCheckoutResponse.DeviceOperationView;
 import dev.billisan.rental.repository.RentalRepository;
-import dev.billisan.settlement.domain.Settlement;
-import dev.billisan.settlement.repository.SettlementRepository;
 import dev.billisan.slot.domain.Slot;
 import dev.billisan.slot.repository.SlotRepository;
 import dev.billisan.user.domain.UserAccount;
 import dev.billisan.user.repository.UserAccountRepository;
-import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,26 +23,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class RentalCheckoutService {
 
-    private static final List<Rental.Status> ACTIVE_STATUSES =
-            List.of(Rental.Status.REQUESTED, Rental.Status.ACTIVE, Rental.Status.RETURNING);
-
     private final UserAccountRepository userAccountRepository;
     private final SlotRepository slotRepository;
     private final RentalRepository rentalRepository;
     private final DeviceOperationRepository deviceOperationRepository;
-    private final SettlementRepository settlementRepository;
 
     public RentalCheckoutService(
             UserAccountRepository userAccountRepository,
             SlotRepository slotRepository,
             RentalRepository rentalRepository,
-            DeviceOperationRepository deviceOperationRepository,
-            SettlementRepository settlementRepository) {
+            DeviceOperationRepository deviceOperationRepository) {
         this.userAccountRepository = userAccountRepository;
         this.slotRepository = slotRepository;
         this.rentalRepository = rentalRepository;
         this.deviceOperationRepository = deviceOperationRepository;
-        this.settlementRepository = settlementRepository;
     }
 
     /**
@@ -62,12 +53,8 @@ public class RentalCheckoutService {
 
         UserAccount user = requireUser(userRef);
 
-        if (rentalRepository.existsByUserIdAndStatusIn(user.getUserId(), ACTIVE_STATUSES)) {
-            throw new ActiveRentalConflictException("사용자가 이미 진행 중인 대여를 갖고 있습니다: " + userRef);
-        }
-
-        if (settlementRepository.existsByUserIdAndStatus(user.getUserId(), Settlement.Status.PENDING)) {
-            throw new ActiveRentalConflictException("사용자가 미납 정산을 갖고 있습니다: " + userRef);
+        if (!user.isRentalEligible()) {
+            throw new ActiveRentalConflictException("사용자가 대여 자격이 없습니다: " + userRef);
         }
 
         Slot slot = slotRepository.findRentCheckoutCandidate(stationId)
