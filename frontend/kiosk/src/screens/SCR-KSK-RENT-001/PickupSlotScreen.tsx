@@ -1,26 +1,24 @@
 import { SlotActionCard } from '../../components/common/SlotActionCard'
 import { KioskLayout } from '../../components/layout/KioskLayout'
+import { useTranslation } from '../../i18n/useTranslation'
 
 interface PickupSlotScreenProps {
   slotNumber: number
-  onAction: () => void
   onBack?: () => void
 }
 
 export function PickupSlotScreen({
   slotNumber,
-  onAction,
   onBack,
 }: PickupSlotScreenProps) {
+  const t = useTranslation()
   return (
     <KioskLayout onBack={onBack} currentStep={3}>
       <SlotActionCard
         slotNumber={slotNumber}
-        label="우산함 번호"
-        message={`${slotNumber}번 우산함에서 우산을 꺼내주세요`}
-        actionLabel="꺼냈어요"
+        label={t.common.slotNumberLabel}
+        message={t.rent.pickupMessage(slotNumber)}
         type="rental"
-        onAction={onAction}
       />
     </KioskLayout>
   )
