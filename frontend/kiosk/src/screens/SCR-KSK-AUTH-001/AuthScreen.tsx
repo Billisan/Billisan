@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { FaceGuideOverlay } from '../../components/common/FaceGuideOverlay'
 import type { StepFlow } from '../../components/layout/StepIndicator'
+import { useTranslation } from '../../i18n/useTranslation'
 import { useFaceAuthStore } from '../../store/faceAuthStore'
 import { AUTH_SCREEN_VARIANT } from '../../types/faceAuth'
 import type { RentalBlockReason } from '../../types/eligibility'
@@ -31,10 +32,13 @@ export function AuthScreen({
   onEligibilityBlocked,
   mode = 'RENT',
 }: AuthScreenProps) {
+  const t = useTranslation()
   const variant = useFaceAuthStore((state) => state.variant)
   const guidanceMessage = useFaceAuthStore((state) => state.guidanceMessage)
+  const displayName = useFaceAuthStore((state) => state.displayName)
   const startCapture = useFaceAuthStore((state) => state.startCapture)
   const retry = useFaceAuthStore((state) => state.retry)
+  const confirmIdentity = useFaceAuthStore((state) => state.confirmIdentity)
 
   // 카메라 화면(FACE_CAPTURE)에서 서버 응답(GUIDANCE 포함)이 오래 끊기면 홈으로 돌아간다.
   // GUIDANCE가 올 때마다 타이머를 리셋해 — 실제로 안내가 계속되는 중인데 끊어버리지 않도록 한다.
@@ -69,13 +73,20 @@ export function AuthScreen({
       )
 
     case AUTH_SCREEN_VARIANT.AUTH_SUCCESS:
-      return <AuthSuccessScreen flow={mode} />
+      return (
+        <AuthSuccessScreen
+          flow={mode}
+          displayName={displayName}
+          onConfirm={confirmIdentity}
+          onReject={() => retry(mode, onAuthenticated, onEligibilityBlocked)}
+        />
+      )
 
     case AUTH_SCREEN_VARIANT.FACE_PROCESSING:
       return (
         <LoadingScreen
-          title="환영합니다!"
-          subtitle="잠시만 기다려주세요"
+          title={t.auth.welcome(displayName)}
+          subtitle={t.common.pleaseWait}
           currentStep={2}
           flow={mode}
         />
@@ -84,15 +95,11 @@ export function AuthScreen({
     case AUTH_SCREEN_VARIANT.FACE_NOT_DETECTED:
       return (
         <ErrorScreen
-          title="안면 인식이 되지 않았습니다"
-          tips={[
-            '화면 가이드 라인에 얼굴을 맞춰주세요.',
-            '얼굴을 정면으로 바라봐 주세요.',
-            '마스크를 잠시 벗어주세요.',
-          ]}
-          actionLabel="안면 인식 다시하기"
+          title={t.auth.faceNotDetectedTitle}
+          tips={t.auth.faceNotDetectedTips}
+          actionLabel={t.auth.retryFaceAuth}
           onAction={() => retry(mode, onAuthenticated, onEligibilityBlocked)}
-          secondaryActionLabel="홈으로 돌아가기"
+          secondaryActionLabel={t.common.homeReturn}
           onSecondaryAction={onBack}
           currentStep={2}
           flow={mode}
@@ -102,13 +109,9 @@ export function AuthScreen({
     case AUTH_SCREEN_VARIANT.FACE_NOT_MATCHED:
       return (
         <ErrorScreen
-          title="일치하는 학생 정보를 찾을 수 없습니다"
-          tips={[
-            '얼굴은 확인되었지만 연결된 학생 계정이 없습니다.',
-            '학생 인증을 완료한 계정인지 확인해주세요.',
-            '문제가 계속되면 관리자에게 문의해주세요.',
-          ]}
-          actionLabel="홈으로 돌아가기"
+          title={t.auth.faceNotMatchedTitle}
+          tips={t.auth.faceNotMatchedTips}
+          actionLabel={t.common.homeReturn}
           onAction={onBack}
           currentStep={2}
           flow={mode}

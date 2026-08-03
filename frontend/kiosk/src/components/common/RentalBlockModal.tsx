@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react'
-import {
-  RENTAL_BLOCK_REASON,
-  type RentalBlockReason,
-} from '../../types/eligibility'
+import { useTranslation } from '../../i18n/useTranslation'
+import type { RentalBlockReason } from '../../types/eligibility'
 import { AlertCircleIcon } from '../icons/AlertCircleIcon'
 import { IconBadge } from './IconBadge'
 
@@ -11,28 +9,11 @@ interface RentalBlockModalProps {
   onClose: () => void
 }
 
-const MESSAGES: Record<
-  RentalBlockReason,
-  { title: string; subtitle: string }
-> = {
-  [RENTAL_BLOCK_REASON.UNSETTLED_BLOCKED]: {
-    title: '미정산 내역이 있어요',
-    subtitle: '앱에서 정산 후 다시 이용해주세요.',
-  },
-  [RENTAL_BLOCK_REASON.ACTIVE_RENTAL_EXISTS]: {
-    title: '이미 대여 중인 우산이 있어요',
-    subtitle: '현재 대여 중인 건이 있어 신규 대여할 수 없습니다.',
-  },
-  [RENTAL_BLOCK_REASON.ACTIVE_RENTAL_NOT_FOUND]: {
-    title: '반납할 대여 내역이 없어요',
-    subtitle: '현재 대여 중인 우산이 없습니다.',
-  },
-}
-
 const AUTO_CLOSE_SECONDS = 5
 
 export function RentalBlockModal({ reason, onClose }: RentalBlockModalProps) {
-  const { title, subtitle } = MESSAGES[reason]
+  const t = useTranslation()
+  const { title, subtitle } = t.rentalBlock.reasons[reason]
   const [secondsLeft, setSecondsLeft] = useState(AUTO_CLOSE_SECONDS)
 
   useEffect(() => {
@@ -63,7 +44,7 @@ export function RentalBlockModal({ reason, onClose }: RentalBlockModalProps) {
             <span className="text-3xl font-bold text-white">{secondsLeft}</span>
           </div>
           <p className="text-tertiary-text text-base">
-            5초 후 자동으로 닫힙니다
+            {t.rentalBlock.autoClose}
           </p>
         </div>
 
@@ -72,7 +53,7 @@ export function RentalBlockModal({ reason, onClose }: RentalBlockModalProps) {
           onClick={onClose}
           className="bg-primary h-18 w-100 rounded-2xl text-2xl font-bold text-white transition-colors active:brightness-95"
         >
-          닫기
+          {t.rentalBlock.close}
         </button>
       </div>
     </div>

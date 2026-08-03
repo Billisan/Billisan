@@ -2,11 +2,12 @@ import aiScanFail from '../../assets/ai-scan-fail.svg'
 import { Button } from '../../components/common/Button'
 import { KioskLayout } from '../../components/layout/KioskLayout'
 import type { StepFlow } from '../../components/layout/StepIndicator'
+import { useTranslation } from '../../i18n/useTranslation'
 
 interface ErrorScreenProps {
   title: string
   subtitle?: string
-  tips?: string[]
+  tips?: readonly string[]
   actionLabel?: string
   onAction: () => void
   secondaryActionLabel?: string
@@ -19,13 +20,14 @@ export function ErrorScreen({
   title,
   subtitle,
   tips,
-  actionLabel = '홈으로',
+  actionLabel,
   onAction,
   secondaryActionLabel,
   onSecondaryAction,
   currentStep,
   flow,
 }: ErrorScreenProps) {
+  const t = useTranslation()
   return (
     <KioskLayout currentStep={currentStep} flow={flow}>
       <div className="flex w-full flex-1 flex-col items-center justify-center gap-10">
@@ -56,7 +58,7 @@ export function ErrorScreen({
 
         <div className="flex w-full flex-col items-center gap-4">
           <Button onClick={onAction} className="w-100">
-            {actionLabel}
+            {actionLabel ?? t.common.home}
           </Button>
           {secondaryActionLabel && onSecondaryAction && (
             <Button

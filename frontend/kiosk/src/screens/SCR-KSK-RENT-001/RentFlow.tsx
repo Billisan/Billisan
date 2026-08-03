@@ -1,6 +1,7 @@
 import dayjs from 'dayjs'
 import { useEffect, useState } from 'react'
 import { startRent } from '../../api/piSocket'
+import { useTranslation } from '../../i18n/useTranslation'
 import type { RentResult } from '../../types/piProtocol'
 import { ErrorScreen } from '../common/ErrorScreen'
 import { LoadingScreen } from '../common/LoadingScreen'
@@ -19,6 +20,7 @@ interface RentFlowProps {
 // "꺼냈어요"는 09-screen-flow.md상 USER_CONFIRMED_PICKUP_GUIDE(로컬 확인 신호일 뿐 완료 API 아님) —
 // 실제 완료는 서버가 물리 제거를 감지해 보내는 RESULT(terminalStatus=SUCCEEDED)로만 판단한다.
 export function RentFlow({ sessionId, onBack }: RentFlowProps) {
+  const t = useTranslation()
   const [slotNumber, setSlotNumber] = useState<number | null>(null)
   const [result, setResult] = useState<RentResult | null>(null)
   const [failed, setFailed] = useState(false)
@@ -52,12 +54,9 @@ export function RentFlow({ sessionId, onBack }: RentFlowProps) {
   if (failed) {
     return (
       <ErrorScreen
-        title="대여를 완료하지 못했습니다"
-        tips={[
-          '우산함 상태를 확인 중입니다.',
-          '문제가 계속되면 관리자에게 문의해주세요.',
-        ]}
-        actionLabel="홈으로 돌아가기"
+        title={t.rent.failedTitle}
+        tips={[t.deviceErrorTips.checking, t.deviceErrorTips.contactAdmin]}
+        actionLabel={t.common.homeReturn}
         onAction={onBack}
         currentStep={3}
         flow="RENT"
@@ -90,8 +89,8 @@ export function RentFlow({ sessionId, onBack }: RentFlowProps) {
 
   return (
     <LoadingScreen
-      title="대여를 준비하고 있어요"
-      subtitle="잠시만 기다려주세요"
+      title={t.rent.preparingTitle}
+      subtitle={t.common.pleaseWait}
       currentStep={3}
       flow="RENT"
     />

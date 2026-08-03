@@ -1,3 +1,5 @@
+import { useTranslation } from '../../i18n/useTranslation'
+
 export type StepFlow = 'RENT' | 'RETURN'
 
 interface StepIndicatorProps {
@@ -5,13 +7,10 @@ interface StepIndicatorProps {
   flow?: StepFlow
 }
 
-const STEP_LABELS: Record<StepFlow, string[]> = {
-  RENT: ['대여 시작', '안면 인식', '우산 받기'],
-  RETURN: ['반납 시작', '안면 인식', '우산 파손 인식', '반납 완료'],
-}
-
 export function StepIndicator({ currentStep, flow = 'RENT' }: StepIndicatorProps) {
-  const steps = STEP_LABELS[flow].map((label, index) => ({
+  const t = useTranslation()
+  const labels = flow === 'RETURN' ? t.stepIndicator.return : t.stepIndicator.rent
+  const steps = labels.map((label, index) => ({
     step: index + 1,
     label,
   }))
@@ -25,7 +24,7 @@ export function StepIndicator({ currentStep, flow = 'RENT' }: StepIndicatorProps
           <div key={step} className="flex items-center">
             <div className="flex items-center gap-2">
               <span
-                className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-base font-bold ${
                   isActive
                     ? 'bg-primary text-white'
                     : 'border-disabled text-tertiary-text border'
@@ -34,7 +33,7 @@ export function StepIndicator({ currentStep, flow = 'RENT' }: StepIndicatorProps
                 {step}
               </span>
               <span
-                className={`text-lg whitespace-nowrap ${
+                className={`text-xl whitespace-nowrap ${
                   isActive
                     ? 'font-bold text-black'
                     : 'text-tertiary-text font-medium'
