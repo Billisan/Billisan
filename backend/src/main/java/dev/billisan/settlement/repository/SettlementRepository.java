@@ -9,4 +9,6 @@ public interface SettlementRepository extends JpaRepository<Settlement, UUID> {
 
     /** {@code UK_SETTLEMENT_RENTAL_ID} — 대여 1건당 정산 1건. */
     Optional<Settlement> findByRentalId(UUID rentalId);
+
+    boolean existsByUserIdAndStatus(String userId, Settlement.Status status);
 }
