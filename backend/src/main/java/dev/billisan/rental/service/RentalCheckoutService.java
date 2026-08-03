@@ -16,6 +16,7 @@ import dev.billisan.slot.repository.SlotRepository;
 import dev.billisan.user.domain.UserAccount;
 import dev.billisan.user.repository.UserAccountRepository;
 import java.util.UUID;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -60,7 +61,17 @@ public class RentalCheckoutService {
         Slot slot = slotRepository.findRentCheckoutCandidate(stationId)
                 .orElseThrow(() -> new NoAvailableSlotException("대여 가능한 슬롯이 없습니다: stationId=" + stationId));
 
-        Rental rental = rentalRepository.save(Rental.request(user.getUserId(), slot.getSlotId(), rentalRequestId));
+        Rental rental;
+        try {
+            // saveAndFlush로 즉시 INSERT를 실행해야, QoS 1 재전송으로 같은 rentalRequestId가
+            // 거의 동시에 들어와 UK_RENTAL_REQUEST_ID를 위반하는 경우를 여기서 바로 잡을 수
+            // 있다(리뷰로 발견) — save()만 쓰면 위반이 이 트랜잭션의 나중 flush 시점까지
+            // 미뤄져, 실제로는 실패한 요청인데도 성공 응답이 나갈 뻔했다.
+            rental = rentalRepository.saveAndFlush(Rental.request(user.getUserId(), slot.getSlotId(), rentalRequestId));
+        } catch (DataIntegrityViolationException e) {
+            throw new IdempotencyConflictException(
+                    "동시에 재전송된 rentalRequestId입니다: " + rentalRequestId);
+        }
         DeviceOperation deviceOperation =
                 deviceOperationRepository.save(DeviceOperation.request(stationId, slot.getSlotId(), OperationType.UNLOCK));
 
