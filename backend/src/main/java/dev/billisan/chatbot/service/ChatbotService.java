@@ -2,6 +2,8 @@ package dev.billisan.chatbot.service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,6 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
 import dev.billisan.chatbot.dto.ChatCta;
@@ -32,8 +35,17 @@ import dev.billisan.global.exception.ChatbotMessageTooLongException;
  * 호출하도록 재작성했다 — Spring AI는 공식 OpenAI SDK(42MB)+스트리밍용 WebClient/Reactor
  * Netty 스택 전체를 끌고 와 부트jar를 90MB+ 불렸는데, 실제로 쓰는 기능은 단발 호출(`.call()`)
  * 뿐이라 프레임워크 대비 실사용 비율이 낮았다. 모델에는 답변 본문과 함께 {@code intent}·
- * {@code cta}도 같은 호출에서 JSON으로 받아 별도 분류기 없이 분류를 겸한다 —
- * {@code response_format: json_object}로 JSON 모드를 강제한다.
+ * {@code cta}도 같은 호출에서 JSON으로 받아 별도 분류기 없이 분류를 겸한다.
+ *
+ * <p>⚠️ {@code response_format: json_object}(OpenAI JSON 모드)는 의도적으로 안 쓴다 —
+ * 이 GMS/gpt-5.4-nano 조합에서 켜면 한글 답변이 깨진다(실측, {@link ChatCompletionRequest}
+ * 참고). 프롬프트 지시만으로 JSON을 받다 보니 모델이 가끔 응답을 마크다운 코드블록
+ * (```json ... ```)으로 감싸는 경우가 있어(MR 리뷰로 지적됨 — 실제로 재현은 못 했지만
+ * 프롬프트 전용 JSON 모드에서 잘 알려진 LLM 습성이라 방어적으로 처리), 파싱 전에
+ * {@link #stripCodeFence(String)}로 벗겨낸다. 그래도 파싱이 실패하면(모델이 JSON 형식 자체를
+ * 어긴 경우) 게이트웨이 자체가 응답을 못 준 경우(네트워크·타임아웃·5xx)와 구분되는 별도
+ * 에러코드({@code CHATBOT_RESPONSE_PARSE_FAILED})로 로그를 남긴다 — 둘은 원인이 달라
+ * (전자는 프롬프트 튜닝 문제, 후자는 인프라 문제) 운영 시 구분해서 봐야 한다.
  */
 @Service
 public class ChatbotService {
@@ -114,7 +126,16 @@ public class ChatbotService {
                 return staticFallback(requestId, "CHATBOT_RESPONSE_FAILED", startedAt);
             }
 
-            StructuredReply structured = objectMapper.readValue(content, StructuredReply.class);
+            StructuredReply structured;
+            try {
+                structured = objectMapper.readValue(stripCodeFence(content), StructuredReply.class);
+            } catch (JacksonException e) {
+                // 게이트웨이 장애(네트워크·타임아웃·5xx)와는 원인이 다르다 — 모델이 JSON 형식
+                // 자체를 어긴 경우라 프롬프트 쪽을 봐야 한다. 아래 catch(Exception)과 구분되는
+                // 전용 코드로 남긴다.
+                log.warn("챗봇 응답 JSON 파싱 실패({}): {}", e.getClass().getSimpleName(), e.getMessage());
+                return staticFallback(requestId, "CHATBOT_RESPONSE_PARSE_FAILED", startedAt);
+            }
             if (structured == null || structured.answer() == null || structured.answer().isBlank()) {
                 return staticFallback(requestId, "CHATBOT_RESPONSE_FAILED", startedAt);
             }
@@ -128,6 +149,17 @@ public class ChatbotService {
             log.warn("챗봇 모델 호출 실패({}): {}", e.getClass().getSimpleName(), e.getMessage());
             return staticFallback(requestId, errorCode, startedAt);
         }
+    }
+
+    // ```json ... ``` 또는 ``` ... ``` 로 감싸져 오는 경우를 벗겨낸다. 앞뒤 공백·개행은
+    // 관대하게 허용한다 — 정확한 포맷을 강제할 수 없는 프롬프트 전용 JSON 지시라 방어적으로 짠다.
+    private static final Pattern CODE_FENCE = Pattern.compile(
+            "^```(?:json)?\\s*\\r?\\n?(.*?)\\r?\\n?```\\s*$", Pattern.DOTALL);
+
+    private static String stripCodeFence(String content) {
+        String trimmed = content.trim();
+        Matcher matcher = CODE_FENCE.matcher(trimmed);
+        return matcher.matches() ? matcher.group(1).trim() : trimmed;
     }
 
     private static String extractContent(ChatCompletionResponse response) {

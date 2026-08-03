@@ -102,6 +102,39 @@ class ChatbotServiceTest {
     }
 
     @Test
+    void parsesContentWrappedInMarkdownCodeFence() {
+        // response_format(JSON 모드)을 끄고 프롬프트 지시만으로 JSON을 받다 보니, 모델이
+        // 가끔 답을 ```json ... ``` 코드블록으로 감싸는 경우가 있다(MR 리뷰 지적) — 파싱 전에
+        // 벗겨내는지 검증한다.
+        String fencedContent = "```json\n"
+                + "{\"answer\":\"코드블록으로 감싸져 왔어요.\",\"intent\":\"GENERAL_INQUIRY\",\"cta\":\"NONE\"}\n"
+                + "```";
+        mockServer.expect(requestTo(BASE_URL + "/chat/completions"))
+                .andRespond(withSuccess(chatCompletionJson(fencedContent), MediaType.APPLICATION_JSON));
+
+        ChatMessageResponse response = service.reply("req-fenced", "질문");
+
+        assertThat(response.answer()).isEqualTo("코드블록으로 감싸져 왔어요.");
+        assertThat(response.source()).isEqualTo(ChatSource.EXTERNAL_LLM);
+        assertThat(response.fallback()).isFalse();
+    }
+
+    @Test
+    void returnsStaticFallbackWhenContentIsNotValidJson() {
+        // 코드블록도 아니고 그냥 JSON이 아닌 경우 — CHATBOT_RESPONSE_PARSE_FAILED로 로그가
+        // 남고(별도 검증은 안 함, 로그 전용) 정적 폴백으로 안전하게 넘어가야 한다.
+        String notJson = "이건 그냥 자연어 문장이지 JSON이 아니에요.";
+        mockServer.expect(requestTo(BASE_URL + "/chat/completions"))
+                .andRespond(withSuccess(chatCompletionJson(notJson), MediaType.APPLICATION_JSON));
+
+        ChatMessageResponse response = service.reply("req-badjson", "질문");
+
+        assertThat(response.answer()).isEqualTo(STATIC_FALLBACK);
+        assertThat(response.source()).isEqualTo(ChatSource.STATIC_FAQ_FALLBACK);
+        assertThat(response.fallback()).isTrue();
+    }
+
+    @Test
     void fallsBackToGeneralInquiryAndNoneWhenModelReturnsUnknownEnumValues() {
         String content = "{\"answer\":\"안내드릴게요.\",\"intent\":\"NOT_A_REAL_INTENT\",\"cta\":\"NOT_A_REAL_CTA\"}";
         mockServer.expect(requestTo(BASE_URL + "/chat/completions"))
