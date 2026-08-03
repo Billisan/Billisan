@@ -47,6 +47,47 @@ SET
 	),
 	`rental_eligibility_updated_at` = CURRENT_TIMESTAMP(6);
 
+-- Fail the migration before tightening the columns if any row is NULL or if
+-- the persisted projection differs from the same authoritative calculation.
+-- The temporary table disappears with the session even when the guard fails.
+CREATE TEMPORARY TABLE `_v19_rental_eligibility_backfill_guard` (
+	`must_be_zero` BIGINT NOT NULL,
+	CONSTRAINT `CK_V19_RENTAL_ELIGIBILITY_BACKFILL_GUARD`
+		CHECK (`must_be_zero` = 0)
+);
+
+INSERT INTO `_v19_rental_eligibility_backfill_guard` (`must_be_zero`)
+SELECT COUNT(*)
+FROM `user_account` AS `u`
+WHERE `u`.`rental_eligible` IS NULL
+	OR `u`.`rental_eligibility_updated_at` IS NULL
+	OR `u`.`rental_eligible` <> (
+		`u`.`face_registered` = TRUE
+		AND NOT EXISTS (
+			SELECT 1
+			FROM `rental` AS `r`
+			WHERE `r`.`user_id` = `u`.`user_id`
+				AND `r`.`status` IN ('REQUESTED', 'ACTIVE', 'RETURNING')
+		)
+		AND NOT EXISTS (
+			SELECT 1
+			FROM `return_attempt` AS `ra`
+			INNER JOIN `rental` AS `r`
+				ON `r`.`rental_id` = `ra`.`rental_id`
+			WHERE `r`.`user_id` = `u`.`user_id`
+				AND `ra`.`status` = 'RECOVERY_REQUIRED'
+		)
+		AND NOT EXISTS (
+			SELECT 1
+			FROM `settlement` AS `s`
+			WHERE `s`.`user_id` = `u`.`user_id`
+				AND `s`.`status` = 'PENDING'
+				AND `s`.`amount` > `s`.`paid_amount`
+		)
+	);
+
+DROP TEMPORARY TABLE `_v19_rental_eligibility_backfill_guard`;
+
 ALTER TABLE `user_account`
 	MODIFY COLUMN `rental_eligible` BOOLEAN NOT NULL DEFAULT FALSE
 		COMMENT 'Fail-closed rental eligibility projection; not a business SSOT',
