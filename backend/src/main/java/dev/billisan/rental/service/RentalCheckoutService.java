@@ -72,6 +72,12 @@ public class RentalCheckoutService {
             throw new IdempotencyConflictException(
                     "동시에 재전송된 rentalRequestId입니다: " + rentalRequestId);
         }
+
+        // 1시간 배치를 기다리지 않고 즉시 반영 — 안 그러면 배치가 돌기 전까지 이 사용자가
+        // 활성 대여를 가진 채로 또 대여를 시도할 수 있다(리뷰로 발견). 반납 완료 시 다시
+        // true로 되돌리는 건 반납 기능 쪽 책임.
+        user.changeRentalEligibility(false);
+
         DeviceOperation deviceOperation =
                 deviceOperationRepository.save(DeviceOperation.request(stationId, slot.getSlotId(), OperationType.UNLOCK));
 
