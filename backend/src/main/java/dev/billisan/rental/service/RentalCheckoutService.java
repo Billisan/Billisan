@@ -96,7 +96,7 @@ public class RentalCheckoutService {
                 slot.getSlotId(),
                 slot.getSlotNumber(),
                 new DeviceOperationView(
-                        UUID.fromString(deviceOperation.getCommandId()),
+                        deviceOperation.getCommandId(),
                         deviceOperation.getOperationType().name(),
                         deviceOperation.getStatus().name()));
     }

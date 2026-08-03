@@ -9,6 +9,6 @@ public record RentalCheckoutResponse(
         int slotNumber,
         DeviceOperationView deviceOperation) {
 
-    public record DeviceOperationView(UUID commandId, String operationType, String status) {
+    public record DeviceOperationView(String commandId, String operationType, String status) {
     }
 }

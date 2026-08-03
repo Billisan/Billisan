@@ -35,6 +35,8 @@ public class DeviceOperation {
     @Column(name = "slot_id", columnDefinition = "CHAR(36)", updatable = false)
     private UUID slotId;
 
+    /** MQTT·WebSocket 연계 Command 중복 제거 키 — Spring 밖(Kiosk↔Pi WebSocket)에서도
+     * 참조되는 값이라 UUID 형식만 강제하지 않고 문자열로 둔다(ERD 기준). */
     @Column(name = "command_id", updatable = false, nullable = false, length = 100)
     private String commandId;
 
