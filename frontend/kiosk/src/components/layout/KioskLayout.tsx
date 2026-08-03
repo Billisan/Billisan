@@ -39,38 +39,44 @@ export function KioskLayout({
 
   return (
     <div className="relative flex h-screen flex-col bg-linear-to-b from-white via-white via-60% to-[#FFFAE1]">
-      <header className="relative flex min-h-[15vh] w-full items-center justify-between p-14">
-        {currentStep && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-            <StepIndicator currentStep={currentStep} flow={flow} />
-          </div>
-        )}
-        {!currentStep ? (
-          <div className="flex items-center gap-6">
-            <img src={logo} alt="빌리산 로고" className="h-16" />
-            <div className="text-tertiary-text flex items-center gap-2">
-              <LocationIcon className="text-primary h-10 w-10 shrink-0" />
-              <div className="flex flex-col leading-tight">
-                <span className="text-2xl font-semibold text-black">
-                  {t.header.schoolName}
-                </span>
-                <span className="text-lg font-medium">{t.header.location}</span>
+      <header className="grid h-36 w-full grid-cols-[1fr_auto_1fr] items-center px-10">
+        <div className="flex justify-start">
+          {!currentStep ? (
+            <div className="flex items-center gap-6">
+              <img src={logo} alt="빌리산 로고" className="h-16" />
+              <div className="text-tertiary-text flex items-center gap-2">
+                <LocationIcon className="text-primary h-10 w-10 shrink-0" />
+                <div className="flex flex-col leading-tight">
+                  <span className="text-2xl font-semibold text-black">
+                    {t.header.schoolName}
+                  </span>
+                  <span className="text-lg font-medium">
+                    {t.header.location}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        ) : (
-          onBack && (
-            <button
-              type="button"
-              onClick={onBack}
-              className="bg-primary flex items-center gap-1 rounded-2xl px-6 py-3 text-2xl font-bold text-white transition-colors active:brightness-95"
-            >
-              <ChevronLeftIcon className="h-7 w-7" />
-              {t.common.back}
-            </button>
-          )
-        )}
-        {!currentStep && <LanguageToggle />}
+          ) : (
+            onBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                className="bg-primary flex items-center gap-1 rounded-2xl px-6 py-3 text-2xl font-bold text-white transition-colors active:brightness-95"
+              >
+                <ChevronLeftIcon className="h-7 w-7" />
+                {t.common.back}
+              </button>
+            )
+          )}
+        </div>
+
+        <div className="flex justify-center">
+          {currentStep && <StepIndicator currentStep={currentStep} flow={flow} />}
+        </div>
+
+        <div className="flex justify-end">
+          {!currentStep && <LanguageToggle />}
+        </div>
       </header>
       <main className="flex min-h-0 flex-1 flex-col items-center justify-end">
         <div
