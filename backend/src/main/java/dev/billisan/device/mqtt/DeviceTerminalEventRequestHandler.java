@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.billisan.device.dto.DeviceTerminalEventRequest;
 import dev.billisan.device.dto.DeviceTerminalEventResponse;
 import dev.billisan.device.service.DeviceTerminalEventService;
+import dev.billisan.global.exception.DeviceOperationNotFoundException;
 import dev.billisan.global.exception.RentalNotFoundException;
 import dev.billisan.global.exception.UnsupportedDeviceEventException;
 import dev.billisan.global.mqtt.MqttPublisher;
@@ -63,6 +64,8 @@ public class DeviceTerminalEventRequestHandler {
             publish(stationId, response);
         } catch (RentalNotFoundException e) {
             publishError(stationId, "RENTAL_NOT_FOUND", e.getMessage());
+        } catch (DeviceOperationNotFoundException e) {
+            publishError(stationId, "DEVICE_OPERATION_NOT_FOUND", e.getMessage());
         } catch (UnsupportedDeviceEventException e) {
             publishError(stationId, "UNSUPPORTED_DEVICE_EVENT", e.getMessage());
         } catch (Exception e) {

@@ -7,6 +7,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -17,9 +18,10 @@ import org.hibernate.type.SqlTypes;
  * P0-3 Option A(V1 마이그레이션 주석)에 따라 대여·반납 도메인과 독립된 장치
  * Command/Terminal 원장이다. {@code rental_id}·{@code return_attempt_id} 컬럼이 없다 —
  * 업무 객체와의 상관은 Spring 오케스트레이션 문맥과 {@code command_id}로만 유지한다.
- * EDGE-DEVICE-001은 이 엔티티를 조회해서 바꾸지 않고 {@code DeviceOperationRepository}의
- * 벌크 UPDATE로만 갱신한다 — 순수 기록용 테이블이라 업무 판단에 끌어들이지 않기 위해서다.
- * 그래서 여기 필드들은 그 UPDATE 쿼리가 참조할 컬럼 매핑 용도로만 존재한다.
+ * EDGE-DEVICE-001은 commandId로 이 엔티티를 조회해 이미 종결(SUCCEEDED/FAILED/
+ * TIMED_OUT/OUTCOME_UNKNOWN) 상태인지부터 확인한다(리뷰로 발견) — Rental.status만으로
+ * 재처리 여부를 판단하면, 실패 시 Rental이 그대로 REQUESTED에 남아있어서 뒤늦게 도착한
+ * 성공 이벤트가 이미 실패 처리된 명령을 다시 성공으로 뒤집어버릴 수 있었다.
  */
 @Entity
 @Table(name = "device_operation")
@@ -125,6 +127,46 @@ public class DeviceOperation {
     public static DeviceOperation request(UUID stationId, UUID slotId, OperationType operationType) {
         return new DeviceOperation(
                 UUID.randomUUID(), stationId, slotId, UUID.randomUUID().toString(), operationType, LocalDateTime.now());
+    }
+
+    public boolean isTerminal() {
+        return status == Status.SUCCEEDED
+                || status == Status.FAILED
+                || status == Status.TIMED_OUT
+                || status == Status.OUTCOME_UNKNOWN;
+    }
+
+    /**
+     * EDGE-DEVICE-001 — Pi가 보고한 Terminal 이벤트를 기록한다. terminalEventType은
+     * TIMED_OUT일 때 null을 넘긴다(DB CHECK가 OPERATION_COMPLETED·OPERATION_FAILED만
+     * 허용).
+     */
+    public void recordTerminalOutcome(
+            Status status,
+            TerminalEventType terminalEventType,
+            String eventId,
+            String resultCode,
+            OccupancyStatus observedOccupancyStatus,
+            LockStatus observedLockStatus,
+            Short evidenceSchemaVersion,
+            LocalDateTime evidenceObservedAt,
+            String evidencePayload,
+            LocalDateTime completedAt) {
+        this.status = status;
+        this.terminalEventType = terminalEventType;
+        this.eventId = eventId;
+        this.resultCode = resultCode;
+        this.observedOccupancyStatus = observedOccupancyStatus;
+        this.observedLockStatus = observedLockStatus;
+        this.evidenceSchemaVersion = evidenceSchemaVersion;
+        this.evidenceObservedAt = evidenceObservedAt;
+        this.evidencePayload = evidencePayload;
+        this.completedAt = completedAt;
+    }
+
+    @PreUpdate
+    private void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 
     public UUID getOperationId() {
