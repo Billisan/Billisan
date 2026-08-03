@@ -1,5 +1,6 @@
 package dev.billisan.slot.repository;
 
+import dev.billisan.rental.domain.Rental;
 import dev.billisan.slot.domain.Slot;
 import dev.billisan.slot.domain.Slot.ItemCondition;
 import dev.billisan.slot.domain.Slot.LockStatus;
@@ -48,4 +49,39 @@ public interface SlotRepository extends JpaRepository<Slot, UUID> {
             OccupancyStatus occupancyStatus,
             LockStatus lockStatus,
             ItemCondition itemCondition);
+
+    /**
+     * EDGE-RENT-001 checkout 후보 선정. 물리 상태(AVAILABLE+OCCUPIED+LOCKED+NORMAL)를 만족하면서, 
+     * 이미 다른 REQUESTED 대여가 물고 있지 않은 슬롯을 번호 오름차순으로 찾아 그중 첫 번째를 반환한다. 
+     * 스테이션당 키오스크 1대라 요청이 겹치지 않으므로 별도 행 잠금은 쓰지 않는다.
+     */
+    default Optional<Slot> findRentCheckoutCandidate(UUID stationId) {
+        return findRentCheckoutCandidates(
+                        stationId,
+                        ServiceStatus.AVAILABLE,
+                        OccupancyStatus.OCCUPIED,
+                        LockStatus.LOCKED,
+                        ItemCondition.NORMAL,
+                        Rental.Status.REQUESTED)
+                .stream()
+                .findFirst();
+    }
+
+    @Query("select s from Slot s "
+            + "where s.stationId = :stationId "
+            + "and s.serviceStatus = :serviceStatus "
+            + "and s.occupancyStatus = :occupancyStatus "
+            + "and s.lockStatus = :lockStatus "
+            + "and s.itemCondition = :itemCondition "
+            + "and not exists ("
+            + "  select 1 from Rental r where r.checkoutSlotId = s.slotId and r.status = :requestedStatus"
+            + ") "
+            + "order by s.slotNumber")
+    List<Slot> findRentCheckoutCandidates(
+            @Param("stationId") UUID stationId,
+            @Param("serviceStatus") ServiceStatus serviceStatus,
+            @Param("occupancyStatus") OccupancyStatus occupancyStatus,
+            @Param("lockStatus") LockStatus lockStatus,
+            @Param("itemCondition") ItemCondition itemCondition,
+            @Param("requestedStatus") Rental.Status requestedStatus);
 }
