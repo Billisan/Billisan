@@ -37,12 +37,7 @@ import { DataTable, TBody, Td, TableCard, Th, THead, Tr } from '@/shared/compone
 import { PageBar } from '@/shared/components/PageBar';
 import { ErrorState, LoadingState, NotFoundState } from '@/shared/components/PageState';
 import { PageTitle } from '@/shared/components/PageTitle';
-import {
-    ITEM_CONDITION_LABEL,
-    LOCK_STATUS_LABEL,
-    OCCUPANCY_STATUS_LABEL,
-    SLOT_SERVICE_LABEL,
-} from '@/shared/constants/statusLabels';
+import { ITEM_CONDITION_LABEL, LOCK_STATUS_LABEL } from '@/shared/constants/statusLabels';
 
 export function SlotDetailPage() {
     const { slotId } = useParams();
@@ -188,30 +183,32 @@ export function SlotDetailPage() {
             {/* 2단 카드 */}
             <div className="mb-[46px] grid grid-cols-2 gap-[18px]">
                 {/*
-                 * **점유·우산 상태를 따로 적습니다.**
+                 * **우산 상태는 요약 줄 배지와 겹쳐도 남깁니다.**
                  *
-                 * 예전에는 "요약 줄 배지와 같은 값이라 두 번 그릴 이유가 없다"고 뺐는데,
-                 * 그 전제가 틀렸습니다. `deriveSlotDisplayStatus` 는 4축을 배지 하나로
-                 * 뭉개면서 `serviceStatus` 를 가장 먼저 봅니다 — `ADMIN_REVIEW` 가 걸리면
-                 * `itemCondition` 이 무엇이든 「관리자 확인」 하나로 나옵니다.
-                 *
-                 * 그래서 성격이 아주 다른 두 슬롯이 화면에서 똑같아 보였습니다.
+                 * `deriveSlotDisplayStatus` 는 4축을 배지 하나로 뭉개면서 `serviceStatus` 를
+                 * 가장 먼저 봅니다 — `ADMIN_REVIEW` 가 걸리면 `itemCondition` 이 무엇이든
+                 * 「판정 대기」 하나로 나옵니다. 그래서 성격이 아주 다른 두 슬롯이 배지만으로는
+                 * 똑같아 보입니다.
                  *   - 반납 뒤 AI 가 파손 의심해 격리한 슬롯 (`UNKNOWN`, 검수 있음)
                  *   - 관리자가 순찰 중 수리 대상으로 지정한 슬롯 (`REPAIRABLE`, 검수 없음)
-                 * 관리자가 할 일이 「판정하기」와 「수리 보내기」로 갈리는데 화면이 그 차이를
-                 * 말해 주지 않았습니다. 라벨은 ERD 표시 기준 그대로입니다.
+                 * 관리자가 할 일이 「판정하기」와 「수리 보내기」로 갈립니다. 라벨은 ERD 표시 기준 그대로입니다.
+                 *
+                 * **`occupancyStatus`(점유)는 뺐습니다.** 같은 이유가 이 축에는 서지 않았습니다.
+                 * 배지가 `이용 가능`이면 점유는 반드시 `OCCUPIED`, `빈 슬롯`이면 반드시 `EMPTY`
+                 * 라서 파생 조건상 되읽을 수 있고, 그 밖의 경우도 바로 아래 우산 상태 줄이
+                 * 대신 말해 줍니다(빈 슬롯이면 `itemCondition` 이 `null` 이라 `—`).
+                 *
+                 * 잃는 것은 `점유 확인 불가`(센서가 우산 유무를 못 읽음) 하나뿐입니다. 그 경우
+                 * 4축이 어느 조합에도 안 맞아 요약 배지가 `UNKNOWN` 으로 떨어지므로, 이상이
+                 * 있다는 사실 자체는 화면에 남습니다 — 원인을 좁히는 데 한 단계 더 걸릴 뿐입니다.
+                 * 대여소 단위 개수는 재고 화면의 `unknownOccupancySlotCount` 카드에 있습니다.
                  */}
                 <InfoCard title="슬롯 상태">
-                    <InfoRow label="점유">
-                        <span className="text-[13px] font-semibold text-brand-ink">
-                            {OCCUPANCY_STATUS_LABEL[slot.occupancyStatus]}
-                        </span>
-                    </InfoRow>
                     <InfoRow label="우산 상태">
                         {/*
                          * 이 줄만 배지입니다. 3번(확인 필요)과 5번(수리 가능)처럼 **할 일이
-                         * 갈리는 축**이라 훑을 때 색으로 먼저 걸려야 합니다. 점유·잠금은
-                         * 사실 진술이라 글자로 충분합니다.
+                         * 갈리는 축**이라 훑을 때 색으로 먼저 걸려야 합니다. 잠금은 사실
+                         * 진술이라 글자로 충분합니다.
                          *
                          * 빈 슬롯이면 `itemCondition` 이 null 입니다 — 없는 값을 지어내지
                          * 않고, 배지도 안 답니다(색은 상태가 있다는 뜻입니다).
@@ -224,11 +221,25 @@ export function SlotDetailPage() {
                             <span className="text-[13px] font-semibold text-brand-muted">—</span>
                         )}
                     </InfoRow>
-                    <InfoRow label="서비스">
-                        <span className="text-[13px] font-semibold text-brand-ink">
-                            {SLOT_SERVICE_LABEL[slot.serviceStatus]}
-                        </span>
-                    </InfoRow>
+                    {/*
+                     * **`serviceStatus`(서비스)도 뺐습니다 — 요약 배지에서 전부 되읽힙니다.**
+                     *
+                     * 라벨 문자열까지 같아서(`SLOT_SERVICE_LABEL` 과 `SLOT_DISPLAY_LABEL` 의
+                     * `이용 가능`·`판정 대기`·`이용 중지`) 배지 바로 아래 같은 낱말이 한 번 더
+                     * 찍히고 있었습니다. 세 값이 배지와 1:1 로 대응합니다.
+                     *   판정 대기            → `ADMIN_REVIEW` (파생 함수가 가장 먼저 보는 축)
+                     *   이용 중지            → `OUT_OF_SERVICE`
+                     *   이용 가능·빈 슬롯·UNKNOWN → `AVAILABLE` (앞의 두 분기를 통과했으므로)
+                     *   파손                 → `OUT_OF_SERVICE`. `AVAILABLE+(DAMAGED|REPAIRABLE)`
+                     *                          는 `Slot.isValidAdminCombination` 이 거부하는
+                     *                          조합이라 남는 경우가 이것뿐입니다.
+                     *
+                     * 잃는 것: 그 **거부되는 조합이 어떻게든 DB 에 들어왔을 때**. 배지는 「파손」인데
+                     * 서비스가 `AVAILABLE` 이면 파손 우산이 대여 대상으로 열려 있다는 뜻인데,
+                     * 이 줄이 없으면 화면이 그 사실을 말하지 못합니다. 백엔드 관리자 API 로는
+                     * 만들 수 없는 조합이라 지금은 감수합니다.
+                     * TODO: 슬롯 4축 불변식을 화면에서 검사하게 되면 그 경고로 대신하세요.
+                     */}
                     <InfoRow label="잠금 여부">
                         {/*
                          * 표와 달리 상세는 자리가 넉넉합니다. 아이콘만 두면 `잠금 확인 불가`와
@@ -244,14 +255,37 @@ export function SlotDetailPage() {
                     <InfoRow label="온라인">
                         <DeviceBadge status={station.deviceStatus} />
                     </InfoRow>
-                    <InfoRow label="최근 갱신">
-                        <span className="text-[13px] font-semibold tabular-nums text-brand-ink">
-                            {slot.updatedAt.slice(0, 10)} {slot.updatedAt.slice(11, 16)}
-                        </span>
-                    </InfoRow>
+                    {/*
+                     * 「최근 갱신」은 여기 두지 않습니다. 우측 상단 PageBar 의 meta 가 **같은
+                     * `updatedAt` 을 같은 형식으로** 이미 찍고 있어서, 한 화면에 똑같은 문자열이
+                     * 두 번 나왔습니다. 두 자리 중 상단이 화면 전체의 기준 시각이라 그쪽을 남깁니다.
+                     */}
                 </InfoCard>
 
-                <InfoCard title="최근 검수">
+                {/*
+                 * '검수 상세' 는 **카드 제목 줄 오른쪽**에 답니다.
+                 *
+                 * 예전에는 「판정 사유」라는 행을 만들어 그 값 자리에 이 링크를 뒀습니다.
+                 * 라벨이 없는 것을 약속하는 셈이었습니다 — 판정 사유(`reasonCode`·`note`)는
+                 * `ADMIN-SLOT-STATUS-001`·`ADMIN-INSPECTION-003` 이 **받기만** 하고 조회 응답에는
+                 * 없는 필드라, 그 행에 진짜 사유가 담길 날이 오지 않습니다.
+                 *
+                 * 링크는 카드 전체로 가는 출구이지 어느 한 항목의 값이 아니므로 제목 줄이
+                 * 제자리입니다. 검수가 없으면 링크도 없습니다(갈 곳이 없으니).
+                 */}
+                <InfoCard
+                    title="최근 검수"
+                    action={
+                        inspection && (
+                            <Link
+                                to={`/inspections/${inspection.inspectionId}`}
+                                className="text-[13px] font-bold leading-none text-brand-blue-ink transition-opacity hover:opacity-70"
+                            >
+                                검수 상세
+                            </Link>
+                        )
+                    }
+                >
                     {inspection ? (
                         <>
                             {/* AI·관리자·슬롯은 값 집합이 셋 다 다릅니다. 라벨로도 구분해 둡니다. */}
@@ -285,22 +319,8 @@ export function SlotDetailPage() {
                              * §7.6 슬롯 상세 표시 필드는 `AI 결과·신뢰도` 까지이고, 모델 버전은
                              * `WF-WEB-CHANGE-001` 이 검수 상세(`SCR-WEB-INSPECTION-DETAIL-001`)
                              * 의 항목으로 정했습니다 — "AI 결과, 신뢰도, 모델 버전, 추론 시각·지연".
-                             * 아래 '검수 상세' 링크 한 번이면 거기서 봅니다.
+                             * 제목 줄의 '검수 상세' 링크 한 번이면 거기서 봅니다.
                              */}
-                            {/*
-                             * `최근 returnAttemptId` 는 §7.6 표시 필드에 명시된 항목이라 남깁니다.
-                             * 이 슬롯을 지금 상태로 만든 반납 건이고, 백엔드에 문의할 때 지목하는
-                             * 값입니다. 반납 상세(P1)는 목업 식별자 체계가 달라 아직 링크하지 않고
-                             * 마우스오버·복사로 전체 값을 꺼낼 수 있게 둡니다.
-                             */}
-                            <InfoRow label="판정 사유">
-                                <Link
-                                    to={`/inspections/${inspection.inspectionId}`}
-                                    className="text-[13px] font-bold text-brand-blue-ink transition-opacity hover:opacity-70"
-                                >
-                                    검수 상세
-                                </Link>
-                            </InfoRow>
                         </>
                     ) : (
                         <p className="pt-1 text-[13px] font-medium text-brand-muted">
@@ -355,13 +375,30 @@ export function SlotDetailPage() {
 
 /* ------------------------------------------------------------------ 하위 조각 */
 
-/** 2단 카드 한 장. 시안 기준 제목 아래 15px, 행 간격 8px(행 높이 22px → 30px 주기)입니다. */
-function InfoCard({ title, children }: { title: string; children: ReactNode }) {
+/**
+ * 2단 카드 한 장. 시안 기준 제목 아래 15px, 행 간격 8px(행 높이 22px → 30px 주기)입니다.
+ *
+ * `action` 은 제목 줄 오른쪽 끝에 붙는 링크·버튼 자리입니다. 카드 **전체**로 이어지는
+ * 출구를 둘 때 씁니다 — 어느 한 항목의 값이면 `InfoRow` 로 가야 합니다.
+ *
+ * 제목과 같은 줄에 두되 높이는 제목이 정합니다(`h-[15px]`, `text-[15px] leading-none`).
+ * 옆 카드에 `action` 이 없어도 두 카드의 첫 행이 같은 y 에 놓입니다.
+ */
+function InfoCard({
+    title,
+    action,
+    children,
+}: {
+    title: string;
+    action?: ReactNode;
+    children: ReactNode;
+}) {
     return (
-        <section className="rounded-lg bg-white p-5">
-            <h3 className="mb-[15px] text-[15px] font-extrabold leading-none text-brand-ink">
-                {title}
-            </h3>
+        <section className="rounded-lg bg-white px-5 py-6">
+            <div className="mb-[15px] flex h-[15px] items-center justify-between gap-4">
+                <h3 className="text-[15px] font-extrabold leading-none text-brand-ink">{title}</h3>
+                {action}
+            </div>
             <div className="space-y-2">{children}</div>
         </section>
     );
@@ -429,6 +466,31 @@ function RefId({ id, to }: { id: string | null | undefined; to?: string | null }
 function SlotHistoryTable({ entries }: { entries: SlotHistoryEntry[] }) {
     return (
         <TableCard>
+            {/*
+             * **이 표가 목업이라는 사실을 화면에 적습니다.**
+             *
+             * `ADMIN-SLOT-DETAIL-001` 응답에는 이력 배열이 없습니다. 아래 줄들은 최근 검수·반납
+             * 시도 각 1건에서 `buildSlotHistory` 가 지어낸 것이고, 시각도 `updatedAt` 에서 임의의
+             * 분을 뺀 값입니다. 표시가 없으면 관리자가 이걸 실제 기록으로 읽습니다 — 자정 근처에서
+             * 음수가 잘려 '00:00' 이 찍히는 것까지 진짜 대여 시각으로 보게 됩니다.
+             *
+             * TODO: 이력 API 가 계약에 들어오면 이 머리말과 mocks/slotDetail.ts 를 함께 지우세요.
+             */}
+            <div className="px-5 pb-[15px] pt-5">
+                <div className="flex items-center gap-[7px]">
+                    <h3 className="text-[15px] font-extrabold leading-none text-brand-ink">
+                        상태 이력
+                    </h3>
+                    <Badge tone="slate" title="서버가 주지 않는 값입니다">
+                        목업
+                    </Badge>
+                </div>
+                <p className="mt-[7px] text-[12.5px] font-medium leading-relaxed text-brand-muted">
+                    이력 API가 아직 없어 최근 검수·반납 시도로 구성한 예시입니다. 실제 기록이
+                    아니므로 판단 근거로 쓰지 마세요.
+                </p>
+            </div>
+
             <DataTable>
                 {/*
                  * 이 표는 '언제 · 무엇이 · 어떻게 바뀌었나' 세 가지만 보여줍니다.
