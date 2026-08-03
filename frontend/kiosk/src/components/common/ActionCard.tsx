@@ -4,6 +4,7 @@ import type {
   ReactNode,
   SVGProps,
 } from "react";
+import { useLanguageStore } from "../../store/languageStore";
 import { ArrowRightIcon } from "../icons/ArrowRightIcon";
 
 type ActionCardVariant = "primary" | "secondary";
@@ -34,6 +35,7 @@ export function ActionCard({
   className = "",
   ...rest
 }: ActionCardProps) {
+  const language = useLanguageStore((state) => state.language);
   const isPrimary = variant === "primary" && !disabled;
 
   const containerClasses = isPrimary
@@ -72,7 +74,11 @@ export function ActionCard({
       </span>
 
       <span className="relative z-10 flex flex-col gap-3">
-        <span className="text-5xl font-bold tracking-[0.4em]">{title}</span>
+        <span
+          className={`text-5xl font-bold ${language === "ko" ? "tracking-[0.4em]" : ""}`}
+        >
+          {title}
+        </span>
         <span className={`text-tertiary-text text-2xl font-medium`}>
           {subtitle}
         </span>

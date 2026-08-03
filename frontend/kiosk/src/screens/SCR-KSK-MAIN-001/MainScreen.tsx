@@ -72,6 +72,7 @@ export function MainScreen({ onRent, onReturn }: MainScreenProps) {
                   src={reloadAnimation}
                   width={46}
                   height={46}
+                  speed={1.4}
                 />
               }
               title={t.main.returnTitle}
