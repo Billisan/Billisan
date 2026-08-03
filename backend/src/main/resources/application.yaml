@@ -2,6 +2,24 @@ spring:
   application:
     name: billisan
 
+  # GMS 게이트웨이가 응답 없이 멈추는 경우를 대비한 상한 — 없으면 서버 스레드가 무한
+  # 대기하고, RN 클라이언트의 fetch()도 기본 타임아웃이 없어 같이 무한 대기할 수 있다
+  # (chatbot-service 프로토타입에서 2026-08-03 FE 통합 재검증 중 발견해 추가한 설정).
+  http:
+    client:
+      connect-timeout: 5s
+      read-timeout: 20s
+
+  ai:
+    openai:
+      # 환경변수로만 주입한다 — 커밋된 파일에 실키를 두지 않는다(JWT_SECRET과 동일 원칙).
+      api-key: ${GMS_KEY:}
+      base-url: http://localhost:9999/v1
+      chat:
+        options:
+          model: gpt-5.4-nano
+          temperature: 0.2
+
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/billisan?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul}
     username: ${SPRING_DATASOURCE_USERNAME}
@@ -42,6 +60,12 @@ admin:
 mqtt:
   broker-url: ${MQTT_BROKER_URL:tcp://localhost:1883}
   client-id: ${MQTT_CLIENT_ID:billisan-server}
+
+chatbot:
+  knowledge-location: "classpath:knowledge/*.md"
+  # CHATBOT_MESSAGE_TOO_LONG 임계값 — 팀 확정 수치 아님, MVP 기본값(CLAUDE.md "미확정
+  # 사항" 원칙에 따라 코드에 하드코딩하지 않고 여기서 관리).
+  max-message-length: ${CHATBOT_MAX_MESSAGE_LENGTH:500}
 
 logging:
   pattern:

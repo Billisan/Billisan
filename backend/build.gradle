@@ -17,8 +17,22 @@ repositories {
 	mavenCentral()
 }
 
+ext {
+	springAiVersion = '2.0.0'
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
+	}
+}
+
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
+	// 챗봇(CHATBOT-001) — GMS 게이트웨이(OpenAI 호환, gpt-5.4-nano)로 호출한다. 개인
+	// Anthropic 구독 키는 팀 프로젝트에 쓰지 않기로 확정했으므로 anthropic 스타터는 추가하지
+	// 않는다(chatbot-service/README.md "모델 임시 전환" 절 참고, 원래 프로토타입 기록).
+	implementation 'org.springframework.ai:spring-ai-starter-model-openai'
 	implementation 'org.springframework.boot:spring-boot-starter-integration'
 	implementation 'org.springframework.integration:spring-integration-mqtt'
 	implementation 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5'
@@ -38,6 +52,10 @@ dependencies {
 
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
+	// Spring Boot 4.x부터 @WebMvcTest 등 웹 MVC 테스트 슬라이스가 spring-boot-starter-test에서
+	// 빠져 이 모듈로 분리됐다(chatbot-service 프로토타입에서 실측 확인된 함정, 이 프로젝트는
+	// 아직 @WebMvcTest를 쓰는 테스트가 없어서 이번에 처음 추가한다).
+	testImplementation 'org.springframework.boot:spring-boot-webmvc-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 

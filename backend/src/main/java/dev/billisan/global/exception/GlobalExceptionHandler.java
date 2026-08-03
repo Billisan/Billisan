@@ -103,6 +103,16 @@ public class GlobalExceptionHandler {
                 .body(new ApiError("ADMIN_REASON_REQUIRED", ex.getMessage()));
     }
 
+    @ExceptionHandler(ChatbotMessageRequiredException.class)
+    public ResponseEntity<ApiError> handleChatbotMessageRequired(ChatbotMessageRequiredException ex) {
+        return ResponseEntity.badRequest().body(new ApiError("CHATBOT_MESSAGE_REQUIRED", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ChatbotMessageTooLongException.class)
+    public ResponseEntity<ApiError> handleChatbotMessageTooLong(ChatbotMessageTooLongException ex) {
+        return ResponseEntity.badRequest().body(new ApiError("CHATBOT_MESSAGE_TOO_LONG", ex.getMessage()));
+    }
+
     /**
      * 예상 못 한 예외를 Spring 기본 에러 페이지로 흘리지 않고 나머지 API와 같은
      * {@link ApiError} 형태로 맞춘다. 원문·스택트레이스는 응답에 담지 않고 서버 로그에만
