@@ -33,6 +33,7 @@ import { ROW_CLICKABLE, useRowNavigate } from '@/shared/hooks/useRowNavigate';
 import { Pagination } from '@/shared/components/Pagination';
 import type { FilterOption } from '@/shared/components/FilterSelect';
 import { cn } from '@/lib/utils';
+import { formatDayTime } from '@/shared/lib/datetime';
 
 /**
  * 대여 이력 목록 — `SCR-WEB-RENTAL-LIST-001` (**P1**, `WEB-API-CAND-002`).
@@ -52,7 +53,7 @@ type StatusFilter = 'ALL' | RentalDisplayStatus;
  * 필요해지면 줄만 더하면 됩니다 — 라벨은 이미 `RENTAL_STATUS_LABEL` 에 다 있습니다.
  */
 const STATUS_OPTIONS: readonly FilterOption<StatusFilter>[] = [
-    { value: 'ALL', label: '전체' },
+    { value: 'ALL', label: '대여 상태' },
     { value: 'ACTIVE', label: RENTAL_STATUS_LABEL.ACTIVE },
     { value: 'OVERDUE', label: RENTAL_STATUS_LABEL.OVERDUE },
     { value: 'COMPLETED', label: RENTAL_STATUS_LABEL.COMPLETED },
@@ -221,7 +222,7 @@ export function RentalListPage() {
                                     />
                                 )}
                                 <span className="font-medium tabular-nums text-brand-ink-soft">
-                                    {rental.rentedAt.slice(5)}
+                                    {formatDayTime(rental.rentedAt)}
                                 </span>
                                 <span className="font-medium text-brand-ink-soft">
                                     {shortId(rental.userRef)}

@@ -36,6 +36,7 @@ import { ROW_CLICKABLE, useRowNavigate } from '@/shared/hooks/useRowNavigate';
 import { Pagination } from '@/shared/components/Pagination';
 import type { FilterOption } from '@/shared/components/FilterSelect';
 import { cn } from '@/lib/utils';
+import { formatDayTime } from '@/shared/lib/datetime';
 
 /**
  * 정산 이력 목록 — `SCR-WEB-SETTLEMENT-LIST-001` (**P1**, `WEB-API-CAND-006`).
@@ -48,7 +49,7 @@ import { cn } from '@/lib/utils';
 type StatusFilter = 'ALL' | SettlementStatus;
 
 const STATUS_OPTIONS: readonly FilterOption<StatusFilter>[] = [
-    { value: 'ALL', label: '전체' },
+    { value: 'ALL', label: '정산 상태' },
     { value: 'PENDING', label: '미정산' },
     { value: 'PAID', label: '정산완료' },
     { value: 'CANCELLED', label: '취소' },
@@ -211,7 +212,7 @@ export function SettlementListPage() {
                                 />
                             )}
                             <span className="font-medium tabular-nums text-brand-ink-soft">
-                                {item.createdAt.slice(5)}
+                                {formatDayTime(item.createdAt)}
                             </span>
                             <span className="font-medium text-brand-ink-soft">
                                 {shortId(item.userRef)}

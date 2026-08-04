@@ -34,6 +34,7 @@ import { ROW_CLICKABLE, useRowNavigate } from '@/shared/hooks/useRowNavigate';
 import { Pagination } from '@/shared/components/Pagination';
 import type { FilterOption } from '@/shared/components/FilterSelect';
 import { cn } from '@/lib/utils';
+import { dayOf, formatDayTime } from '@/shared/lib/datetime';
 
 /**
  * 반납 이력 목록 — `SCR-WEB-RETURN-LIST-001` (**P1**, `WEB-API-CAND-004`).
@@ -56,7 +57,7 @@ import { cn } from '@/lib/utils';
 type StatusFilter = 'ALL' | 'PENDING' | 'DECIDED' | 'NONE';
 
 const STATUS_OPTIONS: readonly FilterOption<StatusFilter>[] = [
-    { value: 'ALL', label: '전체' },
+    { value: 'ALL', label: '검수 상태' },
     { value: 'PENDING', label: REVIEW_STATUS_LABEL.PENDING },
     { value: 'DECIDED', label: REVIEW_STATUS_LABEL.DECIDED },
     { value: 'NONE', label: '검수 없음' },
@@ -121,7 +122,14 @@ export function ReturnListPage() {
     const visible = rows.slice(start, start + PAGE_SIZE);
 
     const pending = returns.filter((item) => item.reviewStatus === 'PENDING').length;
-    const today = returns.filter((item) => item.attemptedAt.startsWith('2026-07-24')).length;
+    /*
+     * '오늘' 의 기준일은 **데이터의 기준 시각**입니다. 예전에는 `'2026-07-24'` 를 문자열로
+     * 박아 뒀는데, 목업을 EC2 시드(08-01)에 맞추자 이 숫자가 늘 0 이 됐습니다. 실 API 에서도
+     * 하루만 지나면 같은 일이 납니다 — 카드가 조용히 0 을 보여 주고 아무도 눈치채지 못합니다.
+     */
+    const today = returns.filter(
+        (item) => dayOf(item.attemptedAt) === dayOf(HISTORY_SYNCED_AT),
+    ).length;
 
     const patch = (next: Record<string, string>) => {
         const params = new URLSearchParams(searchParams);
@@ -214,7 +222,7 @@ export function ReturnListPage() {
                                 />
                             )}
                             <span className="font-medium tabular-nums text-brand-ink-soft">
-                                {item.attemptedAt.slice(5)}
+                                {formatDayTime(item.attemptedAt)}
                             </span>
                             <span className="font-medium text-brand-ink-soft">
                                 {shortId(item.userRef)}

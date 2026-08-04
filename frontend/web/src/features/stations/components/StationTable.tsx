@@ -29,7 +29,7 @@ export function StationTable({ stations }: { stations: Station[] }) {
                      * 여전히 UUID 앞자리로도 걸립니다 — 찾는 경로는 잃지 않았습니다.
                      */}
                     {/* ID·온라인 열이 빠진 만큼 이름 칸을 넓혔습니다. */}
-                    <Th className="w-[40%]">위치(건물)</Th>
+                    <Th className="w-[46%]">위치(건물)</Th>
                     {/*
                      * **「온라인」 열을 뺐습니다.**
                      *
@@ -54,7 +54,7 @@ export function StationTable({ stations }: { stations: Station[] }) {
                      * ERD 가 개별 우산을 식별하지 않으므로(DEC-ERD-011) '우산 총 개수' 라는
                      * 값은 존재하지 않고, 셀 수 있는 건 슬롯 수뿐입니다.
                      */}
-                    <Th align="center" className="w-[15%]">
+                    <Th align="center" className="w-[20%]">
                         사용 가능 / 전체
                     </Th>
                     {/*
@@ -65,7 +65,7 @@ export function StationTable({ stations }: { stations: Station[] }) {
                      * 대시보드·분포도와 같은 `getStationStatus`(채움 비율)입니다 — 세 화면이
                      * 다른 말을 하면 어느 것도 믿을 수 없게 됩니다.
                      */}
-                    <Th align="center" className="w-[16%]">
+                    <Th align="center" className="w-[20%]">
                         재고
                     </Th>
                     {/*
@@ -86,7 +86,7 @@ export function StationTable({ stations }: { stations: Station[] }) {
                      * TODO: 「파손이 쌓인 대여소」를 한눈에 보려는 요구가 생기면 이 표에 열을
                      *       늘리지 말고 **대여소를 가로지르는 목록 화면**을 새로 만드세요.
                      */}
-                    <Th className="w-[9%]">
+                    <Th className="w-[14%]">
                         <span className="sr-only">상세 보기</span>
                     </Th>
                 </THead>

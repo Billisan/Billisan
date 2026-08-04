@@ -75,8 +75,29 @@ export const RENTAL_STATUS_TONE: Record<RentalDisplayStatus, BadgeTone> = {
  * 실제 시각이 어긋나 전부 연체로 보입니다. 서버가 붙으면 응답의 `asOf` 를 넘기세요 —
  * 화면흐름 §17 이 "서버 `dueAt,asOf`" 를 쓰라고 했습니다.
  */
+/**
+ * 두 시각을 **문자열 비교가 가능한 한 모양**으로 맞춥니다 — `YYYY-MM-DDTHH:mm`.
+ *
+ * 서버 값은 `2026-08-01T14:30:00.000000+09:00`(ISO)이고 화면 상수는
+ * `2026-08-01 14:30`(표시 형식)입니다. 11번째 글자가 `T`(0x54) 와 공백(0x20) 이라
+ * **그냥 비교하면 같은 날짜에서 늘 ISO 쪽이 큽니다.** 08:52 기한이 14:30 기준보다
+ * 나중이라고 나와서 연체가 연체로 안 잡힙니다.
+ *
+ * `Date` 로 파싱하지 않습니다 — 한쪽에 오프셋이 없어 시간대 해석이 끼어들면 아홉 시간이
+ * 밀립니다. 두 값 모두 KST 라는 전제 아래 자릿수만 맞춥니다.
+ */
+function comparableAt(value: string): string {
+    return `${value.slice(0, 10)}T${value.slice(11, 16)}`;
+}
+
 export function rentalDisplayStatus(rental: Rental, asOf: string): RentalDisplayStatus {
-    if (rental.status === 'ACTIVE' && rental.dueAt && rental.dueAt < asOf) return 'OVERDUE';
+    if (
+        rental.status === 'ACTIVE' &&
+        rental.dueAt &&
+        comparableAt(rental.dueAt) < comparableAt(asOf)
+    ) {
+        return 'OVERDUE';
+    }
     return rental.status;
 }
 
