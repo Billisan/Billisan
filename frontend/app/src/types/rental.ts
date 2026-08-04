@@ -10,3 +10,24 @@ export const RENTAL_STATUS = {
 } as const
 
 export type RentalStatus = (typeof RENTAL_STATUS)[keyof typeof RENTAL_STATUS]
+
+// RENTAL-001 응답 (PROJECT_GUIDE.md §5.5) 그대로.
+export interface CurrentRentalDetail {
+  rentalId: string
+  status: RentalStatus
+  checkoutSlotId: string
+  checkoutSlotNumber: number
+  checkoutStation: { stationId: string; name: string }
+  rentedAt: string
+  dueAt: string
+  overdueDays: number
+  calculatedOverdueAmount: number
+  latestReturnAttempt: {
+    returnAttemptId: string
+    status: string
+    returnSlotId: string
+    returnSlotNumber: number
+  } | null
+  failureCode: string | null
+  failedAt: string | null
+}

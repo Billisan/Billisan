@@ -21,7 +21,7 @@ const SCENARIOS: Record<MockScenario, HomeSummary> = {
     currentRental: {
       rentalId: 'mock-rental-001',
       status: RENTAL_STATUS.ACTIVE,
-      checkoutStationName: '학생회관 대여소',
+      checkoutStationName: '중앙도서관 1층',
       rentedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
       dueAt: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString(),
       overdue: false,
@@ -35,7 +35,7 @@ const SCENARIOS: Record<MockScenario, HomeSummary> = {
     currentRental: {
       rentalId: 'mock-rental-002',
       status: RENTAL_STATUS.ACTIVE,
-      checkoutStationName: '학생회관 대여소',
+      checkoutStationName: '중앙도서관 1층',
       rentedAt: new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString(),
       dueAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
       overdue: true,

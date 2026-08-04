@@ -2,8 +2,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { HistoryScreen } from '../screens/SCR-APP-HISTORY-001/HistoryScreen'
 import { HomeScreen } from '../screens/SCR-APP-HOME-001/HomeScreen'
-import { MyPageScreen } from '../screens/SCR-APP-MYPAGE-001/MyPageScreen'
 import { MapScreen } from '../screens/SCR-APP-STATION-001/MapScreen'
+import { MyPageStackNavigator } from './MyPageStackNavigator'
 
 export type TabParamList = {
   Home: undefined
@@ -56,7 +56,7 @@ export function TabNavigator() {
       />
       <Tab.Screen
         name="MyPage"
-        component={MyPageScreen}
+        component={MyPageStackNavigator}
         options={{
           title: '마이페이지',
           tabBarIcon: ({ color }) => <MaterialCommunityIcons name="account" size={24} color={color} />,
