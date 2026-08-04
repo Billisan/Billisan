@@ -61,7 +61,7 @@ type StatusFilter =
  * `DRYING` 은 DB Enum 이 아니고 채택 전까지 미표시입니다 (WF-WEB-CHANGE-004 · DEC-WEB-001).
  */
 const STATUS_OPTIONS: readonly FilterOption<StatusFilter>[] = [
-    { value: 'ALL', label: '전체' },
+    { value: 'ALL', label: '슬롯 상태' },
     /*
      * 라벨을 손으로 적지 않고 공용 매핑에서 가져옵니다.
      * `AVAILABLE` 을 '사용 가능'이라고 따로 적어 뒀었는데, 표의 배지는 '이용 가능'이라
@@ -281,7 +281,7 @@ export function InventoryPage() {
                 />
 
                 <FilterSelect
-                    label="우산 상태 필터"
+                    label="슬롯 상태 필터"
                     value={statusInput}
                     onChange={(next) => {
                         setStatusInput(next);
@@ -314,7 +314,7 @@ export function InventoryPage() {
             {/* 집계 카드 — 시안 기준 227x96, 간격 16 */}
             <div className="mb-4 grid grid-cols-3 gap-4">
                 <StatCard
-                    tone="green"
+                    tone={SLOT_DISPLAY_TONE.AVAILABLE}
                     icon={<Umbrella className="size-[17px]" strokeWidth={2.1} aria-hidden />}
                     label="대여 가능"
                     value={counts.AVAILABLE}
@@ -325,24 +325,26 @@ export function InventoryPage() {
                  * 서버 기준으로도 빈 슬롯입니다.
                  */}
                 {/*
-                 * 빈 슬롯은 **회색**입니다. 표·배지·상태 변경 모달의 '빈 슬롯' 이 전부
-                 * `SLOT_DISPLAY_TONE.EMPTY = 'slate'` 인데 이 카드만 파랑이면 같은 상태가
-                 * 화면마다 다른 색으로 보입니다. 게다가 파랑은 조회 버튼·링크에 쓰는
-                 * 동작 색이라, 아무 일도 없는 상태에 쓰면 눌러야 할 것처럼 보입니다.
+                 * **색을 손으로 적지 않고 `SLOT_DISPLAY_TONE` 에서 가져옵니다.**
                  *
-                 * 아이콘도 바꿨습니다. 예전 `LogOut` 은 헤더의 **로그아웃**과 같은 그림이라
-                 * 뜻이 겹쳤습니다. 점선 사각형이 '우산이 빠진 빈 칸'에 그대로 맞습니다.
+                 * 이 카드들이 세는 것과 표의 배지가 같은 파생 상태라, 색도 같아야 합니다.
+                 * 예전에는 `tone="slate"` 처럼 적어 뒀는데 배지 쪽 색을 바꾸는 순간
+                 * 카드만 옛 색으로 남아 같은 상태가 화면마다 다르게 보였습니다
+                 * (실제로 「빈 슬롯」·「이용 중지」 색을 맞바꿀 때 어긋났습니다).
+                 *
+                 * 아이콘은 그대로입니다. 예전 `LogOut` 은 헤더의 **로그아웃**과 같은 그림이라
+                 * 뜻이 겹쳤고, 점선 사각형이 '우산이 빠진 빈 칸'에 그대로 맞습니다.
                  */}
                 <StatCard
-                    tone="slate"
+                    tone={SLOT_DISPLAY_TONE.EMPTY}
                     icon={<SquareDashed className="size-[17px]" strokeWidth={2.1} aria-hidden />}
-                    label="빈 슬롯"
+                    label={SLOT_DISPLAY_LABEL.EMPTY}
                     value={counts.EMPTY}
                 />
                 <StatCard
-                    tone="amber"
+                    tone={SLOT_DISPLAY_TONE.ADMIN_REVIEW}
                     icon={<ShieldCheck className="size-[17px]" strokeWidth={2.1} aria-hidden />}
-                    label="판정 대기"
+                    label={SLOT_DISPLAY_LABEL.ADMIN_REVIEW}
                     value={counts.ADMIN_REVIEW}
                 />
                 {/*
@@ -350,10 +352,15 @@ export function InventoryPage() {
                  * 분실은 `RENTAL.status = LOST` 라 SLOT 재고 집계인 ADMIN-INVENTORY-001 로는
                  * 셀 수 없습니다(화면흐름 §17). 대여 목록은 P1 신규 후보(WEB-API-CAND-002)입니다.
                  */}
+                {/*
+                 * 라벨을 상수에서 가져옵니다. 이 카드가 세는 것과 표의 배지가 같은 파생
+                 * 상태(`DAMAGED`)라, 손으로 적어 두면 한쪽만 바뀌었을 때 같은 값이 화면마다
+                 * 다른 이름으로 보입니다 — 실제로 배지가 「파손 우산」이 되면서 어긋났습니다.
+                 */}
                 <StatCard
-                    tone="red"
+                    tone={SLOT_DISPLAY_TONE.DAMAGED}
                     icon={<TriangleAlert className="size-[17px]" strokeWidth={2.1} aria-hidden />}
-                    label="파손"
+                    label={SLOT_DISPLAY_LABEL.DAMAGED}
                     value={counts.DAMAGED}
                 />
                 {/*
@@ -362,9 +369,9 @@ export function InventoryPage() {
                  * 같은 것인지 알 수 없습니다 (`SLOT_DISPLAY_TONE`).
                  */}
                 <StatCard
-                    tone="violet"
+                    tone={SLOT_DISPLAY_TONE.OUT_OF_SERVICE}
                     icon={<CircleSlash className="size-[17px]" strokeWidth={2.1} aria-hidden />}
-                    label="이용 중지"
+                    label={SLOT_DISPLAY_LABEL.OUT_OF_SERVICE}
                     value={counts.OUT_OF_SERVICE}
                 />
                 {/*
@@ -383,7 +390,7 @@ export function InventoryPage() {
                  * 「점유」 행에 그대로 남아 있습니다.
                  */}
                 <StatCard
-                    tone="blue"
+                    tone={SLOT_DISPLAY_TONE.UNKNOWN}
                     icon={<CircleHelp className="size-[17px]" strokeWidth={2.1} aria-hidden />}
                     label={SLOT_DISPLAY_LABEL.UNKNOWN}
                     value={counts.UNKNOWN}

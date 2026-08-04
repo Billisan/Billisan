@@ -49,22 +49,29 @@ import { PageTitle } from '@/shared/components/PageTitle';
  * 「검수 대기」에는 올라오지 않습니다. 관리자에게 넘어오는 건 파손·불확실·실패 건입니다.
  *
  * 다만 검수 **레코드 자체는 반납 시도마다 남습니다**(DB 유니크 제약 `uk_damage_inspection_
- * return_attempt_id`). 그래서 처리 상태를 「전체」로 두면 이미 끝난 `정상 판정 · 검수 완료`
+ * return_attempt_id`). 그래서 처리 상태 조건을 걸지 않으면 이미 끝난 `정상 판정 · 검수 완료`
  * 행이 함께 보입니다 (EC2 시드의 `7aa9f1b8…`). 기록으로 남기는 건 맞고, 기본 화면에
  * 섞이지 않게 아래에서 기본값을 「검수 대기」로 둡니다.
  *
  * 선택지는 계약 Enum 을 다 열어 둡니다 — 지난 정상 건도 필요하면 찾아볼 수 있어야 합니다.
+ *
+ * **단, `FAILED` 는 뺍니다.** 값 집합이 두 개인데 하나로 착각하기 쉬운 자리입니다.
+ *   응답의 AI 결과 — `NORMAL|DAMAGED|UNCERTAIN|FAILED` (네 개)
+ *   조회 필터 값   — `NORMAL|DAMAGED|UNCERTAIN`        (**세 개**)
+ * 서버 OpenAPI 스펙의 `GET /api/v1/admin/inspections` query `aiResult` enum 이 셋뿐이라,
+ * `FAILED` 를 보내면 변환 실패로 400 입니다. 목업에서는 통과하고 실 API 에서만 터지는,
+ * 제일 늦게 발견되는 종류의 버그라 선택지 자체를 없앱니다.
+ * TODO: 백엔드가 필터 enum 에 `FAILED` 를 넣어 주면 되살리세요.
  */
 const AI_RESULT_OPTIONS: readonly FilterOption<AiResultFilter>[] = [
-    { value: 'ALL', label: '전체' },
+    { value: 'ALL', label: 'AI 결과' },
     { value: 'NORMAL', label: AI_RESULT_LABEL.NORMAL },
     { value: 'DAMAGED', label: AI_RESULT_LABEL.DAMAGED },
     { value: 'UNCERTAIN', label: AI_RESULT_LABEL.UNCERTAIN },
-    { value: 'FAILED', label: AI_RESULT_LABEL.FAILED },
 ];
 
 const REVIEW_OPTIONS: readonly FilterOption<ReviewStatusFilter>[] = [
-    { value: 'ALL', label: '전체' },
+    { value: 'ALL', label: '처리 상태' },
     // 처리 상태 배지와 같은 매핑을 씁니다.
     { value: 'PENDING', label: REVIEW_STATUS_LABEL.PENDING },
     { value: 'DECIDED', label: REVIEW_STATUS_LABEL.DECIDED },
@@ -73,12 +80,12 @@ const REVIEW_OPTIONS: readonly FilterOption<ReviewStatusFilter>[] = [
 /**
  * 처리 상태의 기본값. **URL 에서 생략됐을 때 쓰는 값이라 두 곳이 같은 상수를 봐야 합니다** —
  * 읽을 때(`parseOption` 의 fallback)와 쓸 때(`applyFilters` 가 생략할 값)가 어긋나면
- * 「전체」를 골라도 파라미터가 빠져 다시 이 값으로 돌아옵니다.
+ * 「처리 상태」(전체)를 골라도 파라미터가 빠져 다시 이 값으로 돌아옵니다.
  */
 const REVIEW_DEFAULT: ReviewStatusFilter = 'PENDING';
 
 const PERIOD_OPTIONS: readonly FilterOption<string>[] = [
-    { value: 'ALL', label: '전체' },
+    { value: 'ALL', label: '기간' },
     { value: '1', label: '최근 1일' },
     { value: '7', label: '최근 7일' },
     { value: '30', label: '최근 30일' },
@@ -129,10 +136,10 @@ export function InspectionListPage() {
      *
      * 관리자가 이 화면에 오는 목적은 **판정할 게 남았는지 보는 것**입니다. 그런데 검수
      * 레코드는 반납 시도마다 남고 AI 가 정상으로 본 건은 `DECIDED` 로 바로 처리되므로,
-     * 운영이 쌓이면 「전체」 목록의 대부분이 손댈 필요 없는 완료 건이 됩니다. 처리할 것이
+     * 운영이 쌓이면 「처리 상태」(전체) 목록의 대부분이 손댈 필요 없는 완료 건이 됩니다. 처리할 것이
      * 그 안에 파묻히지 않게 처음부터 미처리만 보여 줍니다.
      *
-     * 전부 보고 싶으면 드롭다운에서 「전체」를 고르면 되고, 그 선택은 URL 에 남습니다.
+     * 전부 보고 싶으면 드롭다운에서 「처리 상태」(전체)를 고르면 되고, 그 선택은 URL 에 남습니다.
      * 대시보드의 「파손 검수 대기」 바로가기(`review=PENDING`)와도 같은 화면이 됩니다.
      */
     const reviewStatus = parseOption(searchParams.get('review'), REVIEW_OPTIONS, REVIEW_DEFAULT);
@@ -196,8 +203,8 @@ export function InspectionListPage() {
          * 생략 기준이 `'ALL'` 이 아니라 **기본값**입니다.
          *
          * 처리 상태는 기본이 「검수 대기」라, 예전처럼 `'ALL'` 일 때 파라미터를 빼면
-         * 「전체」를 고른 순간 주소에서 조건이 사라지고 다시 「검수 대기」로 읽힙니다 —
-         * 드롭다운은 「전체」인데 목록은 미처리만 나오는 상태가 됩니다.
+         * 「처리 상태」(전체)를 고른 순간 주소에서 조건이 사라지고 다시 「검수 대기」로 읽힙니다 —
+         * 드롭다운은 「처리 상태」(전체)인데 목록은 미처리만 나오는 상태가 됩니다.
          */
         if (nextReview !== REVIEW_DEFAULT) params.set('review', nextReview);
         if (nextPeriod !== 'ALL') params.set('period', nextPeriod);
@@ -209,7 +216,7 @@ export function InspectionListPage() {
      * 초기화 버튼을 보일지 정합니다.
      *
      * 기본값인 「검수 대기」도 좁힌 것으로 셉니다 — 처리할 게 없어서 비었을 때 관리자가
-     * 「전체」로 넓혀 볼 수 있어야 하기 때문입니다. 여기서 빼면 초기화 버튼이 사라져,
+     * 「처리 상태」(전체)로 넓혀 볼 수 있어야 하기 때문입니다. 여기서 빼면 초기화 버튼이 사라져,
      * 지난 검수 기록이 있는데도 아무것도 없는 화면처럼 보입니다.
      */
     const hasFilter = aiResult !== 'ALL' || reviewStatus !== 'ALL' || period !== 'ALL';
@@ -284,19 +291,19 @@ export function InspectionListPage() {
                     <DataTable>
                         {/* 열 너비는 시안(1280px)의 열 좌표에서 역산한 값입니다. */}
                         <THead>
-                            <Th className="w-[11.5%]">처리 시각</Th>
+                            <Th className="w-[12%]">처리 시각</Th>
                             <Th className="w-[19%]">위치</Th>
-                            <Th className="w-[10%]">반납 ID</Th>
+                            <Th className="w-[11%]">반납 ID</Th>
                             <Th align="center" className="w-[18%]">
                                 AI 결과
                             </Th>
-                            <Th align="center" className="w-[13.6%]">
+                            <Th align="center" className="w-[14%]">
                                 신뢰도
                             </Th>
                             <Th align="center" className="w-[16%]">
                                 처리
                             </Th>
-                            <Th className="w-[8.9%]">
+                            <Th className="w-[10%]">
                                 <span className="sr-only">검수 작업</span>
                             </Th>
                         </THead>
@@ -366,7 +373,6 @@ export function InspectionListPage() {
                                         <Td align="center">
                                             <ScoreBar
                                                 score={item.aiScore}
-                                                result={item.aiResult}
                                                 className="mx-auto w-[92px]"
                                             />
                                         </Td>

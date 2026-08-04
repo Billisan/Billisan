@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 
-import { DeviceBadge } from '@/features/stations/components/DeviceBadge';
 import { SlotTable } from '@/features/stations/components/SlotTable';
 import { useStation, useStationSlots } from '@/features/stations/hooks/useStations';
 import { STATION_SYNCED_AT } from '@/features/stations/mocks/slots';
@@ -27,7 +26,7 @@ type StatusFilter = 'ALL' | SlotDisplayStatus;
  * (WF-WEB-CHANGE-004 · DEC-WEB-001).
  */
 const STATUS_OPTIONS: readonly FilterOption<StatusFilter>[] = [
-    { value: 'ALL', label: '전체' },
+    { value: 'ALL', label: '슬롯 상태' },
     // 라벨은 손으로 적지 않고 공용 매핑에서 가져옵니다. 표의 배지와 어긋나면 안 됩니다.
     { value: 'AVAILABLE', label: SLOT_DISPLAY_LABEL.AVAILABLE },
     { value: 'EMPTY', label: SLOT_DISPLAY_LABEL.EMPTY },
@@ -165,12 +164,10 @@ export function StationDetailPage() {
                      * 여기입니다. 축약 + 복사로 백엔드·로그와 대조할 수 있게 둡니다.
                      */}
                     <RefId id={station.stationId} label="대여소 ID" />
-                    {/* 슬롯별 온라인과 같은 값입니다. 대여소 장치 상태에서 파생합니다(GAP-WEB-013). */}
-                    <DeviceBadge status={station.deviceStatus} />
                 </div>
 
                 <FilterSelect
-                    label="우산 상태 필터"
+                    label="슬롯 상태 필터"
                     value={statusInput}
                     onChange={(next) => {
                         setStatusInput(next);
@@ -201,7 +198,7 @@ export function StationDetailPage() {
             </form>
 
             {rows.length > 0 ? (
-                <SlotTable station={station} slots={rows} />
+                <SlotTable slots={rows} />
             ) : (
                 /*
                  * 이 대여소에 슬롯이 없는 것과, 필터에 걸려 안 보이는 것은 다릅니다.

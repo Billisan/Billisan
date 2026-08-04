@@ -152,14 +152,19 @@ describe('값 집합이 서로 섞이지 않는다', () => {
         // 전부 서로 다른 글자여야 합니다.
         expect(new Set(labels).size).toBe(labels.length);
 
-        // 「확인」을 쓰는 항목이 둘 이상이면 다시 겹칩니다.
-        expect(labels.filter((label) => label.includes('확인'))).toHaveLength(0);
+        /*
+         * 「확인」을 쓰는 항목이 **둘 이상**이면 다시 겹칩니다. 하나는 괜찮습니다 —
+         * 예전에 0개로 막아 뒀는데, 그건 `ADMIN_REVIEW`(「관리자 확인」)와
+         * `itemCondition`(「확인 필요」)이 함께 있던 시절의 기준이었습니다. 뒤엣것이
+         * 「보류」로 바뀌어 겹칠 상대가 없어졌습니다.
+         */
+        expect(labels.filter((label) => label.includes('확인')).length).toBeLessThanOrEqual(1);
     });
 });
 
 describe('codeHint', () => {
     it('한글과 코드를 함께 낸다 — 마우스오버 전용이다', () => {
         // 화면 배지에는 한글만, 로그·백엔드 대조가 필요할 때만 코드를 붙입니다.
-        expect(codeHint(SLOT_DISPLAY_LABEL, 'ADMIN_REVIEW')).toBe('판정 대기 · ADMIN_REVIEW');
+        expect(codeHint(SLOT_DISPLAY_LABEL, 'ADMIN_REVIEW')).toBe('관리자 확인 · ADMIN_REVIEW');
     });
 });

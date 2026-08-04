@@ -2,7 +2,6 @@ import { ArrowRight, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { deficit, formatStockRatio } from '@/features/map/lib/distribution';
-import { DeviceBadge } from '@/features/stations/components/DeviceBadge';
 import { getStationStatus, STATION_STATUS_META, type Station } from '@/features/stations/types';
 import { cn } from '@/lib/utils';
 
@@ -72,9 +71,6 @@ export function SelectedStationPanel({
                 </Row>
                 <Row label="채움 비율">
                     <span className="tabular-nums">{formatStockRatio(station)}</span>
-                </Row>
-                <Row label="장치">
-                    <DeviceBadge status={station.deviceStatus} />
                 </Row>
                 {station.adminReview > 0 && (
                     <Row label="관리자 확인">

@@ -6,6 +6,7 @@ import {
     SLOT_DISPLAY_LABEL,
     codeHint,
 } from '@/shared/constants/statusLabels';
+import { formatDayTime } from '@/shared/lib/datetime';
 
 /* ------------------------------------------------------------------ 대여소 */
 
@@ -419,21 +420,68 @@ export function decisionHint(decision: InspectionDecision): string {
  *   이용 중지   운영에서 빠진 상태. 사람이 손대야 풀립니다.
  *   확인 필요   4축이 모순이라 무엇인지 확정할 수 없는 상태.
  *
- * 그래서 아무 일 없는 `빈 슬롯` 만 회색으로 두고 나머지를 갈랐습니다.
+ * ---
+ *
+ * **`이용 중지` 와 `빈 슬롯` 의 색을 맞바꿨습니다.**
+ *
+ * 보라는 뜻이 있어서 고른 색이 아니라 "빨강이 파손에 이미 쓰여서 밀려난" 자리였습니다.
+ * 그래서 「이용 중지」 배지를 봐도 무슨 뜻인지 색이 거들지 못했습니다. 회색은 **꺼짐·
+ * 비활성**으로 읽히고, 그게 「운영에서 뺌」과 그대로 맞습니다.
+ *
+ * 대신 `빈 슬롯` 이 보라로 갑니다. 원래 회색이던 이유는 "아무 일 없으니 눈에 안 띄어도
+ * 된다" 였는데, 색이 여섯 개뿐이라 하나를 회색으로 쓰면 다른 하나는 남은 색을 받아야
+ * 합니다. 둘 다 회색으로 두면 예전에 고쳤던 "구분 안 됨"이 그대로 돌아옵니다.
+ *
+ * TODO: 「빈 슬롯」이 보라라 조용한 상태치고 눈에 띈다면, 옅은 톤을 새로 추가해
+ * 거기로 옮기세요 (지금은 `BadgeTone` 여섯 개가 전부라 자리가 없습니다).
  */
 export const SLOT_DISPLAY_TONE: Record<SlotDisplayStatus, BadgeTone> = {
     /** 대여 가능 — 4축이 모두 맞은 상태 */
     AVAILABLE: 'green',
-    /** 우산이 나가 있음. 정상이라 눈에 띌 이유가 없습니다. */
+    /**
+     * 우산이 나가 있음 — **회색입니다.**
+     *
+     * 한때 「이용 중지」에 회색을 넘기고 보라를 받았는데, 표에서 정상인 슬롯이 제일
+     * 튀어 보였습니다. 빈 슬롯은 **손댈 게 없는 상태**입니다(누가 빌려 갔을 뿐).
+     * 조치가 필요 없는 건 조용해야 훑을 때 걸리지 않습니다.
+     */
     EMPTY: 'slate',
     /** 파손 확정 */
     DAMAGED: 'red',
-    /** 관리자 판정 대기 */
+    /** 관리자 미판정 */
     ADMIN_REVIEW: 'amber',
-    /** 운영 제외. 빨강은 파손이 쓰고 있어 보라로 갈랐습니다. */
+    /**
+     * 운영 제외 — 회색을 「빈 슬롯」에 돌려주고 보라를 받았습니다.
+     *
+     * 「꺼짐=회색」이 자연스럽긴 하지만, 이 상태는 **관리자가 빼 둔 것**이라 복구할
+     * 때까지 남아 있습니다. 회색으로 죽여 놓으면 표에서 잊힙니다.
+     */
     OUT_OF_SERVICE: 'violet',
     /** 확정 불가. 파란색은 '진행 중'을 뜻해 오해가 없습니다. */
     UNKNOWN: 'blue',
+};
+
+/**
+ * 서비스 상태 → 배지 톤. **파생 배지가 아니라 `service_status` 축 전용입니다.**
+ *
+ * 세 값이 `SLOT_DISPLAY_TONE` 의 같은 이름 항목과 색이 같습니다. 축은 다르지만 관리자가
+ * 읽는 뜻은 같기 때문입니다 — 초록은 열려 있음, 주황은 사람 판단 대기, 보라는 운영에서
+ * 뺌. 표에서 보던 색과 상세의 「서비스」 행 색이 어긋나면 같은 상태를 다른 것으로 읽습니다.
+ *
+ * `SLOT_DISPLAY_TONE` 을 그대로 쓰지 않고 따로 두는 이유는 **키 집합이 다르기** 때문입니다.
+ * 파생 배지에는 `EMPTY`·`DAMAGED`·`UNKNOWN` 이 있는데 서비스 축에는 없습니다. 그쪽을
+ * 재사용하면 서비스 축에 있을 수 없는 값도 타입상 허용돼, 잘못 넘겨도 컴파일러가 못 잡습니다.
+ */
+export const SLOT_SERVICE_TONE: Record<SlotServiceStatus, BadgeTone> = {
+    AVAILABLE: SLOT_DISPLAY_TONE.AVAILABLE,
+    ADMIN_REVIEW: SLOT_DISPLAY_TONE.ADMIN_REVIEW,
+    /*
+     * **손으로 적지 않고 위 표를 참조합니다.** 예전에는 `'slate'` 처럼 색을 그대로
+     * 적어 뒀는데, `SLOT_DISPLAY_TONE` 에서 「이용 중지」를 보라로 바꿨을 때 이쪽이
+     * 회색으로 남아 같은 슬롯이 목록에서는 보라, 검수 상세에서는 회색이 됐습니다.
+     * 키 집합이 달라서 표는 따로 두되, 값은 한 곳만 보게 합니다.
+     */
+    OUT_OF_SERVICE: SLOT_DISPLAY_TONE.OUT_OF_SERVICE,
 };
 
 /**
@@ -454,7 +502,12 @@ export const SLOT_DISPLAY_TONE: Record<SlotDisplayStatus, BadgeTone> = {
 export const ITEM_CONDITION_TONE: Record<SlotItemCondition, BadgeTone> = {
     NORMAL: 'green',
     DAMAGED: 'red',
-    REPAIRABLE: 'violet',
+    /*
+     * **보라에서 파랑으로 바꿨습니다.** 파생 배지의 「이용 중지」도 보라라, 같은 화면에
+     * 보라 배지 둘이 다른 뜻으로 뜰 수 있었습니다(시드 5번 슬롯이 그 경우 —
+     * 목록은 「파손 우산」, 상세는 「수리 가능」).
+     */
+    REPAIRABLE: 'blue',
     UNKNOWN: 'amber',
 };
 
@@ -471,8 +524,10 @@ export function pendingInspectionId(slot: SlotDetail): string | null {
 
 /**
  * 서버 updatedAt(마이크로초 포함)을 표의 'MM-DD HH:mm' 로 자릅니다.
- * Date 로 파싱하지 않고 문자열만 잘라서 원문을 보존합니다.
+ *
+ * 자르는 규칙은 이력 화면과 **한 곳**(`shared/lib/datetime`)에 둡니다 — 같은 형식을
+ * 두 군데서 따로 자르다 한쪽만 고쳐지는 일이 실제로 있었습니다.
  */
 export function formatUpdatedAt(updatedAt: string): string {
-    return `${updatedAt.slice(5, 10)} ${updatedAt.slice(11, 16)}`;
+    return formatDayTime(updatedAt);
 }

@@ -392,8 +392,19 @@ export function SlotStatusDialog({
                                         <Badge
                                             tone={SLOT_DISPLAY_TONE[item.display]}
                                             title={slotStatusHint(item.display)}
+                                            /*
+                                             * **고정 너비(`w-[68px]`)가 아니라 최소 너비입니다.**
+                                             *
+                                             * 네 줄의 배지 왼쪽 끝을 맞추려고 폭을 박아 뒀는데,
+                                             * 라벨이 「미판정」에서 「관리자 확인」으로 길어지자
+                                             * 68px 을 넘겨 배지 안에서 「관리자 확 / 인」으로
+                                             * 줄바꿈됐습니다. 라벨은 앞으로도 바뀔 수 있으니
+                                             * 폭을 값으로 묶지 않습니다 — `min-w` 로 정렬만
+                                             * 지키고 길면 늘어나게, `whitespace-nowrap` 으로
+                                             * 두 줄이 되지 않게 합니다.
+                                             */
                                             className={cn(
-                                                'w-[68px] transition-opacity',
+                                                'min-w-[68px] whitespace-nowrap transition-opacity',
                                                 !active && 'opacity-70',
                                             )}
                                         >
@@ -428,7 +439,7 @@ export function SlotStatusDialog({
 
                 <p className="mt-[18px] rounded-lg bg-brand-surface px-5 py-[16px] text-[12.5px] font-medium leading-[20px] text-brand-muted">
                     {repairableOn
-                        ? '고치면 쓸 수 있다고 보고 판정을 보류합니다. 슬롯은 판정 대기로 남습니다.'
+                        ? '고치면 쓸 수 있다고 보고 판정을 보류합니다. 슬롯은 관리자 확인으로 남습니다.'
                         : choice.desc}
                 </p>
 

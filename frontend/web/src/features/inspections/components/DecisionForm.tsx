@@ -133,7 +133,15 @@ export function DecisionForm({
                 <dl className="mt-[14px] flex gap-6">
                     <div>
                         <dt className="text-[11.5px] font-semibold text-brand-body">판정 시각</dt>
-                        <dd className="mt-[5px] text-[12.5px] font-bold tabular-nums text-brand-ink">
+                        {/*
+                         * 두 값 칸에 **같은 높이**(`h-[22px]`)를 주고 세로 가운데로 맞춥니다.
+                         *
+                         * 오른쪽 값에는 복사 버튼이 붙는데 그게 22px 이라, 글자만 있는 왼쪽보다
+                         * 줄이 높아집니다. 그러면 같은 줄에 나란한 두 값의 글자 밑선이 어긋나
+                         * 한쪽이 아래로 내려간 것처럼 보입니다. 버튼 높이를 기준으로 삼아
+                         * 둘 다 그 높이에 맞추면 글자가 같은 선에 놓입니다.
+                         */}
+                        <dd className="mt-[5px] flex h-[22px] items-center text-[12.5px] font-bold tabular-nums text-brand-ink">
                             {detail.decidedAt
                                 ? `${detail.decidedAt.slice(0, 10)} ${detail.decidedAt.slice(11, 19)}`
                                 : '—'}
@@ -141,7 +149,7 @@ export function DecisionForm({
                     </div>
                     <div className="min-w-0">
                         <dt className="text-[11.5px] font-semibold text-brand-body">판정 관리자</dt>
-                        <dd className="mt-[5px]">
+                        <dd className="mt-[5px] flex h-[22px] items-center">
                             <RefId id={detail.decidedBy} label="판정 관리자" />
                         </dd>
                     </div>

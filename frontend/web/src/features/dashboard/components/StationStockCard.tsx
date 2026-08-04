@@ -3,7 +3,6 @@ import { PanelState } from '@/features/dashboard/components/PanelState';
 import { useStations } from '@/features/stations/hooks/useStations';
 import {
     getStationStatus,
-    isDeviceOffline,
     sortByStock,
     STATION_STATUS_META,
     type Station,
@@ -64,12 +63,6 @@ export function StationStockCard({ className }: { className?: string }) {
     const stations = data ?? [];
     const ranked = sortByStock(stations);
     const shortageCount = ranked.filter((s) => getStationStatus(s) === 'SHORTAGE').length;
-    /*
-     * **끊긴 것이 확인된 대여소만 셉니다.** `!isDeviceOnline()` 이면 장치 상태를 모르는
-     * (`device_status` API 가 없어 `null` 인) 대여소까지 전부 오프라인으로 세어,
-     * 실 API 모드에서 「오프라인 8개소」 같은 거짓 경고가 뜹니다.
-     */
-    const offlineCount = ranked.filter(isDeviceOffline).length;
 
     return (
         <Panel className={cn('p-5', className)}>
@@ -105,11 +98,15 @@ export function StationStockCard({ className }: { className?: string }) {
                  * 못 불러왔을 때 '부족 0개소' 라고 쓰면 안 됩니다. 관리자는 그걸 "부족한
                  * 대여소가 없다" 로 읽는데, 실제로는 아무것도 모르는 상태입니다.
                  * 틀린 숫자는 없는 숫자보다 나쁩니다.
+                 *
+                 * **「오프라인 N개소」를 뺐습니다.** 같은 이유입니다. `STATION.device_status`
+                 * 를 내려 주는 관리자 API 가 없어서 이 값은 늘 0 이었고, 화면은 "확인해 봤는데
+                 * 끊긴 데가 없다" 라고 말하고 있었습니다. 확인한 적이 없습니다.
+                 * TODO: 장치 상태 API 가 생기면(`BILL-123` MQTT 작업) 되살리세요 —
+                 *       `isDeviceOffline` 헬퍼와 `StationStatus.OFFLINE` 은 그대로 있습니다.
                  */}
                 <p className="pt-[9px] text-[10.5px] font-medium text-brand-muted">
-                    {isPending || isError
-                        ? '부족·오프라인 집계 없음'
-                        : `부족 ${shortageCount}개소 · 오프라인 ${offlineCount}개소`}
+                    {isPending || isError ? '부족 집계 없음' : `부족 ${shortageCount}개소`}
                 </p>
             </div>
         </Panel>
