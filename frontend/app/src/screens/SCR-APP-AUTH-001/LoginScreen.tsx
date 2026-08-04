@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Text, View } from 'react-native'
 import { login } from '../../api/authApi'
+import Logo from '../../assets/logo.svg'
 import { Button } from '../../components/common/Button'
 import { TextField } from '../../components/common/TextField'
 import { Screen } from '../../components/layout/Screen'
@@ -34,7 +35,7 @@ export function LoginScreen() {
     <Screen>
       <View className="flex-1 justify-center gap-10 px-8">
         <View className="items-center gap-1">
-          <Text className="text-3xl font-bold text-text">빌리산</Text>
+          <Logo width={144} height={67} />
           <Text className="text-base text-text-secondary">빌리대학교</Text>
         </View>
 
