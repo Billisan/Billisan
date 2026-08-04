@@ -9,6 +9,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -77,6 +78,16 @@ public class Rental {
     /** EDGE-RENT-001 — 원자 선정된 checkoutSlotId로 새 대여를 REQUESTED 상태로 생성한다. */
     public static Rental request(String userId, UUID checkoutSlotId, String rentalRequestId) {
         return new Rental(UUID.randomUUID(), userId, checkoutSlotId, rentalRequestId, LocalDateTime.now());
+    }
+
+    /**
+     * EDGE-DEVICE-001 — 물리적 UNLOCK 확인 후 REQUESTED에서 ACTIVE로 전이한다.
+     * dueAt은 "빌린 날의 다음 날 14시" 정책으로 고정 계산한다(팀 확정).
+     */
+    public void activate(LocalDateTime rentedAt) {
+        this.status = Status.ACTIVE;
+        this.rentedAt = rentedAt;
+        this.dueAt = LocalDate.from(rentedAt).plusDays(1).atTime(14, 0);
     }
 
     public UUID getRentalId() {

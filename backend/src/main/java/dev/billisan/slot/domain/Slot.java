@@ -97,6 +97,27 @@ public class Slot {
     }
 
     /**
+     * EDGE-DEVICE-001 — 장치 Terminal 이벤트의 evidence.after 값으로 물리 상태를
+     * 갱신한다. {@link #applyAdminStatus}와 분리된 이유는 그쪽과 반대로, 이 메서드는
+     * occupancy·lock만 바꾸고 serviceStatus·itemCondition은 건드리지 않기 때문이다 —
+     * 물리 센서가 실제로 관측한 값이라 관리자 판단 범위 밖.
+     */
+    public void applyObservedPhysicalState(OccupancyStatus observedOccupancyStatus, LockStatus observedLockStatus) {
+        this.occupancyStatus = observedOccupancyStatus;
+        this.lockStatus = observedLockStatus;
+    }
+
+    /**
+     * EDGE-DEVICE-001 — Pi가 장치 Terminal 이벤트를 OPERATION_FAILED·TIMED_OUT으로
+     * 보고했을 때 슬롯을 대여 후보에서 빼고 관리자 확인 대상으로 돌린다. occupancy·lock은
+     * 실제로 어떻게 됐는지 알 수 없는 상태라 건드리지 않는다.
+     */
+    public void isolateForReview() {
+        this.serviceStatus = ServiceStatus.ADMIN_REVIEW;
+        this.itemCondition = ItemCondition.UNKNOWN;
+    }
+
+    /**
      * ADMIN-SLOT-STATUS-001이 허용하는 조합만 유효하다(docs/API-draft.md §8.2):
      * {@code AVAILABLE+(EMPTY|NORMAL)}, {@code ADMIN_REVIEW+(UNKNOWN|DAMAGED|REPAIRABLE)},
      * {@code OUT_OF_SERVICE+(DAMAGED|REPAIRABLE|EMPTY)}.
