@@ -1,9 +1,13 @@
 package dev.billisan.rental.repository;
 
 import dev.billisan.rental.domain.Rental;
+import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface RentalRepository extends JpaRepository<Rental, UUID> {
 
@@ -11,4 +15,14 @@ public interface RentalRepository extends JpaRepository<Rental, UUID> {
 
     /** EDGE-RETURN-001 — UK_RENTAL_ACTIVE_USER_GUARD 덕에 사용자당 최대 1건만 존재한다. */
     Optional<Rental> findByUserIdAndStatus(String userId, Rental.Status status);
+
+    /**
+     * EDGE-DEVICE-001 — 같은 물리 이벤트가 QoS 1로 중복 도착했을 때, 두 트랜잭션이
+     * device_operation을 잠금 없이 동시에 "아직 처리 안 됨"으로 보고 상태 전이를
+     * 중복 실행하지 않도록 조회 시점에 행을 잠근다(ReturnAttemptRepository.findByIdForUpdate와
+     * 동일 이유).
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from Rental r where r.rentalId = :rentalId")
+    Optional<Rental> findByIdForUpdate(@Param("rentalId") UUID rentalId);
 }

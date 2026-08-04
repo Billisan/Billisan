@@ -62,7 +62,7 @@ public class DeviceTerminalEventService {
     }
 
     private DeviceTerminalEventResponse recordRentalUnlockEvent(DeviceTerminalEventRequest request) {
-        Rental rental = rentalRepository.findById(request.rentalId())
+        Rental rental = rentalRepository.findByIdForUpdate(request.rentalId())
                 .orElseThrow(() -> new RentalNotFoundException("rentalId로 대여를 찾을 수 없습니다: " + request.rentalId()));
 
         DeviceOperation deviceOperation = deviceOperationRepository.findByCommandId(request.commandId())
@@ -111,7 +111,7 @@ public class DeviceTerminalEventService {
     }
 
     private DeviceTerminalEventResponse recordReturnLockEvent(DeviceTerminalEventRequest request) {
-        ReturnAttempt returnAttempt = returnAttemptRepository.findById(request.returnAttemptId())
+        ReturnAttempt returnAttempt = returnAttemptRepository.findByIdForUpdate(request.returnAttemptId())
                 .orElseThrow(() -> new ReturnAttemptNotFoundException(
                         "returnAttemptId로 반납 시도를 찾을 수 없습니다: " + request.returnAttemptId()));
 
