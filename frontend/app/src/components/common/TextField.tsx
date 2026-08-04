@@ -7,6 +7,8 @@ interface TextFieldProps {
   placeholder?: string
   secureTextEntry?: boolean
   hasError?: boolean
+  multiline?: boolean
+  numberOfLines?: number
 }
 
 export function TextField({
@@ -16,6 +18,8 @@ export function TextField({
   placeholder,
   secureTextEntry,
   hasError,
+  multiline,
+  numberOfLines,
 }: TextFieldProps) {
   return (
     <View className="w-full gap-1">
@@ -27,6 +31,9 @@ export function TextField({
         onChangeText={onChangeText}
         placeholder={placeholder}
         secureTextEntry={secureTextEntry}
+        multiline={multiline}
+        numberOfLines={numberOfLines}
+        textAlignVertical={multiline ? 'top' : 'center'}
         className={`w-full rounded-xl border px-4 py-3 text-base text-text ${
           hasError ? 'border-error-text bg-error-bg' : 'border-disabled'
         }`}

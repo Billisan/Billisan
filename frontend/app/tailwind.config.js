@@ -13,6 +13,10 @@ module.exports = {
         border: '#E9E9E9',
         text: '#000000',
         'text-secondary': '#5F5E5E',
+        'text-tertiary': '#8A6416',
+        // 대여중 Chip 전용(미실측 — 목업 스크린샷 기준 근사치, 2026-08-04).
+        'rented-bg': '#E8ECFB',
+        'rented-text': '#4C5FD9',
         disabled: '#D9D9D9',
         'error-bg': '#FDEBEA',
         'error-cta': '#E4574C',
