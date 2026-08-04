@@ -25,34 +25,41 @@ INSERT INTO `_fixture_expected_record` VALUES
 	('USER_ACCOUNT', '202600004'),
 	('USER_ACCOUNT', '202600005'),
 	('USER_ACCOUNT', '202600006'),
-	('RENTAL', '44000000-0000-4000-8000-000000000001'),
-	('RENTAL', '44000000-0000-4000-8000-000000000002'),
+	('USER_ACCOUNT', '202600007'),
 	('RENTAL', '44000000-0000-4000-8000-000000000003'),
 	('RENTAL', '44000000-0000-4000-8000-000000000004'),
 	('RENTAL', '44000000-0000-4000-8000-000000000005'),
 	('RENTAL', '44000000-0000-4000-8000-000000000006'),
 	('RENTAL', '44000000-0000-4000-8000-000000000007'),
-	('RETURN_ATTEMPT', '55000000-0000-4000-8000-000000000001'),
+	('RENTAL', '44000000-0000-4000-8000-000000000008'),
+	('RENTAL', '44000000-0000-4000-8000-000000000009'),
 	('RETURN_ATTEMPT', '55000000-0000-4000-8000-000000000002'),
 	('RETURN_ATTEMPT', '55000000-0000-4000-8000-000000000003'),
 	('RETURN_ATTEMPT', '55000000-0000-4000-8000-000000000004'),
-	('RETURN_ATTEMPT', '55000000-0000-4000-8000-000000000005'),
 	('RETURN_ATTEMPT', '55000000-0000-4000-8000-000000000006'),
+	('RETURN_ATTEMPT', '55000000-0000-4000-8000-000000000007'),
+	('RETURN_ATTEMPT', '55000000-0000-4000-8000-000000000008'),
 	('DAMAGE_INSPECTION', '66000000-0000-4000-8000-000000000001'),
 	('DAMAGE_INSPECTION', '66000000-0000-4000-8000-000000000002'),
-	('DAMAGE_INSPECTION', '66000000-0000-4000-8000-000000000003'),
 	('DAMAGE_INSPECTION', '66000000-0000-4000-8000-000000000004'),
+	('DAMAGE_INSPECTION', '66000000-0000-4000-8000-000000000005'),
 	('DEVICE_OPERATION', '99000000-0000-4000-8000-000000000001'),
 	('DEVICE_OPERATION', '99000000-0000-4000-8000-000000000002'),
 	('FACE_PROFILE_SYNC_OPERATION', 'aa000000-0000-4000-8000-000000000001'),
-	('SETTLEMENT', '77000000-0000-4000-8000-000000000001'),
-	('SETTLEMENT', '77000000-0000-4000-8000-000000000002'),
-	('SETTLEMENT', '77000000-0000-4000-8000-000000000003'),
+	('FACE_PROFILE_SYNC_OPERATION', 'aa000000-0000-4000-8000-000000000002'),
+	('FACE_PROFILE_SYNC_OPERATION', 'aa000000-0000-4000-8000-000000000003'),
+	('FACE_PROFILE_SYNC_OPERATION', 'aa000000-0000-4000-8000-000000000004'),
+	('FACE_PROFILE_SYNC_OPERATION', 'aa000000-0000-4000-8000-000000000005'),
+	('FACE_PROFILE_SYNC_OPERATION', 'aa000000-0000-4000-8000-000000000006'),
 	('SETTLEMENT', '77000000-0000-4000-8000-000000000004'),
-	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000001'),
+	('SETTLEMENT', '77000000-0000-4000-8000-000000000005'),
+	('SETTLEMENT', '77000000-0000-4000-8000-000000000006'),
+	('SETTLEMENT', '77000000-0000-4000-8000-000000000007'),
 	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000002'),
-	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000003'),
-	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000004');
+	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000005'),
+	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000006'),
+	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000007'),
+	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000008');
 
 CREATE TEMPORARY TABLE `_fixture_expected_request_key` (
 	`entity_name` VARCHAR(40) NOT NULL,
@@ -64,44 +71,53 @@ CREATE TEMPORARY TABLE `_fixture_expected_request_key` (
 );
 
 INSERT INTO `_fixture_expected_request_key` VALUES
-	('RENTAL', '44000000-0000-4000-8000-000000000001', 'rental_request_id', 'fixture-rental-active'),
-	('RENTAL', '44000000-0000-4000-8000-000000000002', 'rental_request_id', 'fixture-rental-return-recovery'),
 	('RENTAL', '44000000-0000-4000-8000-000000000003', 'rental_request_id', 'fixture-rental-unpaid-settlement'),
 	('RENTAL', '44000000-0000-4000-8000-000000000004', 'rental_request_id', 'fixture-rental-normal-completed'),
 	('RENTAL', '44000000-0000-4000-8000-000000000005', 'rental_request_id', 'fixture-rental-face-ineligible'),
 	('RENTAL', '44000000-0000-4000-8000-000000000006', 'rental_request_id', 'fixture-rental-ai-failed'),
 	('RENTAL', '44000000-0000-4000-8000-000000000007', 'rental_request_id', 'fixture-rental-payment-partial'),
-	('RETURN_ATTEMPT', '55000000-0000-4000-8000-000000000001', 'request_id', 'fixture-return-recovery-required'),
+	('RENTAL', '44000000-0000-4000-8000-000000000008', 'rental_request_id', 'fixture-rental-review-pending-completed'),
+	('RENTAL', '44000000-0000-4000-8000-000000000009', 'rental_request_id', 'fixture-rental-overdue-completed'),
 	('RETURN_ATTEMPT', '55000000-0000-4000-8000-000000000002', 'request_id', 'fixture-return-unpaid-completed'),
 	('RETURN_ATTEMPT', '55000000-0000-4000-8000-000000000003', 'request_id', 'fixture-return-normal-completed'),
 	('RETURN_ATTEMPT', '55000000-0000-4000-8000-000000000004', 'request_id', 'fixture-return-ai-failed-completed'),
-	('RETURN_ATTEMPT', '55000000-0000-4000-8000-000000000005', 'request_id', 'fixture-return-recovery-failed'),
 	('RETURN_ATTEMPT', '55000000-0000-4000-8000-000000000006', 'request_id', 'fixture-return-payment-partial'),
+	('RETURN_ATTEMPT', '55000000-0000-4000-8000-000000000007', 'request_id', 'fixture-return-review-pending-completed'),
+	('RETURN_ATTEMPT', '55000000-0000-4000-8000-000000000008', 'request_id', 'fixture-return-overdue-completed'),
 	('DAMAGE_INSPECTION', '66000000-0000-4000-8000-000000000001', 'request_id', 'fixture-inspection-unpaid-damage'),
 	('DAMAGE_INSPECTION', '66000000-0000-4000-8000-000000000002', 'request_id', 'fixture-inspection-normal-decided'),
-	('DAMAGE_INSPECTION', '66000000-0000-4000-8000-000000000003', 'request_id', 'fixture-inspection-review-pending'),
 	('DAMAGE_INSPECTION', '66000000-0000-4000-8000-000000000004', 'request_id', 'fixture-inspection-ai-failed'),
+	('DAMAGE_INSPECTION', '66000000-0000-4000-8000-000000000005', 'request_id', 'fixture-inspection-review-pending'),
 	('DEVICE_OPERATION', '99000000-0000-4000-8000-000000000001', 'command_id', 'fixture-device-command-active-lock'),
 	('DEVICE_OPERATION', '99000000-0000-4000-8000-000000000002', 'command_id', 'fixture-device-command-recovery-lock'),
 	('DEVICE_OPERATION', '99000000-0000-4000-8000-000000000002', 'event_id', 'fixture-device-event-recovery-timeout'),
-	('FACE_PROFILE_SYNC_OPERATION', 'aa000000-0000-4000-8000-000000000001', 'request_id', 'fixture-face-register-eligible'),
-	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000001', 'creation_request_id', 'fixture-payment-partial-success'),
-	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000001', 'toss_order_id', 'fixture-toss-order-partial-success'),
-	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000001', 'toss_payment_key', 'fixture-toss-key-partial-success'),
+	('FACE_PROFILE_SYNC_OPERATION', 'aa000000-0000-4000-8000-000000000001', 'request_id', 'fixture-face-register-demo-01'),
+	('FACE_PROFILE_SYNC_OPERATION', 'aa000000-0000-4000-8000-000000000002', 'request_id', 'fixture-face-register-demo-02'),
+	('FACE_PROFILE_SYNC_OPERATION', 'aa000000-0000-4000-8000-000000000003', 'request_id', 'fixture-face-register-demo-03'),
+	('FACE_PROFILE_SYNC_OPERATION', 'aa000000-0000-4000-8000-000000000004', 'request_id', 'fixture-face-register-demo-04'),
+	('FACE_PROFILE_SYNC_OPERATION', 'aa000000-0000-4000-8000-000000000005', 'request_id', 'fixture-face-register-demo-05'),
+	('FACE_PROFILE_SYNC_OPERATION', 'aa000000-0000-4000-8000-000000000006', 'request_id', 'fixture-face-register-demo-06'),
 	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000002', 'creation_request_id', 'fixture-payment-completed-success'),
 	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000002', 'toss_order_id', 'fixture-toss-order-completed-success'),
 	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000002', 'toss_payment_key', 'fixture-toss-key-completed-success'),
-	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000003', 'creation_request_id', 'fixture-payment-failed'),
-	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000003', 'toss_order_id', 'fixture-toss-order-failed'),
-	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000003', 'toss_payment_key', 'fixture-toss-key-failed'),
-	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000004', 'creation_request_id', 'fixture-payment-reconciliation'),
-	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000004', 'toss_order_id', 'fixture-toss-order-reconciliation'),
-	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000004', 'toss_payment_key', 'fixture-toss-key-reconciliation');
+	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000005', 'creation_request_id', 'fixture-payment-damage-success'),
+	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000005', 'toss_order_id', 'fixture-toss-order-damage-success'),
+	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000005', 'toss_payment_key', 'fixture-toss-key-damage-success'),
+	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000006', 'creation_request_id', 'fixture-payment-overdue-success'),
+	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000006', 'toss_order_id', 'fixture-toss-order-overdue-success'),
+	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000006', 'toss_payment_key', 'fixture-toss-key-overdue-success'),
+	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000007', 'creation_request_id', 'fixture-payment-baseline-failed'),
+	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000007', 'toss_order_id', 'fixture-toss-order-baseline-failed'),
+	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000007', 'toss_payment_key', 'fixture-toss-key-baseline-failed'),
+	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000008', 'creation_request_id', 'fixture-payment-after-failure-success'),
+	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000008', 'toss_order_id', 'fixture-toss-order-after-failure-success'),
+	('PAYMENT_ATTEMPT', '78000000-0000-4000-8000-000000000008', 'toss_payment_key', 'fixture-toss-key-after-failure-success');
 
 CREATE TEMPORARY TABLE `_fixture_expected_user_state` (
 	`scenario_key` VARCHAR(40) NOT NULL,
 	`user_id` CHAR(9) NOT NULL PRIMARY KEY,
 	`user_ref` CHAR(36) NOT NULL UNIQUE,
+	`name` VARCHAR(100) NOT NULL,
 	`face_registered` BOOLEAN NOT NULL,
 	`has_in_progress_rental` BOOLEAN NOT NULL,
 	`has_recovery_required` BOOLEAN NOT NULL,
@@ -112,12 +128,13 @@ CREATE TEMPORARY TABLE `_fixture_expected_user_state` (
 );
 
 INSERT INTO `_fixture_expected_user_state` VALUES
-	('eligible', '202600001', '11000000-0000-4000-8000-000000000001', TRUE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE),
-	('face-unregistered', '202600002', '11000000-0000-4000-8000-000000000002', FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, TRUE),
-	('active-rental', '202600003', '11000000-0000-4000-8000-000000000003', TRUE, TRUE, FALSE, TRUE, FALSE, FALSE, TRUE),
-	('return-recovery', '202600004', '11000000-0000-4000-8000-000000000004', TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, TRUE),
-	('unpaid-settlement', '202600005', '11000000-0000-4000-8000-000000000005', TRUE, FALSE, FALSE, TRUE, FALSE, FALSE, TRUE),
-	('unevaluated', '202600006', '11000000-0000-4000-8000-000000000006', TRUE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE);
+	('demo-user-01', '202600001', 'f6f509d4-c001-446c-b6b7-537d65a093c3', '김민준', TRUE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE),
+	('demo-user-02', '202600002', 'f86a8791-c02b-4e50-b761-d9dd009909a9', '이서연', TRUE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE),
+	('demo-user-03', '202600003', '0b8255a1-70e4-45af-80f2-b38e4164ea06', '박지호', TRUE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE),
+	('demo-user-04', '202600004', '59b97d2b-a37d-4f75-bd33-4beb1bd3ac76', '최수아', TRUE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE),
+	('demo-user-05', '202600005', 'd8a6f8d6-3c43-4789-b980-a9f6918d53b8', '정예준', TRUE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE),
+	('demo-user-06', '202600006', '3650e75c-ab2b-4455-8f00-c691fd2e66fb', '강하은', TRUE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE),
+	('face-unregistered', '202600007', 'bb14cac2-74d1-4b7f-a69f-aa88fcf8f55e', '얼굴 미등록 사용자', FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE);
 
 CREATE TEMPORARY TABLE `_fixture_expected_rental_state` (
 	`rental_id` CHAR(36) NOT NULL PRIMARY KEY,
@@ -126,13 +143,13 @@ CREATE TEMPORARY TABLE `_fixture_expected_rental_state` (
 );
 
 INSERT INTO `_fixture_expected_rental_state` VALUES
-	('44000000-0000-4000-8000-000000000001', '202600003', 'ACTIVE'),
-	('44000000-0000-4000-8000-000000000002', '202600004', 'RETURNING'),
 	('44000000-0000-4000-8000-000000000003', '202600005', 'COMPLETED'),
 	('44000000-0000-4000-8000-000000000004', '202600001', 'COMPLETED'),
-	('44000000-0000-4000-8000-000000000005', '202600002', 'FAILED'),
+	('44000000-0000-4000-8000-000000000005', '202600007', 'FAILED'),
 	('44000000-0000-4000-8000-000000000006', '202600006', 'COMPLETED'),
-	('44000000-0000-4000-8000-000000000007', '202600002', 'COMPLETED');
+	('44000000-0000-4000-8000-000000000007', '202600002', 'COMPLETED'),
+	('44000000-0000-4000-8000-000000000008', '202600004', 'COMPLETED'),
+	('44000000-0000-4000-8000-000000000009', '202600003', 'COMPLETED');
 
 CREATE TEMPORARY TABLE `_fixture_expected_return_state` (
 	`return_attempt_id` CHAR(36) NOT NULL PRIMARY KEY,
@@ -141,12 +158,12 @@ CREATE TEMPORARY TABLE `_fixture_expected_return_state` (
 );
 
 INSERT INTO `_fixture_expected_return_state` VALUES
-	('55000000-0000-4000-8000-000000000001', '44000000-0000-4000-8000-000000000002', 'RECOVERY_REQUIRED'),
 	('55000000-0000-4000-8000-000000000002', '44000000-0000-4000-8000-000000000003', 'COMPLETED'),
 	('55000000-0000-4000-8000-000000000003', '44000000-0000-4000-8000-000000000004', 'COMPLETED'),
 	('55000000-0000-4000-8000-000000000004', '44000000-0000-4000-8000-000000000006', 'COMPLETED'),
-	('55000000-0000-4000-8000-000000000005', '44000000-0000-4000-8000-000000000002', 'FAILED'),
-	('55000000-0000-4000-8000-000000000006', '44000000-0000-4000-8000-000000000007', 'COMPLETED');
+	('55000000-0000-4000-8000-000000000006', '44000000-0000-4000-8000-000000000007', 'COMPLETED'),
+	('55000000-0000-4000-8000-000000000007', '44000000-0000-4000-8000-000000000008', 'COMPLETED'),
+	('55000000-0000-4000-8000-000000000008', '44000000-0000-4000-8000-000000000009', 'COMPLETED');
 
 CREATE TEMPORARY TABLE `_fixture_expected_ai_state` (
 	`inspection_id` CHAR(36) NOT NULL PRIMARY KEY,
@@ -163,8 +180,8 @@ CREATE TEMPORARY TABLE `_fixture_expected_ai_state` (
 INSERT INTO `_fixture_expected_ai_state` VALUES
 	('66000000-0000-4000-8000-000000000001', '55000000-0000-4000-8000-000000000002', '44000000-0000-4000-8000-000000000003', 'COMPLETED', 'DAMAGED', 0.9700, 'fixture-ai-v1', 'DAMAGED', '88000000-0000-4000-8000-000000000001'),
 	('66000000-0000-4000-8000-000000000002', '55000000-0000-4000-8000-000000000003', '44000000-0000-4000-8000-000000000004', 'COMPLETED', 'NORMAL', 0.9900, 'fixture-ai-v1', 'NORMAL', '88000000-0000-4000-8000-000000000001'),
-	('66000000-0000-4000-8000-000000000003', '55000000-0000-4000-8000-000000000001', '44000000-0000-4000-8000-000000000002', 'COMPLETED', 'UNCERTAIN', 0.5200, 'fixture-ai-v1', NULL, NULL),
-	('66000000-0000-4000-8000-000000000004', '55000000-0000-4000-8000-000000000004', '44000000-0000-4000-8000-000000000006', 'FAILED', NULL, NULL, NULL, NULL, NULL);
+	('66000000-0000-4000-8000-000000000004', '55000000-0000-4000-8000-000000000004', '44000000-0000-4000-8000-000000000006', 'FAILED', NULL, NULL, NULL, NULL, NULL),
+	('66000000-0000-4000-8000-000000000005', '55000000-0000-4000-8000-000000000007', '44000000-0000-4000-8000-000000000008', 'COMPLETED', 'UNCERTAIN', 0.5200, 'fixture-ai-v1', NULL, NULL);
 
 CREATE TEMPORARY TABLE `_fixture_expected_settlement_state` (
 	`settlement_id` CHAR(36) NOT NULL PRIMARY KEY,
@@ -178,10 +195,10 @@ CREATE TEMPORARY TABLE `_fixture_expected_settlement_state` (
 );
 
 INSERT INTO `_fixture_expected_settlement_state` VALUES
-	('77000000-0000-4000-8000-000000000001', '202600005', '44000000-0000-4000-8000-000000000003', '66000000-0000-4000-8000-000000000001', 'DAMAGE', 7000, 0, 'PENDING'),
-	('77000000-0000-4000-8000-000000000002', '202600003', '44000000-0000-4000-8000-000000000001', NULL, 'OVERDUE', 1000, 0, 'PENDING'),
-	('77000000-0000-4000-8000-000000000003', '202600002', '44000000-0000-4000-8000-000000000007', NULL, 'OVERDUE', 2000, 1000, 'PENDING'),
-	('77000000-0000-4000-8000-000000000004', '202600001', '44000000-0000-4000-8000-000000000004', NULL, 'ADJUSTMENT', 4000, 4000, 'PAID');
+	('77000000-0000-4000-8000-000000000004', '202600001', '44000000-0000-4000-8000-000000000004', NULL, 'ADJUSTMENT', 4000, 4000, 'PAID'),
+	('77000000-0000-4000-8000-000000000005', '202600005', '44000000-0000-4000-8000-000000000003', '66000000-0000-4000-8000-000000000001', 'DAMAGE', 7000, 7000, 'PAID'),
+	('77000000-0000-4000-8000-000000000006', '202600003', '44000000-0000-4000-8000-000000000009', NULL, 'OVERDUE', 1000, 1000, 'PAID'),
+	('77000000-0000-4000-8000-000000000007', '202600002', '44000000-0000-4000-8000-000000000007', NULL, 'OVERDUE', 2000, 2000, 'PAID');
 
 CREATE TEMPORARY TABLE `_fixture_expected_payment_state` (
 	`payment_attempt_id` CHAR(36) NOT NULL PRIMARY KEY,
@@ -191,10 +208,24 @@ CREATE TEMPORARY TABLE `_fixture_expected_payment_state` (
 );
 
 INSERT INTO `_fixture_expected_payment_state` VALUES
-	('78000000-0000-4000-8000-000000000001', '77000000-0000-4000-8000-000000000003', 1000, 'SUCCEEDED'),
 	('78000000-0000-4000-8000-000000000002', '77000000-0000-4000-8000-000000000004', 4000, 'SUCCEEDED'),
-	('78000000-0000-4000-8000-000000000003', '77000000-0000-4000-8000-000000000003', 1000, 'FAILED'),
-	('78000000-0000-4000-8000-000000000004', '77000000-0000-4000-8000-000000000001', 7000, 'RECONCILIATION_REQUIRED');
+	('78000000-0000-4000-8000-000000000005', '77000000-0000-4000-8000-000000000005', 7000, 'SUCCEEDED'),
+	('78000000-0000-4000-8000-000000000006', '77000000-0000-4000-8000-000000000006', 1000, 'SUCCEEDED'),
+	('78000000-0000-4000-8000-000000000007', '77000000-0000-4000-8000-000000000007', 2000, 'FAILED'),
+	('78000000-0000-4000-8000-000000000008', '77000000-0000-4000-8000-000000000007', 2000, 'SUCCEEDED');
+
+CREATE TEMPORARY TABLE `_fixture_expected_face_sync_state` (
+	`sync_operation_id` CHAR(36) NOT NULL PRIMARY KEY,
+	`user_ref` CHAR(36) NOT NULL UNIQUE
+);
+
+INSERT INTO `_fixture_expected_face_sync_state` VALUES
+	('aa000000-0000-4000-8000-000000000001', 'f6f509d4-c001-446c-b6b7-537d65a093c3'),
+	('aa000000-0000-4000-8000-000000000002', 'f86a8791-c02b-4e50-b761-d9dd009909a9'),
+	('aa000000-0000-4000-8000-000000000003', '0b8255a1-70e4-45af-80f2-b38e4164ea06'),
+	('aa000000-0000-4000-8000-000000000004', '59b97d2b-a37d-4f75-bd33-4beb1bd3ac76'),
+	('aa000000-0000-4000-8000-000000000005', 'd8a6f8d6-3c43-4789-b980-a9f6918d53b8'),
+	('aa000000-0000-4000-8000-000000000006', '3650e75c-ab2b-4455-8f00-c691fd2e66fb');
 
 CREATE TEMPORARY TABLE `_fixture_expected_trigger` (
 	`trigger_name` VARCHAR(64) NOT NULL PRIMARY KEY
@@ -229,6 +260,7 @@ CREATE TEMPORARY TABLE `_fixture_user_authority` (
 	`scenario_key` VARCHAR(40) NOT NULL,
 	`user_id` CHAR(9) NOT NULL PRIMARY KEY,
 	`user_ref` CHAR(36) NOT NULL,
+	`name` VARCHAR(100) NOT NULL,
 	`face_registered` BOOLEAN NOT NULL,
 	`has_in_progress_rental` BOOLEAN NOT NULL,
 	`has_recovery_required` BOOLEAN NOT NULL,
@@ -263,6 +295,8 @@ CREATE TEMPORARY TABLE `_fixture_verify_guard` (
 	CONSTRAINT `CK_VERIFY_PROJECTION_AUTHORITY` CHECK (`check_key` <> 'PROJECTION_AUTHORITY' OR `must_be_zero` = 0),
 	CONSTRAINT `CK_VERIFY_TRUE_NULL` CHECK (`check_key` <> 'TRUE_NULL' OR `must_be_zero` = 0),
 	CONSTRAINT `CK_VERIFY_USER_SCENARIOS` CHECK (`check_key` <> 'USER_SCENARIOS' OR `must_be_zero` = 0),
+	CONSTRAINT `CK_VERIFY_FACE_SYNC_STATE` CHECK (`check_key` <> 'FACE_SYNC_STATE' OR `must_be_zero` = 0),
+	CONSTRAINT `CK_VERIFY_SCENARIO_CONTAMINATION` CHECK (`check_key` <> 'SCENARIO_CONTAMINATION' OR `must_be_zero` = 0),
 	CONSTRAINT `CK_VERIFY_EVIDENCE_IDENTITY` CHECK (`check_key` <> 'EVIDENCE_IDENTITY' OR `must_be_zero` = 0),
 	CONSTRAINT `CK_VERIFY_INTERNAL_GUARD` CHECK (`check_key` <> 'INTERNAL_GUARD' OR `must_be_zero` = 0),
 	CONSTRAINT `CK_VERIFY_FLYWAY_VERSION` CHECK (`check_key` <> 'FLYWAY_VERSION' OR `must_be_zero` = 0),
@@ -295,7 +329,6 @@ INSERT INTO `_fixture_actual_record`
 SELECT 'USER_ACCOUNT', `user_id`
 FROM `user_account`
 WHERE `user_id` IN (SELECT `user_id` FROM `_fixture_expected_user_state`)
-	OR `user_ref` LIKE '11000000-%'
 	OR `login_id` LIKE '%.fixture@billisan.test';
 
 INSERT INTO `_fixture_actual_record`
@@ -418,7 +451,7 @@ INNER JOIN `_fixture_actual_record` AS `record`
 WHERE `payment`.`toss_payment_key` IS NOT NULL;
 
 INSERT INTO `_fixture_user_authority` (
-	`scenario_key`, `user_id`, `user_ref`, `face_registered`,
+	`scenario_key`, `user_id`, `user_ref`, `name`, `face_registered`,
 	`has_in_progress_rental`, `has_recovery_required`,
 	`has_unpaid_settlement`, `rental_eligible`,
 	`rental_eligibility_evaluated_at`
@@ -427,6 +460,7 @@ SELECT
 	`expected`.`scenario_key`,
 	`user`.`user_id`,
 	`user`.`user_ref`,
+	`user`.`name`,
 	`user`.`face_registered`,
 	EXISTS (
 		SELECT 1
@@ -446,7 +480,6 @@ SELECT
 		SELECT 1
 		FROM `settlement`
 		WHERE `settlement`.`user_id` = `user`.`user_id`
-			AND `settlement`.`status` = 'PENDING'
 			AND `settlement`.`amount` > `settlement`.`paid_amount`
 	),
 	`user`.`rental_eligible`,
@@ -553,6 +586,19 @@ LEFT JOIN `_fixture_expected_request_key` AS `expected`
 WHERE `expected`.`record_id` IS NULL
 	OR `actual`.`key_value` NOT LIKE 'fixture-%';
 
+-- Baseline verification must never pass after a state-changing Scenario has
+-- been applied. Scenario request keys and reserved Scenario UUID namespaces
+-- are rejected explicitly, in addition to the exact graph comparison above.
+INSERT INTO `_fixture_verify_guard`
+SELECT CONCAT('scenario-request:', `entity_name`, ':', `record_id`, ':', `key_value`), 'SCENARIO_CONTAMINATION', 1
+FROM `_fixture_actual_request_key`
+WHERE `key_value` LIKE 'fixture-scenario-%';
+
+INSERT INTO `_fixture_verify_guard`
+SELECT CONCAT('scenario-id:', `entity_name`, ':', `record_id`), 'SCENARIO_CONTAMINATION', 1
+FROM `_fixture_actual_record`
+WHERE REGEXP_LIKE(`record_id`, '^(b3|c4)[0-9a-f]{6}-', 'c');
+
 -- Explicit orphan checks make the relationship contract visible even though
 -- the same graph is also protected by foreign keys.
 INSERT INTO `_fixture_verify_guard`
@@ -610,6 +656,33 @@ INNER JOIN `_fixture_actual_record` AS `record`
 	ON `record`.`entity_name` = 'FACE_PROFILE_SYNC_OPERATION' AND `record`.`record_id` = `operation`.`sync_operation_id`
 LEFT JOIN `user_account` ON `user_account`.`user_ref` = `operation`.`user_ref`
 WHERE `user_account`.`user_ref` IS NULL;
+
+INSERT INTO `_fixture_verify_guard`
+SELECT CONCAT('face-sync-state:', `expected`.`sync_operation_id`), 'FACE_SYNC_STATE', 1
+FROM `_fixture_expected_face_sync_state` AS `expected`
+LEFT JOIN `face_profile_sync_operation` AS `actual`
+	ON `actual`.`sync_operation_id` = `expected`.`sync_operation_id`
+WHERE `actual`.`sync_operation_id` IS NULL
+	OR NOT (
+		`actual`.`user_ref` <=> `expected`.`user_ref`
+		AND `actual`.`operation_type` <=> 'REGISTER'
+		AND `actual`.`template_version` <=> 1
+		AND `actual`.`sync_status` <=> 'SUCCEEDED'
+		AND `actual`.`last_error_code` IS NULL
+		AND `actual`.`requested_at` IS NOT NULL
+		AND `actual`.`completed_at` IS NOT NULL
+		AND `actual`.`requested_at` <= `actual`.`completed_at`
+	);
+
+INSERT INTO `_fixture_verify_guard`
+SELECT 'face-sync-unregistered-user', 'FACE_SYNC_STATE', 1
+WHERE EXISTS (
+	SELECT 1
+	FROM `face_profile_sync_operation`
+	WHERE `user_ref` = 'bb14cac2-74d1-4b7f-a69f-aa88fcf8f55e'
+		AND `operation_type` = 'REGISTER'
+		AND `sync_status` = 'SUCCEEDED'
+);
 
 INSERT INTO `_fixture_verify_guard`
 SELECT CONCAT('settlement:', `settlement`.`settlement_id`), 'FK_ORPHANS', 1
@@ -778,7 +851,6 @@ WHERE `settlement`.`paid_amount` <> COALESCE(`credit`.`succeeded_amount`, 0)
 	OR (`settlement`.`paid_amount` = `settlement`.`amount` AND (`settlement`.`status` <> 'PAID' OR `settlement`.`paid_at` IS NULL));
 
 -- Evaluated projections must equal the authoritative query used by Spring.
--- Unevaluated rows are intentionally fail-closed false and checked separately.
 INSERT INTO `_fixture_verify_guard`
 SELECT CONCAT('projection:', `user_id`), 'PROJECTION_AUTHORITY', 1
 FROM `_fixture_user_authority`
@@ -798,6 +870,7 @@ LEFT JOIN `_fixture_user_authority` AS `actual` ON `actual`.`user_id` = `expecte
 WHERE `actual`.`user_id` IS NULL
 	OR NOT (
 		`actual`.`user_ref` <=> `expected`.`user_ref`
+		AND BINARY `actual`.`name` <=> BINARY `expected`.`name`
 		AND `actual`.`face_registered` <=> `expected`.`face_registered`
 		AND `actual`.`has_in_progress_rental` <=> `expected`.`has_in_progress_rental`
 		AND `actual`.`has_recovery_required` <=> `expected`.`has_recovery_required`
@@ -806,6 +879,21 @@ WHERE `actual`.`user_id` IS NULL
 		AND `actual`.`rental_eligible` <=> `expected`.`rental_eligible`
 		AND (`actual`.`rental_eligibility_evaluated_at` IS NOT NULL) <=> `expected`.`is_evaluated`
 	);
+
+INSERT INTO `_fixture_verify_guard`
+SELECT 'user-population', 'USER_SCENARIOS', 1
+FROM (
+	SELECT
+		COUNT(*) AS `expected_count`,
+		SUM(CASE WHEN `face_registered` = TRUE THEN 1 ELSE 0 END)
+			AS `face_registered_count`,
+		SUM(CASE WHEN `face_registered` = FALSE THEN 1 ELSE 0 END)
+			AS `face_unregistered_count`
+	FROM `_fixture_user_authority`
+) AS `user_population`
+WHERE `user_population`.`expected_count` <> 7
+	OR `user_population`.`face_registered_count` <> 6
+	OR `user_population`.`face_unregistered_count` <> 1;
 
 -- Reject both forbidden identity-shaped JSON keys and any fixture student
 -- number appearing as a JSON string or number under an unrelated key.
@@ -897,7 +985,7 @@ WHERE `TRIGGER_SCHEMA` = DATABASE();
 
 SELECT
 	'PASS' AS `verification_status`,
-	15 AS `assertion_groups`,
+	17 AS `assertion_groups`,
 	MAX(CASE WHEN `metric_name` = 'expected_fixture_rows' THEN `metric_value` END) AS `expected_fixture_rows`,
 	MAX(CASE WHEN `metric_name` = 'actual_fixture_rows' THEN `metric_value` END) AS `actual_fixture_rows`,
 	MAX(CASE WHEN `metric_name` = 'flyway_version' THEN `metric_value` END) AS `flyway_version`,
@@ -917,12 +1005,28 @@ GROUP BY `expected`.`entity_name`
 ORDER BY `expected`.`entity_name`;
 
 SELECT
-	`scenario_key`, `user_id`, `user_ref`, `face_registered`,
-	`has_in_progress_rental`, `has_recovery_required`,
-	`has_unpaid_settlement`, `authority_eligible`, `rental_eligible`,
-	`rental_eligibility_evaluated_at`
-FROM `_fixture_user_authority`
-ORDER BY `user_id`;
+	`expected`.`scenario_key`,
+	`expected`.`user_id`,
+	`expected`.`user_ref`,
+	`expected`.`name`,
+	`expected`.`face_registered` AS `expected_face_registered`,
+	`expected`.`has_in_progress_rental` AS `expected_has_in_progress_rental`,
+	`expected`.`has_recovery_required` AS `expected_has_recovery_required`,
+	`expected`.`has_unpaid_settlement` AS `expected_has_unpaid_settlement`,
+	`expected`.`authority_eligible` AS `expected_authority_eligible`,
+	`expected`.`rental_eligible` AS `expected_rental_eligible`,
+	`expected`.`is_evaluated` AS `expected_is_evaluated`,
+	`actual`.`face_registered` AS `actual_face_registered`,
+	`actual`.`has_in_progress_rental` AS `actual_has_in_progress_rental`,
+	`actual`.`has_recovery_required` AS `actual_has_recovery_required`,
+	`actual`.`has_unpaid_settlement` AS `actual_has_unpaid_settlement`,
+	`actual`.`authority_eligible` AS `actual_authority_eligible`,
+	`actual`.`rental_eligible` AS `actual_rental_eligible`,
+	`actual`.`rental_eligibility_evaluated_at`
+FROM `_fixture_expected_user_state` AS `expected`
+INNER JOIN `_fixture_user_authority` AS `actual`
+	ON `actual`.`user_id` = `expected`.`user_id`
+ORDER BY `expected`.`user_id`;
 
 COMMIT;
 
@@ -932,6 +1036,7 @@ DROP TEMPORARY TABLE `_fixture_user_authority`;
 DROP TEMPORARY TABLE `_fixture_actual_request_key`;
 DROP TEMPORARY TABLE `_fixture_actual_record`;
 DROP TEMPORARY TABLE `_fixture_expected_trigger`;
+DROP TEMPORARY TABLE `_fixture_expected_face_sync_state`;
 DROP TEMPORARY TABLE `_fixture_expected_payment_state`;
 DROP TEMPORARY TABLE `_fixture_expected_settlement_state`;
 DROP TEMPORARY TABLE `_fixture_expected_ai_state`;

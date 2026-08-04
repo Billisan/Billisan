@@ -3,10 +3,10 @@
 -- This file is intentionally outside db/migration. Run numbered demo-fixture
 -- files in ascending order without the mysql --force option.
 --
--- At stage 20, the ACTIVE rental, RECOVERY_REQUIRED return, and unpaid
--- settlement do not exist yet. Scripts 30 and 40 create those authoritative
--- facts. This script owns and verifies the final user projection values but
--- does not pretend that rental or return REST endpoints exist.
+-- Stage 20 establishes the shared baseline: six Orin-linked users are face
+-- registered and eligible, while the seventh user is face-unregistered and
+-- ineligible. Later scenario scripts may change authoritative business state
+-- and must then recompute the affected projections.
 
 START TRANSACTION;
 
@@ -42,12 +42,77 @@ INSERT INTO `_fixture_expected_user` (
 )
 VALUES
 	(
-		'eligible',
+		'demo-user-01',
 		'202600001',
-		'11000000-0000-4000-8000-000000000001',
-		'eligible.fixture@billisan.test',
+		'f6f509d4-c001-446c-b6b7-537d65a093c3',
+		'demo01.fixture@billisan.test',
 		'$2a$10$WS6.9ytXBl7MzDCnzrKuFuLrp/xOB4BM.HRGDWCeFzNrLvjRgCF0u',
-		'Eligible Fixture User',
+		'김민준',
+		TRUE,
+		TRUE,
+		TIMESTAMP('2026-08-03 00:00:00.000000'),
+		TIMESTAMP('2026-08-01 00:00:00.000000'),
+		TIMESTAMP('2026-08-03 00:00:00.000000')
+	),
+	(
+		'demo-user-02',
+		'202600002',
+		'f86a8791-c02b-4e50-b761-d9dd009909a9',
+		'demo02.fixture@billisan.test',
+		'$2a$10$WS6.9ytXBl7MzDCnzrKuFuLrp/xOB4BM.HRGDWCeFzNrLvjRgCF0u',
+		'이서연',
+		TRUE,
+		TRUE,
+		TIMESTAMP('2026-08-03 00:00:00.000000'),
+		TIMESTAMP('2026-08-01 00:00:00.000000'),
+		TIMESTAMP('2026-08-03 00:00:00.000000')
+	),
+	(
+		'demo-user-03',
+		'202600003',
+		'0b8255a1-70e4-45af-80f2-b38e4164ea06',
+		'demo03.fixture@billisan.test',
+		'$2a$10$WS6.9ytXBl7MzDCnzrKuFuLrp/xOB4BM.HRGDWCeFzNrLvjRgCF0u',
+		'박지호',
+		TRUE,
+		TRUE,
+		TIMESTAMP('2026-08-03 00:00:00.000000'),
+		TIMESTAMP('2026-08-01 00:00:00.000000'),
+		TIMESTAMP('2026-08-03 00:00:00.000000')
+	),
+	(
+		'demo-user-04',
+		'202600004',
+		'59b97d2b-a37d-4f75-bd33-4beb1bd3ac76',
+		'demo04.fixture@billisan.test',
+		'$2a$10$WS6.9ytXBl7MzDCnzrKuFuLrp/xOB4BM.HRGDWCeFzNrLvjRgCF0u',
+		'최수아',
+		TRUE,
+		TRUE,
+		TIMESTAMP('2026-08-03 00:00:00.000000'),
+		TIMESTAMP('2026-08-01 00:00:00.000000'),
+		TIMESTAMP('2026-08-03 00:00:00.000000')
+	),
+	(
+		'demo-user-05',
+		'202600005',
+		'd8a6f8d6-3c43-4789-b980-a9f6918d53b8',
+		'demo05.fixture@billisan.test',
+		'$2a$10$WS6.9ytXBl7MzDCnzrKuFuLrp/xOB4BM.HRGDWCeFzNrLvjRgCF0u',
+		'정예준',
+		TRUE,
+		TRUE,
+		TIMESTAMP('2026-08-03 00:00:00.000000'),
+		TIMESTAMP('2026-08-01 00:00:00.000000'),
+		TIMESTAMP('2026-08-03 00:00:00.000000')
+	),
+	(
+		'demo-user-06',
+		'202600006',
+		'3650e75c-ab2b-4455-8f00-c691fd2e66fb',
+		'demo06.fixture@billisan.test',
+		'$2a$10$WS6.9ytXBl7MzDCnzrKuFuLrp/xOB4BM.HRGDWCeFzNrLvjRgCF0u',
+		'강하은',
 		TRUE,
 		TRUE,
 		TIMESTAMP('2026-08-03 00:00:00.000000'),
@@ -56,66 +121,14 @@ VALUES
 	),
 	(
 		'face-unregistered',
-		'202600002',
-		'11000000-0000-4000-8000-000000000002',
+		'202600007',
+		'bb14cac2-74d1-4b7f-a69f-aa88fcf8f55e',
 		'face-unregistered.fixture@billisan.test',
 		'$2a$10$WS6.9ytXBl7MzDCnzrKuFuLrp/xOB4BM.HRGDWCeFzNrLvjRgCF0u',
-		'Face Unregistered Fixture User',
+		'얼굴 미등록 사용자',
 		FALSE,
 		FALSE,
 		TIMESTAMP('2026-08-03 00:00:00.000000'),
-		TIMESTAMP('2026-08-01 00:00:00.000000'),
-		TIMESTAMP('2026-08-03 00:00:00.000000')
-	),
-	(
-		'active-rental',
-		'202600003',
-		'11000000-0000-4000-8000-000000000003',
-		'active-rental.fixture@billisan.test',
-		'$2a$10$WS6.9ytXBl7MzDCnzrKuFuLrp/xOB4BM.HRGDWCeFzNrLvjRgCF0u',
-		'Active Rental Fixture User',
-		TRUE,
-		FALSE,
-		TIMESTAMP('2026-08-03 00:00:00.000000'),
-		TIMESTAMP('2026-08-01 00:00:00.000000'),
-		TIMESTAMP('2026-08-03 00:00:00.000000')
-	),
-	(
-		'return-recovery',
-		'202600004',
-		'11000000-0000-4000-8000-000000000004',
-		'return-recovery.fixture@billisan.test',
-		'$2a$10$WS6.9ytXBl7MzDCnzrKuFuLrp/xOB4BM.HRGDWCeFzNrLvjRgCF0u',
-		'Return Recovery Fixture User',
-		TRUE,
-		FALSE,
-		TIMESTAMP('2026-08-03 00:00:00.000000'),
-		TIMESTAMP('2026-08-01 00:00:00.000000'),
-		TIMESTAMP('2026-08-03 00:00:00.000000')
-	),
-	(
-		'unpaid-settlement',
-		'202600005',
-		'11000000-0000-4000-8000-000000000005',
-		'unpaid-settlement.fixture@billisan.test',
-		'$2a$10$WS6.9ytXBl7MzDCnzrKuFuLrp/xOB4BM.HRGDWCeFzNrLvjRgCF0u',
-		'Unpaid Settlement Fixture User',
-		TRUE,
-		FALSE,
-		TIMESTAMP('2026-08-03 00:00:00.000000'),
-		TIMESTAMP('2026-08-01 00:00:00.000000'),
-		TIMESTAMP('2026-08-03 00:00:00.000000')
-	),
-	(
-		'unevaluated',
-		'202600006',
-		'11000000-0000-4000-8000-000000000006',
-		'unevaluated.fixture@billisan.test',
-		'$2a$10$WS6.9ytXBl7MzDCnzrKuFuLrp/xOB4BM.HRGDWCeFzNrLvjRgCF0u',
-		'Unevaluated Fixture User',
-		TRUE,
-		FALSE,
-		NULL,
 		TIMESTAMP('2026-08-01 00:00:00.000000'),
 		TIMESTAMP('2026-08-03 00:00:00.000000')
 	);
@@ -191,7 +204,7 @@ WHERE (
 	FROM `user_account` AS `actual`
 	INNER JOIN `_fixture_expected_user` AS `expected`
 		ON `actual`.`user_id` = `expected`.`user_id`
-) <> 6;
+) <> 7;
 
 INSERT INTO `_fixture_user_conflict_guard` (`record_key`, `must_be_zero`)
 SELECT CONCAT('user-shape:', `actual`.`user_id`), 1
@@ -217,8 +230,7 @@ WHERE NOT REGEXP_LIKE(`actual`.`user_id`, '^[0-9]{9}$', 'c')
 		'c'
 	);
 
--- Recheck exact projections after insertion. This also distinguishes the
--- fail-closed unevaluated row (false + NULL) from an evaluated false row.
+-- Recheck the exact evaluated baseline projections after insertion.
 INSERT INTO `_fixture_user_conflict_guard` (`record_key`, `must_be_zero`)
 SELECT CONCAT('user-projection:', `expected`.`user_id`), 1
 FROM `_fixture_expected_user` AS `expected`
