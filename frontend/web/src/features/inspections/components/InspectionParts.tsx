@@ -1,4 +1,4 @@
-import { formatScore } from '@/features/inspections/mocks/aiVerdict';
+import { formatScore } from '@/features/inspections/lib/aiScore';
 import type { InspectionReviewStatus } from '@/features/inspections/types';
 import {
     aiResultHint,
@@ -65,6 +65,35 @@ const BAR_CLASS: Record<BadgeTone, string> = {
 };
 
 /**
+ * 신뢰도 구간 → 막대 색.
+ *
+ * **막대 색은 「얼마나 확실한가」입니다. 판정 결과가 아닙니다.**
+ *
+ * 예전에는 `aiResultTone(result)` 를 써서 파손이면 빨강, 정상이면 초록으로 칠했습니다.
+ * 그러면 「신뢰도 0.93」이 빨간 막대로 나옵니다 — 라벨은 '신뢰도'라고 적어 놓고 색은
+ * 판정을 말하니, 높은 숫자에 경고색이 붙어 **확신도가 낮다는 뜻으로 읽혔습니다.**
+ *
+ * 판정 결과는 같은 줄의 AI 판정 배지(`AiResultBadge`)가 이미 색으로 말합니다. 두 자리가
+ * 같은 것을 말할 이유가 없어서, 막대는 라벨이 가리키는 값(신뢰도)만 나타냅니다.
+ *   0.85 이상 — 초록. AI 가 확실하다고 본 것
+ *   0.70 이상 — 주황. 참고는 되지만 사람이 더 봐야 함
+ *   그 미만   — 빨강. 이 숫자만 믿고 판정하면 안 됨
+ *
+ * **경계값은 운영에서 조정할 수 있습니다.** 모델의 실제 정확도를 근거로 정한 값이 아니라
+ * "이 정도면 믿고 넘어갈 만한가"에 대한 팀의 판단입니다. 오판이 잦으면 올리고, 멀쩡한
+ * 건이 자꾸 주황으로 걸리면 내리면 됩니다 — 두 숫자만 고치면 화면 전체에 반영됩니다.
+ * TODO: 모델 성능 지표가 나오면 그 값으로 다시 맞추세요.
+ */
+const CONFIDENCE_SURE = 0.85;
+const CONFIDENCE_FAIR = 0.7;
+
+function confidenceTone(score: number): 'green' | 'amber' | 'red' {
+    if (score >= CONFIDENCE_SURE) return 'green';
+    if (score >= CONFIDENCE_FAIR) return 'amber';
+    return 'red';
+}
+
+/**
  * 신뢰도 + 막대.
  *
  * **화면 표기는 「신뢰도」로 통일합니다.** 예전에는 같은 값을 화면마다 다르게 불렀습니다 —
@@ -79,15 +108,7 @@ const BAR_CLASS: Record<BadgeTone, string> = {
  * `FAILED` 는 값 자체가 없어서 막대를 그리지 않습니다. 0.00 으로 채우면
  * '아주 확실하게 정상'처럼 읽혀 반대로 오해됩니다.
  */
-export function ScoreBar({
-    score,
-    result,
-    className,
-}: {
-    score: number | null;
-    result: AiInspectionResult | null;
-    className?: string;
-}) {
+export function ScoreBar({ score, className }: { score: number | null; className?: string }) {
     if (score === null) {
         return (
             <span className={cn('block text-[11.5px] font-medium text-brand-muted', className)}>
@@ -103,7 +124,7 @@ export function ScoreBar({
             </span>
             <span className="mt-[10px] block h-[6px] w-full overflow-hidden rounded-full bg-brand-track">
                 <span
-                    className={cn('block h-full rounded-full', BAR_CLASS[aiResultTone(result)])}
+                    className={cn('block h-full rounded-full', BAR_CLASS[confidenceTone(score)])}
                     style={{ width: `${Math.round(score * 100)}%` }}
                 />
             </span>

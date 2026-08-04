@@ -24,6 +24,7 @@ import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
 import { RefId } from '@/shared/components/RefId';
 import { shortId } from '@/shared/lib/shortId';
+import { formatDateTime, formatDayTime } from '@/shared/lib/datetime';
 
 /**
  * 대여 상세 — `SCR-WEB-RENTAL-DETAIL-001` (**P1**, `WEB-API-CAND-003`).
@@ -107,8 +108,8 @@ export function RentalDetailPage() {
                     <InfoRow label="슬롯">
                         <ValueLink to={`/slots/${rental.slotId}`}>{rental.slotLabel}</ValueLink>
                     </InfoRow>
-                    <InfoRow label="대여 시각">{rental.rentedAt}</InfoRow>
-                    <InfoRow label="반납 기한">{rental.dueAt}</InfoRow>
+                    <InfoRow label="대여 시각">{formatDateTime(rental.rentedAt)}</InfoRow>
+                    <InfoRow label="반납 기한">{formatDateTime(rental.dueAt)}</InfoRow>
                     <InfoRow label="대여 상태">
                         <Badge tone={RENTAL_STATUS_TONE[display]}>
                             {RENTAL_STATUS_LABEL[display]}
@@ -119,7 +120,7 @@ export function RentalDetailPage() {
                 <InfoCard title="반납 정보">
                     {linkedReturn ? (
                         <>
-                            <InfoRow label="반납 시각">{linkedReturn.attemptedAt}</InfoRow>
+                            <InfoRow label="반납 시각">{formatDateTime(linkedReturn.attemptedAt)}</InfoRow>
                             <InfoRow label="반납 대여소">
                                 <ValueLink to={`/stations/${linkedReturn.stationId}`}>
                                     {linkedReturn.stationName}
@@ -161,7 +162,7 @@ export function RentalDetailPage() {
             <div className="mt-4">
                 <Timeline
                     steps={[
-                        { label: '대여', at: rental.rentedAt.slice(5), done: true },
+                        { label: '대여', at: formatDayTime(rental.rentedAt), done: true },
                         /*
                          * 반납 시도가 **있는 것**과 **끝난 것**은 다릅니다. 예전에는
                          * `Boolean(linkedReturn)` 이라, 그 시도가 `복구 필요`·`실패` 여도
@@ -171,7 +172,7 @@ export function RentalDetailPage() {
                             label: '반납',
                             at: linkedReturn
                                 ? linkedReturn.status === 'COMPLETED'
-                                    ? linkedReturn.attemptedAt.slice(5)
+                                    ? formatDayTime(linkedReturn.attemptedAt)
                                     : RETURN_STATUS_LABEL[linkedReturn.status]
                                 : '—',
                             done: linkedReturn?.status === 'COMPLETED',

@@ -23,6 +23,7 @@ import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
 import { RefId } from '@/shared/components/RefId';
 import { shortId } from '@/shared/lib/shortId';
+import { formatDateTime, formatTimeOnly } from '@/shared/lib/datetime';
 
 /**
  * 정산 상세 — `SCR-WEB-SETTLEMENT-DETAIL-001` (**P1**, `WEB-API-CAND-007`).
@@ -105,9 +106,9 @@ export function SettlementDetailPage() {
                             {formatWon(outstandingOf(item))}
                         </span>
                     </InfoRow>
-                    <InfoRow label="발생 시각">{item.createdAt}</InfoRow>
+                    <InfoRow label="발생 시각">{formatDateTime(item.createdAt)}</InfoRow>
                     <InfoRow label="결제 일시">
-                        {item.paidAt ?? <span className="text-brand-muted">—</span>}
+                        {(item.paidAt && formatDateTime(item.paidAt)) ?? <span className="text-brand-muted">—</span>}
                     </InfoRow>
                 </InfoCard>
 
@@ -157,16 +158,16 @@ export function SettlementDetailPage() {
                     steps={[
                         {
                             label: item.reason === 'DAMAGE' ? '파손 판정' : '사유 확정',
-                            at: item.createdAt.slice(11),
+                            at: formatTimeOnly(item.createdAt),
                             done: true,
                         },
-                        { label: '정산 발생', at: item.createdAt.slice(11), done: true },
+                        { label: '정산 발생', at: formatTimeOnly(item.createdAt), done: true },
                         {
                             label: '결제',
-                            at: item.paidAt?.slice(11) ?? '대기 중',
+                            at: (item.paidAt && formatTimeOnly(item.paidAt)) ?? '대기 중',
                             done: paid,
                         },
-                        { label: '정산 완료', at: item.paidAt?.slice(11) ?? '—', done: paid },
+                        { label: '정산 완료', at: (item.paidAt && formatTimeOnly(item.paidAt)) ?? '—', done: paid },
                     ]}
                 />
             </div>

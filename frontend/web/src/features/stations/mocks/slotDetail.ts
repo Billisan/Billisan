@@ -61,19 +61,37 @@ export function buildSlotHistory(slot: SlotDetail): SlotHistoryEntry[] {
         to: 'EMPTY',
     });
 
-    // 검수가 없는 슬롯은 대여·반납 한 사이클만 보여줍니다.
     if (!inspection) {
-        return display === 'EMPTY'
-            ? [rentOut(0)]
-            : [
-                  {
-                      at: now,
-                      kind: '반납',
-                      from: 'EMPTY',
-                      to: display,
-                  },
-                  rentOut(45),
-              ];
+        /*
+         * **빈 슬롯은 「대여」 한 줄.** 우산이 나갔다는 사실을 상태가 스스로 증명하므로
+         * 근거가 있습니다 (시드 2번 슬롯 — 김학생이 대여 중).
+         */
+        if (display === 'EMPTY') return [rentOut(0)];
+
+        /*
+         * **검수도 반납 시도도 없으면 아무 줄도 만들지 않습니다.**
+         *
+         * 예전에는 여기서 무조건 「반납 → 지금 상태」 + 「대여」 두 줄을 지어냈습니다.
+         * 시각도 `slot.updatedAt` 에서 45분을 빼 만든 숫자였습니다. 시드 5번 슬롯이
+         * 정확히 그 경우인데, 그 슬롯은 **대여도 반납도 검수도 없습니다** — 관리자가
+         * 순찰 중 「수리 가능」으로 직접 지정한 자리입니다(시드 문서 「이력 없음」).
+         * 화면이 있지도 않은 반납 사건을 만들어 "빌려갔다 반납했더니 이렇게 됐다"는
+         * 틀린 이야기를 하고 있었습니다.
+         *
+         * 「목업」 배지와 경고 문구가 붙어 있어도, 근거가 0인 자리는 비워 두는 게 맞습니다.
+         * 옆 「최근 검수」 카드도 없으면 없다고 말합니다.
+         */
+        if (!slot.latestReturnAttempt) return [];
+
+        return [
+            {
+                at: now,
+                kind: '반납',
+                from: 'EMPTY',
+                to: display,
+            },
+            rentOut(45),
+        ];
     }
 
     const isolate: SlotHistoryEntry = {

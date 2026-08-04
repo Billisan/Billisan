@@ -11,13 +11,7 @@ import {
 import { useDecideInspection, useInspection } from '@/features/inspections/hooks/useInspections';
 import type { InspectionDetail } from '@/features/inspections/types';
 import { SlotLockIcon } from '@/features/stations/components/SlotLockIcon';
-import {
-    deriveSlotDisplayStatus,
-    ITEM_CONDITION_TONE,
-    SLOT_DISPLAY_TONE,
-    slotStatusHint,
-    slotStatusText,
-} from '@/features/stations/types';
+import { ITEM_CONDITION_TONE, SLOT_SERVICE_TONE } from '@/features/stations/types';
 import { Badge } from '@/shared/components/Badge';
 import {
     ITEM_CONDITION_LABEL,
@@ -28,6 +22,7 @@ import { PageBar } from '@/shared/components/PageBar';
 import { ErrorState, LoadingState, NotFoundState } from '@/shared/components/PageState';
 import { PageTitle } from '@/shared/components/PageTitle';
 import { RefId } from '@/shared/components/RefId';
+import { cn } from '@/lib/utils';
 
 /**
  * 파손 검수 상세 — `SCR-WEB-INSPECTION-DETAIL-001` → `ADMIN-INSPECTION-002` · `003`.
@@ -139,11 +134,7 @@ export function InspectionDetailPage() {
 
                         <div className="mt-[16px]">
                             <p className="text-[11.5px] font-semibold text-brand-body">신뢰도</p>
-                            <ScoreBar
-                                score={detail.aiScore}
-                                result={detail.aiResult}
-                                className="mt-[8px] w-full"
-                            />
+                            <ScoreBar score={detail.aiScore} className="mt-[8px] w-full" />
                         </div>
 
                         {/*
@@ -249,32 +240,58 @@ export function InspectionDetailPage() {
  * AI 결과와 신뢰도 말고는, 그 슬롯이 지금 어떤 상태로 잠겨 있는지가 판단 재료입니다.
  * 없으면 슬롯 상세로 넘어갔다 돌아와야 하고, 그 사이 판정 폼에 입력한 값이 날아갑니다.
  *
- * 배지는 `deriveSlotDisplayStatus` 로 뽑아 재고·슬롯 화면과 **같은 함수·같은 말**을 씁니다.
- * 네 축을 따로도 적는 이유는 파생 배지 하나로는 뭉개지는 정보가 있어서입니다 —
- * 「관리자 확인」 배지만으로는 우산이 들었는지, 잠겨 있는지 알 수 없습니다.
+ * **파생 배지를 두지 않고 네 축을 그대로 적습니다.**
+ *
+ * 배지(`deriveSlotDisplayStatus`)는 네 축을 하나로 압축한 값이라, 축을 다 적어 놓은
+ * 자리에서는 같은 말을 두 번 하는 셈입니다. 게다가 압축 과정에서 뭉개집니다 — 슬롯이
+ * 「판정 대기」면 우산이 파손인지 수리 가능인지 확인 필요인지가 배지에서 사라집니다.
+ * 사진이 없는 판정 화면에서 관리자가 봐야 하는 건 그 차이입니다.
+ *
+ * 잠금까지 네 줄을 다 적는 이유가 여기 있습니다. 세 줄(점유·우산 상태·서비스)만 두면
+ * 「이용 가능」과 「UNKNOWN」이 구분되지 않습니다 — 둘을 가르는 건 잠금 하나뿐이라
+ * (`OCCUPIED+NORMAL+AVAILABLE+LOCKED` 이라야 대여 가능), 잠금을 빼면 판단 재료가
+ * 모자란 채로 배지에만 기대게 됩니다.
+ *
+ * 다른 화면(표·재고)의 배지와 나란히 대조하려면 제목 줄의 '슬롯 상세' 링크를 씁니다.
  */
 function SlotStateCard({ detail }: { detail: InspectionDetail }) {
-    const axes = {
-        occupancyStatus: detail.slotOccupancyStatus,
-        itemCondition: detail.slotItemCondition,
-        serviceStatus: detail.slotServiceStatus,
-        lockStatus: detail.slotLockStatus,
-    };
-    const display = deriveSlotDisplayStatus(axes);
-
     return (
         <section className="rounded-lg bg-white px-5 pb-[18px] pt-[18px]">
-            <div className="flex items-center justify-between gap-4">
-                <h3 className="text-[14.5px] font-extrabold leading-none text-brand-ink">
-                    현재 슬롯 상태
-                </h3>
-                <Badge tone={SLOT_DISPLAY_TONE[display]} title={slotStatusHint(display)}>
-                    {slotStatusText(display)}
-                </Badge>
-            </div>
+            <h3 className="text-[14.5px] font-extrabold leading-none text-brand-ink">
+                현재 슬롯 상태
+            </h3>
 
             <dl className="mt-[10px]">
-                <MetaRow label="점유">{OCCUPANCY_STATUS_LABEL[detail.slotOccupancyStatus]}</MetaRow>
+                {/*
+                 * 「점유」 대신 「우산 유무」, 값은 O·X 로 적습니다. 판정 화면에서 이 줄이
+                 * 답하는 건 '판정할 우산이 거기 있느냐' 하나라, 기호가 글자보다 빨리 읽힙니다.
+                 *
+                 * **다만 값은 셋입니다.** `occupancyStatus` 에는 `UNKNOWN`(센서가 우산 유무를
+                 * 못 읽음)이 있어서, 있음/없음 둘로만 그리면 **모르는 상태가 '없음'으로
+                 * 둔갑합니다.** 그래서 `?` 를 따로 둡니다 — 우산이 없는 것과 있는지 모르는
+                 * 것은 판정에서 전혀 다른 상황입니다.
+                 *
+                 * 기호만 남기지 않습니다. 원래 한글 라벨을 `title`·`aria-label` 에 실어
+                 * 마우스오버와 화면낭독기에는 「우산 있음」·「점유 확인 불가」로 읽힙니다.
+                 */}
+                <MetaRow label="우산 유무">
+                    <span
+                        title={OCCUPANCY_STATUS_LABEL[detail.slotOccupancyStatus]}
+                        aria-label={OCCUPANCY_STATUS_LABEL[detail.slotOccupancyStatus]}
+                        className={cn(
+                            'text-[13px] font-extrabold',
+                            detail.slotOccupancyStatus === 'OCCUPIED' && 'text-tone-green-fg',
+                            detail.slotOccupancyStatus === 'EMPTY' && 'text-brand-muted',
+                            detail.slotOccupancyStatus === 'UNKNOWN' && 'text-tone-amber-fg',
+                        )}
+                    >
+                        {detail.slotOccupancyStatus === 'OCCUPIED'
+                            ? 'O'
+                            : detail.slotOccupancyStatus === 'EMPTY'
+                              ? 'X'
+                              : '?'}
+                    </span>
+                </MetaRow>
                 <MetaRow label="우산 상태">
                     {/* 슬롯 상세와 같은 배지·같은 톤을 씁니다 — 두 화면이 같은 말을 해야 합니다. */}
                     {detail.slotItemCondition ? (
@@ -285,13 +302,28 @@ function SlotStateCard({ detail }: { detail: InspectionDetail }) {
                         '—'
                     )}
                 </MetaRow>
-                <MetaRow label="서비스">{SLOT_SERVICE_LABEL[detail.slotServiceStatus]}</MetaRow>
                 {/*
-                 * 값이 왼쪽 라벨과 같은 낱말(「잠금」 / 「잠금」)이라 글자를 아이콘으로 바꿉니다.
-                 * 슬롯 상세·표에서 쓰는 것과 같은 아이콘이라 네 상태(잠금·해제·확인 불가·오류)가
-                 * 모양과 색으로 구분됩니다. 글자가 사라져도 뜻은 남습니다 — `SlotLockIcon` 이
-                 * `<title>`·`aria-label` 로 한글 라벨을 달고 있어 마우스오버와 화면낭독기에
-                 * 그대로 읽힙니다.
+                 * 라벨이 「서비스」였는데 **무엇에 대한 서비스인지가 안 읽혔습니다.** 이 축이
+                 * 정하는 건 이 슬롯을 운영에 올려 둘지 말지입니다 — `OUT_OF_SERVICE` 를
+                 * 「운영에서 뺌」으로 설명해 온 그대로 「운영 상태」로 적습니다. 값 셋
+                 * (이용 가능·판정 대기·이용 중지) 어느 것과도 낱말이 겹치지 않습니다.
+                 *
+                 * 「슬롯 상태」로 두지 않은 건 카드 제목이 이미 「현재 슬롯 상태」라서입니다.
+                 *
+                 * 「우산 상태」와 같이 배지로 그립니다. 값이 셋인 상태 축이라 색으로 갈리는
+                 * 편이 훑기 좋고, 색은 표·목록과 같습니다
+                 * (`SLOT_SERVICE_TONE` — 초록 열림 · 주황 판단 대기 · 보라 운영 제외).
+                 */}
+                <MetaRow label="운영 상태">
+                    <Badge tone={SLOT_SERVICE_TONE[detail.slotServiceStatus]}>
+                        {SLOT_SERVICE_LABEL[detail.slotServiceStatus]}
+                    </Badge>
+                </MetaRow>
+                {/*
+                 * 라벨과 값이 둘 다 「잠금」이 되지 않게 값은 아이콘으로 그립니다.
+                 * 슬롯 상세·표와 같은 아이콘이라 네 상태(잠금·해제·확인 불가·오류)가 모양과
+                 * 색으로 갈리고, `<title>`·`aria-label` 에 한글 라벨이 있어 마우스오버와
+                 * 화면낭독기에는 글자로도 읽힙니다.
                  */}
                 <MetaRow label="잠금">
                     <SlotLockIcon status={detail.slotLockStatus} className="ml-auto" />

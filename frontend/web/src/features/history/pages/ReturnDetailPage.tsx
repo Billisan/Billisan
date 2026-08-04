@@ -22,6 +22,7 @@ import { ErrorState, LoadingState } from '@/shared/components/PageState';
 import { PageBar } from '@/shared/components/PageBar';
 import { RefId } from '@/shared/components/RefId';
 import { shortId } from '@/shared/lib/shortId';
+import { formatDateTime, formatTimeOnly } from '@/shared/lib/datetime';
 
 /**
  * 반납 상세 — `SCR-WEB-RETURN-DETAIL-001` (**P1**, `WEB-API-CAND-005`).
@@ -127,7 +128,7 @@ export function ReturnDetailPage() {
                     <InfoRow label="반납 ID">
                         <RefId id={item.returnAttemptId} label="반납 시도 ID" />
                     </InfoRow>
-                    <InfoRow label="반납 시각">{item.attemptedAt}</InfoRow>
+                    <InfoRow label="반납 시각">{formatDateTime(item.attemptedAt)}</InfoRow>
                     <InfoRow label="반납 대여소">
                         <ValueLink to={`/stations/${item.stationId}`}>{item.stationName}</ValueLink>
                     </InfoRow>
@@ -234,14 +235,14 @@ export function ReturnDetailPage() {
             <div className="mt-4">
                 <Timeline
                     steps={[
-                        { label: '반납 접수', at: item.attemptedAt.slice(11), done: true },
+                        { label: '반납 접수', at: formatTimeOnly(item.attemptedAt), done: true },
                         /*
                          * AI 검수 단계는 **추론이 실제로 끝났을 때만** 완료입니다. 예전에는
                          * `done: true` 로 박혀 있어서, 추론이 실패한 건에도 체크가 찍혔습니다.
                          */
                         {
                             label: 'AI 검수',
-                            at: inferenceDone ? item.attemptedAt.slice(11) : '검수 실패',
+                            at: inferenceDone ? formatTimeOnly(item.attemptedAt) : '검수 실패',
                             done: inferenceDone,
                         },
                         /*
@@ -251,7 +252,7 @@ export function ReturnDetailPage() {
                         {
                             label: '반납 완료',
                             at: returnSettled
-                                ? item.attemptedAt.slice(11)
+                                ? formatTimeOnly(item.attemptedAt)
                                 : RETURN_STATUS_LABEL[item.status],
                             done: returnSettled,
                         },

@@ -1,792 +1,166 @@
 import {
-    inspectionRefOf,
-    rentalUuid,
-    returnUuid,
-    settlementUuid,
-    slotLabelOf,
-    slotUuidOf,
-    stationUuid,
-    userUuid,
-    type SlotShapeRequest,
-} from '@/features/history/mocks/refs';
+    SEED_MODEL_VERSION,
+    SEED_RENTALS,
+    SEED_SETTLEMENT,
+    SEED_STATION,
+    SEED_SYNCED_AT,
+    seedInspectionOfSlot,
+    seedSlotOf,
+    seedUserOf,
+    type SeedRental,
+} from '@/features/stations/mocks/ec2Seed';
+import { formatSlotLabel } from '@/features/stations/types';
 import {
     SETTLEMENT_REASON_LABEL,
     formatWon,
     type Rental,
     type ReturnAttempt,
-    type ReturnReviewStatus,
     type Settlement,
     type UserTimelineEntry,
 } from '@/features/history/types';
 
 /**
- * 목업 행이 실제 슬롯 대신 적는 것.
+ * 이력 화면 목업 — **EC2 시드 그대로입니다** (`stations/mocks/ec2Seed.ts`).
  *
- * `stationId`·`slotId`·`slotLabel`·`inspectionId`·`reviewStatus` 는 여기 적지 않습니다 —
- * 아래 변환부에서 **슬롯 목업을 읽어 파생**시킵니다. 손으로 적던 시절에 없는 슬롯 번호와
- * 실재하지 않는 검수 ID 가 들어갔고, 화면은 그려지는데 대상이 없어서 눌러 보기 전까지
- * 아무도 몰랐습니다.
- */
-type RawRow<T> = Omit<T, 'stationId' | 'slotId' | 'slotLabel'> & {
-    /** 이 행이 요구하는 슬롯 모양. 슬롯 목업에서 그 상태인 자리를 골라 씁니다. */
-    slotShape: SlotShapeRequest | null;
-};
-
-/**
- * 반납 행. 검수(`inspectionId`·`reviewStatus`)도 적지 않습니다 — 반납이 들어간 슬롯에
- * 걸린 검수가 곧 그 반납의 검수입니다.
- */
-type RawReturn = Omit<
-    ReturnAttempt,
-    'stationId' | 'slotId' | 'slotLabel' | 'inspectionId' | 'reviewStatus'
-> & {
-    slotShape: SlotShapeRequest | null;
-    /**
-     * 슬롯이 없어 검수를 파생할 수 없는 행만 직접 적습니다.
-     *
-     * ERD §9.2-2 는 AI 결과를 슬롯 배정보다 **먼저** `DAMAGE_INSPECTION` 에 저장하므로
-     * 실제 서버에는 슬롯 없는 검수 행이 존재합니다. 이 목업의 검수는 슬롯에서 파생되어
-     * 그걸 표현할 수 없으니, 처리 상태만이라도 남겨 둡니다.
-     */
-    reviewStatus?: ReturnReviewStatus | null;
-};
-
-/**
- * 정산 행. 대여소 이름조차 적지 않습니다 — 연결된 반납·대여가 알고 있습니다.
- * 정산은 늘 대여 1건에 붙습니다 (ERD `SETTLEMENT.rental_id`).
- */
-type RawSettlement = Omit<Settlement, 'slotId' | 'slotLabel'>;
-
-/**
- * 이력 화면 목업.
+ * ⚠️ **이 화면들에는 실 API 가 없습니다.** 서버 OpenAPI 스펙(`docs/api-docs.json`)의 관리자
+ * 경로 8개에 대여·반납·정산·사용자 이력이 하나도 없습니다. 그래서 다른 화면과 달리
+ * 여기는 목업 모드를 꺼도 목업이 나옵니다 — 갈아탈 상대가 없습니다.
  *
- * TODO: 대여·반납·정산·사용자 이력 API 가 확정되면(WEB-API-CAND-002~008) 이 파일을 지우세요.
+ * 그래도 시드에 맞춥니다. 대여·정산이 검수·슬롯과 **같은 사건**을 가리키기 때문입니다.
+ * 슬롯4 파손 판정 → 정산 7,000원은 한 줄기이고, 목업이 딴 데이터를 들고 있으면 검수
+ * 상세에서 정산으로 넘어갔을 때 앞뒤가 안 맞습니다.
+ *
+ * **예전에는 400줄짜리 가짜 이력을 손으로 적었습니다.** 대여 20여 건에 `R-88102` 같은
+ * 표시 코드를 붙이고, 슬롯은 '모양'으로 요청해 절차적 생성기에서 골라 왔습니다. 실제
+ * 데이터에는 대여가 4건뿐이라 그 전부가 허구였습니다.
  *
  * 사용자는 `userRef`(ERD v3.0 `USER_ACCOUNT.user_ref` · 가명 UUID)만 담습니다. 학번인
- * `user_id CHAR(9)` 는 어디에도 넣지 않습니다. 아래 `u_8f3a` 는 목업을 손으로 읽기 쉬우라고
- * 둔 씨앗값이고, `refs.ts` 의 `userUuid()` 가 내보낼 때 UUID 로 바꿉니다 — 화면·링크에
- * 나가는 값은 전부 UUID 입니다.
+ * `user_id CHAR(9)` 는 어디에도 넣지 않습니다. 이름·연락처·대학 계정 식별자·`password_hash`
+ * 도 어떤 형태로도 넣지 않습니다 (화면흐름 §6.3).
  *
- * 이름·연락처·대학 계정 식별자·`password_hash` 는 어떤 형태로도 넣지 않습니다 (화면흐름 §6.3).
+ * TODO: 대여·반납·정산·사용자 이력 API 가 확정되면(WEB-API-CAND-002~008) 이 파일을 지우세요.
  */
 
-export const HISTORY_SYNCED_AT = '2026-07-24 09:20';
+export const HISTORY_SYNCED_AT = SEED_SYNCED_AT;
 
 /** 시안 하단 안내 문구. 우산 ID 없이 대여 ID 로 추적한다는 원칙을 화면에 남깁니다. */
 export const RENTAL_LIST_NOTE =
     '대여 상태: 대여중 · 연체(기한 초과 미반납) · 반납완료 · 분실(장기 미반납) · 개별 우산 ID 없이 대여 ID로 추적합니다';
 
-const RAW_RENTALS: RawRow<Rental>[] = [
-    /*
-     * 아래 둘은 **조회 기간 프리셋을 구분하려고** 둔 과거 건입니다.
-     *
-     * 목업이 07-18 ~ 07-24 딱 7일치라, `최근 일주일`·`한 달`·`세 달` 이 전부 같은 결과를
-     * 냈습니다. 필터가 동작해도 화면으로는 확인할 방법이 없었습니다.
-     *   R-87200  기준일 14일 전 → 일주일 밖, 한 달 안
-     *   R-86500  기준일 49일 전 → 한 달 밖, 세 달 안
-     */
-    {
-        rentalId: 'R-87200',
-        userRef: 'u_3a90',
-        stationName: '빌리대역 출구',
-        slotShape: 'EMPTY_SLOT',
-        rentedAt: '2026-07-10 12:30',
-        dueAt: '2026-07-11 12:30',
-        status: 'COMPLETED',
-        returnAttemptId: 'RT-87210',
-        settlementId: null,
-    },
-    {
-        rentalId: 'R-86500',
-        userRef: 'u_4d10',
-        stationName: '대운동장',
-        slotShape: 'EMPTY_SLOT',
-        rentedAt: '2026-06-05 08:40',
-        dueAt: '2026-06-06 08:40',
-        status: 'COMPLETED',
-        returnAttemptId: 'RT-86510',
-        settlementId: null,
-    },
-    {
-        /*
-         * 반납 시도 `RT-87980` 의 대여.
-         *
-         * 예전에는 그 반납이 `R-87940`(연체 중인 ACTIVE 대여)을 가리키고 있었습니다.
-         * 완료된 반납이 아직 안 돌아온 대여에 붙어 있는 셈이라, 대여 상세에서는 '대여중'
-         * 인데 반납 이력에는 같은 대여의 '반납완료' 가 떴습니다. `R-87940` 의 실제 반납
-         * 시도는 실패한 `RT-88232` 입니다.
-         */
-        rentalId: 'R-87960',
-        userRef: 'u_9c02',
-        stationName: '경영관',
-        slotShape: 'EMPTY_SLOT',
-        rentedAt: '2026-07-23 18:05',
-        dueAt: '2026-07-25 18:05',
-        status: 'COMPLETED',
-        returnAttemptId: 'RT-87980',
-        settlementId: null,
-    },
-    /*
-     * 아래는 반납·정산이 가리키던 대여들입니다. 없으면 '연결 대여' 를 눌러도 빈 화면입니다 —
-     * 실제로 그런 상태였습니다. 시각·대여소·사용자를 그 반납/정산과 앞뒤가 맞게 채웠습니다.
-     */
-    {
-        rentalId: 'R-88099',
-        userRef: 'u_3a90',
-        stationName: '중앙도서관',
-        slotShape: 'EMPTY_SLOT',
-        rentedAt: '2026-07-23 08:58',
-        dueAt: '2026-07-24 08:58',
-        status: 'COMPLETED',
-        returnAttemptId: 'RT-88205',
-        settlementId: null,
-    },
-    {
-        rentalId: 'R-88015',
-        userRef: 'u_1f55',
-        stationName: '제1공학관',
-        slotShape: 'EMPTY_SLOT',
-        rentedAt: '2026-07-23 08:47',
-        dueAt: '2026-07-24 08:47',
-        status: 'ACTIVE',
-        returnAttemptId: null,
-        settlementId: null,
-    },
-    {
-        rentalId: 'R-88001',
-        userRef: 'u_2b71',
-        stationName: '정문 광장',
-        slotShape: 'EMPTY_SLOT',
-        rentedAt: '2026-07-23 08:03',
-        dueAt: '2026-07-24 08:03',
-        status: 'COMPLETED',
-        returnAttemptId: 'RT-88190',
-        settlementId: null,
-    },
-    {
-        rentalId: 'R-87988',
-        userRef: 'u_4d10',
-        stationName: '제1공학관',
-        slotShape: 'EMPTY_SLOT',
-        rentedAt: '2026-07-23 07:30',
-        dueAt: '2026-07-24 07:30',
-        status: 'COMPLETED',
-        returnAttemptId: 'RT-88180',
-        settlementId: null,
-    },
-    /* 아래 셋은 이미 결제까지 끝난 과거 건입니다 (정산 S-1024 · S-1018 · S-1009). */
-    {
-        rentalId: 'R-87900',
-        userRef: 'u_3a90',
-        stationName: '중앙도서관',
-        slotShape: 'EMPTY_SLOT',
-        rentedAt: '2026-07-21 10:10',
-        dueAt: '2026-07-22 10:10',
-        status: 'COMPLETED',
-        returnAttemptId: 'RT-87905',
-        settlementId: 'S-1024',
-    },
-    {
-        rentalId: 'R-87860',
-        userRef: 'u_77a0',
-        stationName: '자연과학관',
-        slotShape: 'EMPTY_SLOT',
-        rentedAt: '2026-07-21 17:20',
-        dueAt: '2026-07-22 17:20',
-        status: 'COMPLETED',
-        returnAttemptId: 'RT-87866',
-        settlementId: 'S-1018',
-    },
-    {
-        rentalId: 'R-87801',
-        userRef: 'u_0b3c',
-        stationName: '생활관 A',
-        slotShape: 'EMPTY_SLOT',
-        rentedAt: '2026-07-20 09:00',
-        dueAt: '2026-07-21 09:00',
-        status: 'LOST',
-        returnAttemptId: null,
-        settlementId: 'S-1009',
-    },
-    /*
-     * 아래 두 건은 사용자 통합 이력 타임라인이 가리키는 대여입니다.
-     * 목록에 없으면 타임라인에서 눌렀을 때 "존재하지 않는 대여"로 떨어집니다 —
-     * 실제로 그런 상태였고, 링크 대상을 목록에 맞춰 넣었습니다.
-     */
-    {
-        rentalId: 'R-87699',
-        userRef: 'u_8f3a',
-        stationName: '정문 광장',
-        slotShape: 'EMPTY_SLOT',
-        rentedAt: '2026-07-20 08:15',
-        dueAt: '2026-07-21 08:15',
-        status: 'COMPLETED',
-        returnAttemptId: 'RT-87720',
-        settlementId: null,
-    },
-    {
-        rentalId: 'R-87488',
-        userRef: 'u_8f3a',
-        stationName: '경영관',
-        slotShape: 'EMPTY_SLOT',
-        rentedAt: '2026-07-18 17:02',
-        dueAt: '2026-07-19 17:02',
-        status: 'COMPLETED',
-        returnAttemptId: 'RT-87510',
-        settlementId: null,
-    },
-    {
-        rentalId: 'R-88102',
-        userRef: 'u_2210',
-        stationName: '제1공학관',
-        slotShape: 'EMPTY_SLOT',
-        rentedAt: '2026-07-24 09:05',
-        dueAt: '2026-07-25 09:05',
-        status: 'ACTIVE',
-        returnAttemptId: null,
-        settlementId: null,
-    },
-    {
-        rentalId: 'R-88098',
-        userRef: 'u_2b71',
-        stationName: '중앙도서관',
-        slotShape: 'EMPTY_SLOT',
-        rentedAt: '2026-07-24 08:40',
-        dueAt: '2026-07-25 08:40',
-        status: 'ACTIVE',
-        returnAttemptId: null,
-        settlementId: null,
-    },
-    {
-        rentalId: 'R-88021',
-        userRef: 'u_8f3a',
-        stationName: '제1공학관',
-        slotShape: 'EMPTY_SLOT',
-        rentedAt: '2026-07-23 14:05',
-        dueAt: '2026-07-24 14:05',
-        status: 'COMPLETED',
-        returnAttemptId: 'RT-88213',
-        settlementId: null,
-    },
-    {
-        rentalId: 'R-87940',
-        userRef: 'u_9c02',
-        stationName: '경영관',
-        slotShape: 'EMPTY_SLOT',
-        rentedAt: '2026-07-22 11:20',
-        dueAt: '2026-07-23 11:20',
-        status: 'ACTIVE',
-        returnAttemptId: null,
-        settlementId: 'S-1039',
-    },
-    {
-        rentalId: 'R-87731',
-        userRef: 'u_4d10',
-        stationName: '정문 광장',
-        slotShape: 'EMPTY_SLOT',
-        rentedAt: '2026-07-21 15:40',
-        dueAt: '2026-07-22 15:40',
-        status: 'LOST',
-        returnAttemptId: null,
-        settlementId: 'S-1031',
-    },
-    {
-        rentalId: 'R-88010',
-        userRef: 'u_77a0',
-        stationName: '자연과학관',
-        slotShape: 'EMPTY_SLOT',
-        rentedAt: '2026-07-23 19:33',
-        dueAt: '2026-07-24 19:33',
-        status: 'COMPLETED',
-        returnAttemptId: 'RT-88055',
-        settlementId: null,
-    },
-    {
-        rentalId: 'R-87995',
-        userRef: 'u_0b3c',
-        stationName: '생활관 A',
-        slotShape: 'EMPTY_SLOT',
-        rentedAt: '2026-07-23 18:02',
-        dueAt: '2026-07-24 18:02',
-        status: 'COMPLETED',
-        returnAttemptId: 'RT-88208',
-        settlementId: 'S-1043',
-    },
-];
+/* ------------------------------------------------------------------ 공통 도우미 */
 
-const RAW_RETURNS: RawReturn[] = [
-    /* 위 과거 대여 두 건의 반납. 기간 프리셋을 구분하는 데이터입니다. */
-    {
-        returnAttemptId: 'RT-87210',
-        rentalId: 'R-87200',
-        userRef: 'u_3a90',
-        stationName: '빌리대역 출구',
-        slotShape: 'NO_INSPECTION',
-        attemptedAt: '2026-07-10 19:15',
-        status: 'COMPLETED',
-        aiResult: 'NORMAL',
-        aiScore: 0.06,
-        modelVersion: 'v0.4',
-        latencyMs: 284,
-        settlementId: null,
-    },
-    {
-        returnAttemptId: 'RT-86510',
-        rentalId: 'R-86500',
-        userRef: 'u_4d10',
-        stationName: '대운동장',
-        slotShape: 'NO_INSPECTION',
-        attemptedAt: '2026-06-05 17:50',
-        status: 'COMPLETED',
-        aiResult: 'NORMAL',
-        aiScore: 0.05,
-        modelVersion: 'v0.4',
-        latencyMs: 291,
-        settlementId: null,
-    },
-    /*
-     * ── 반납이 정상으로 끝나지 않은 세 건 ──────────────────────────────
-     *
-     * 계약 Enum 은 다섯 개인데(`PROCESSING|PHYSICAL_DONE|COMPLETED|RECOVERY_REQUIRED|FAILED`)
-     * 목업이 `COMPLETED` 하나만 쓰고 있어서 「반납 상태」 열이 상수였습니다. 관리자가
-     * 이 화면을 보는 이유가 바로 이 세 건이라 실제로 넣습니다.
-     */
-    {
-        /*
-         * 복구 필요 — 우산은 들어가 잠겼는데 서버 커밋이 깨진 건.
-         *
-         * `recoveryScenario.ts` 가 이 슬롯(정문 광장 1번)을 `OUT_OF_SERVICE` 로 격리하므로,
-         * 여기서 슬롯 상세로 넘어가면 실제로 격리된 슬롯이 나옵니다.
-         * `completedAt` 이 없다는 뜻이라 정산도 붙지 않습니다.
-         */
-        returnAttemptId: 'RT-88240',
-        rentalId: 'R-88098',
-        userRef: 'u_2b71',
-        stationName: '정문 광장',
-        slotShape: 'RECOVERY',
-        attemptedAt: '2026-07-24 09:05',
-        status: 'RECOVERY_REQUIRED',
-        aiResult: 'NORMAL',
-        aiScore: 0.05,
-        modelVersion: 'v0.4',
-        latencyMs: 274,
-        settlementId: null,
-    },
-    {
-        /*
-         * 물리 완료 — 삽입·잠금까지 확인됐고 최종 반영 대기.
-         *
-         * 정상 경로의 통과 지점이라 오류가 아닙니다. 다만 여기서 멈춰 있으면 봐야 합니다.
-         * ERD §9.2-3 이 "`SLOT.service_status` 는 진행 상태로 바꾸지 않는다" 고 해서
-         * 슬롯은 건드리지 않습니다.
-         */
-        returnAttemptId: 'RT-88238',
-        rentalId: 'R-88102',
-        userRef: 'u_2210',
-        stationName: '경영관',
-        slotShape: 'NO_INSPECTION',
-        attemptedAt: '2026-07-24 09:18',
-        status: 'PHYSICAL_DONE',
-        aiResult: 'NORMAL',
-        aiScore: 0.07,
-        modelVersion: 'v0.4',
-        latencyMs: 269,
-        settlementId: null,
-    },
-    {
-        /*
-         * 실패 — 우산이 안 들어갔음. 사용자가 다시 시도할 수 있습니다.
-         *
-         * AI 는 이미 돌았고 **판정을 못 냈습니다**(`FAILED`). §9.2-2 가 AI 결과를 슬롯
-         * 배정보다 먼저 `DAMAGE_INSPECTION` 에 저장하므로 검수 행은 이미 존재하고,
-         * §8.0 이 "`DAMAGED|UNCERTAIN|FAILED` 추론은 ... `ADMIN_REVIEW + UNKNOWN` 로
-         * 격리한다" 고 해서 **관리자가 봐야 하는 건**입니다. 그래서 검수는 `PENDING` 입니다.
-         * AI 가 못 봤으면 더더욱 사람이 봐야 합니다.
-         *
-         * 슬롯 선정 전이라 `slotId` 가 `null` 입니다 — ERD §19.3 이 "슬롯 선정 전
-         * `PROCESSING`·`FAILED`·`RECOVERY_REQUIRED` 에서는 `return_slot_id` 가 NULL 일 수
-         * 있다" 고 허용합니다. AI 도 추론까지 못 가서 `FAILED`(판정 불가)입니다.
-         */
-        returnAttemptId: 'RT-88232',
-        rentalId: 'R-87940',
-        userRef: 'u_9c02',
-        stationName: '자연과학관',
-        slotShape: null,
-        // 슬롯이 없어 검수를 파생할 수 없습니다. AI 가 판정을 못 냈으니 사람이 봐야 합니다.
-        reviewStatus: 'PENDING',
-        attemptedAt: '2026-07-24 08:31',
-        status: 'FAILED',
-        aiResult: 'FAILED',
-        aiScore: null,
-        modelVersion: 'v0.4',
-        latencyMs: 0,
-        settlementId: null,
-    },
-    /* 결제까지 끝난 과거 정산(S-1024 · S-1018)이 가리키는 반납들. */
-    {
-        returnAttemptId: 'RT-87905',
-        rentalId: 'R-87900',
-        userRef: 'u_3a90',
-        stationName: '중앙도서관',
-        slotShape: 'NO_INSPECTION',
-        attemptedAt: '2026-07-23 11:02',
-        status: 'COMPLETED',
-        aiResult: 'NORMAL',
-        aiScore: 0.08,
-        modelVersion: 'v0.4',
-        latencyMs: 281,
-        settlementId: 'S-1024',
-    },
-    {
-        returnAttemptId: 'RT-87866',
-        rentalId: 'R-87860',
-        userRef: 'u_77a0',
-        stationName: '자연과학관',
-        slotShape: 'DAMAGED',
-        attemptedAt: '2026-07-22 18:33',
-        status: 'COMPLETED',
-        aiResult: 'DAMAGED',
-        aiScore: 0.94,
-        modelVersion: 'v0.4',
-        latencyMs: 305,
-        settlementId: 'S-1018',
-    },
-    /* 타임라인이 가리키는 반납 두 건. 위 대여 두 건과 짝입니다. */
-    {
-        returnAttemptId: 'RT-87720',
-        rentalId: 'R-87699',
-        userRef: 'u_8f3a',
-        stationName: '정문 광장',
-        slotShape: 'NO_INSPECTION',
-        attemptedAt: '2026-07-20 10:30',
-        status: 'COMPLETED',
-        aiResult: 'NORMAL',
-        aiScore: 0.06,
-        modelVersion: 'v0.4',
-        latencyMs: 288,
-        settlementId: null,
-    },
-    {
-        returnAttemptId: 'RT-87510',
-        rentalId: 'R-87488',
-        userRef: 'u_8f3a',
-        stationName: '경영관',
-        slotShape: 'NO_INSPECTION',
-        attemptedAt: '2026-07-18 19:40',
-        status: 'COMPLETED',
-        aiResult: 'NORMAL',
-        aiScore: 0.04,
-        modelVersion: 'v0.4',
-        latencyMs: 301,
-        settlementId: null,
-    },
-    {
-        /*
-         * **한 대여에 반납 시도가 둘인 경우** — `RENTAL 1:N RETURN_ATTEMPT` (ERD §8.2).
-         *
-         * 우산이 안 들어가서 한 번 실패하고, 4분 뒤 다시 시도해 성공한 건입니다.
-         * 아래 `RT-88213` 이 그 성공 시도이고 대여 `R-88021` 은 그쪽을 가리킵니다.
-         * 실패 시도는 대여가 되짚지 않지만 이력에는 남습니다 — "기존 실패 행을 덮어쓰지
-         * 않는다. 재시도는 새로운 request_id 와 새 행으로 생성한다"(ERD 실패와 재시도).
-         *
-         * 반납 목록 하단 안내가 "한 대여에 여러 건일 수 있습니다. 완료 시도는 최대
-         * 1건입니다" 라고 적어 두고 있는데, 정작 그 사례가 데이터에 없었습니다.
-         *
-         * 슬롯 선정 전에 끝나서 `slotShape` 가 없습니다 (ERD §19.3 이 `FAILED` 에서
-         * `return_slot_id` NULL 을 허용). AI 도 추론까지 못 가 `FAILED` 입니다.
-         */
-        returnAttemptId: 'RT-88211',
-        rentalId: 'R-88021',
-        userRef: 'u_8f3a',
-        stationName: '제1공학관',
-        slotShape: null,
-        // 슬롯이 없어 검수를 파생할 수 없습니다. AI 가 판정을 못 냈으니 사람이 봐야 합니다.
-        reviewStatus: 'PENDING',
-        attemptedAt: '2026-07-24 09:08',
-        status: 'FAILED',
-        aiResult: 'FAILED',
-        aiScore: null,
-        modelVersion: 'v0.4',
-        latencyMs: 0,
-        settlementId: null,
-    },
-    {
-        returnAttemptId: 'RT-88213',
-        rentalId: 'R-88021',
-        userRef: 'u_8f3a',
-        stationName: '제1공학관',
-        slotShape: 'ADMIN_REVIEW',
-        attemptedAt: '2026-07-24 09:12',
-        status: 'COMPLETED',
-        aiResult: 'DAMAGED',
-        aiScore: 0.92,
-        modelVersion: 'v0.4',
-        latencyMs: 320,
-        settlementId: null,
-    },
-    {
-        returnAttemptId: 'RT-88205',
-        rentalId: 'R-88099',
-        userRef: 'u_3a90',
-        stationName: '중앙도서관',
-        slotShape: 'ADMIN_REVIEW',
-        attemptedAt: '2026-07-24 08:58',
-        status: 'COMPLETED',
-        aiResult: 'DAMAGED',
-        aiScore: 0.88,
-        modelVersion: 'v0.4',
-        latencyMs: 296,
-        settlementId: null,
-    },
-    {
-        returnAttemptId: 'RT-88208',
-        rentalId: 'R-87995',
-        userRef: 'u_0b3c',
-        stationName: '생활관 A',
-        slotShape: 'DAMAGED',
-        attemptedAt: '2026-07-24 08:47',
-        status: 'COMPLETED',
-        aiResult: 'DAMAGED',
-        aiScore: 0.92,
-        modelVersion: 'v0.4',
-        latencyMs: 311,
-        settlementId: 'S-1043',
-    },
-    {
-        returnAttemptId: 'RT-87980',
-        rentalId: 'R-87960',
-        userRef: 'u_9c02',
-        stationName: '경영관',
-        slotShape: 'ADMIN_REVIEW',
-        attemptedAt: '2026-07-24 08:20',
-        status: 'COMPLETED',
-        aiResult: 'UNCERTAIN',
-        aiScore: 0.54,
-        modelVersion: 'v0.4',
-        latencyMs: 402,
-        settlementId: null,
-    },
-    {
-        returnAttemptId: 'RT-88190',
-        rentalId: 'R-88001',
-        userRef: 'u_2b71',
-        stationName: '정문 광장',
-        slotShape: 'NO_INSPECTION',
-        attemptedAt: '2026-07-24 08:03',
-        status: 'COMPLETED',
-        aiResult: 'NORMAL',
-        aiScore: 0.97,
-        modelVersion: 'v0.4',
-        latencyMs: 274,
-        settlementId: null,
-    },
-    {
-        returnAttemptId: 'RT-88180',
-        rentalId: 'R-87988',
-        userRef: 'u_4d10',
-        stationName: '빌리대역 출구',
-        slotShape: 'ADMIN_REVIEW',
-        attemptedAt: '2026-07-24 07:46',
-        status: 'COMPLETED',
-        aiResult: 'DAMAGED',
-        aiScore: 0.81,
-        modelVersion: 'v0.4',
-        latencyMs: 338,
-        settlementId: null,
-    },
-    {
-        returnAttemptId: 'RT-88055',
-        rentalId: 'R-88010',
-        // 연결 대여(R-88010)와 같은 사람이어야 합니다. 어긋나 있어서 대여 상세와 반납
-        // 상세가 서로 다른 사용자를 보여 줬습니다.
-        userRef: 'u_77a0',
-        // 대여는 자연과학관, 반납은 생활관 A — 다른 대여소에 반납하는 정상 경로입니다.
-        stationName: '생활관 A',
-        slotShape: 'REVIEWED_NORMAL',
-        attemptedAt: '2026-07-23 21:03',
-        status: 'COMPLETED',
-        /*
-         * AI 오탐 케이스. AI 는 파손을 의심했지만 관리자가 이상 없음으로 뒤집었습니다.
-         * 그래서 검수는 `DECIDED` 이고 정산은 붙지 않습니다. 슬롯 목업의
-         * `REVIEWED_NORMAL` 프리셋과 같은 상황입니다.
-         */
-        aiResult: 'DAMAGED',
-        aiScore: 0.86,
-        modelVersion: 'v0.4',
-        latencyMs: 281,
-        settlementId: null,
-    },
-];
-
-const RAW_SETTLEMENTS: RawSettlement[] = [
-    {
-        settlementId: 'S-1043',
-        userRef: 'u_0b3c',
-        reason: 'DAMAGE',
-        amount: 7000,
-        paidAmount: 0,
-        status: 'PENDING',
-        createdAt: '2026-07-24 09:20',
-        paidAt: null,
-        rentalId: 'R-87995',
-        returnAttemptId: 'RT-88208',
-        decisionReason: '캐노피 찢어짐',
-    },
-    {
-        settlementId: 'S-1039',
-        userRef: 'u_9c02',
-        reason: 'OVERDUE',
-        amount: 1000,
-        paidAmount: 0,
-        status: 'PENDING',
-        createdAt: '2026-07-24 07:41',
-        paidAt: null,
-        rentalId: 'R-87940',
-        returnAttemptId: null,
-        decisionReason: null,
-    },
-    {
-        settlementId: 'S-1031',
-        userRef: 'u_4d10',
-        reason: 'LOSS',
-        amount: 7000,
-        paidAmount: 0,
-        status: 'PENDING',
-        createdAt: '2026-07-23 15:20',
-        paidAt: null,
-        rentalId: 'R-87731',
-        returnAttemptId: null,
-        decisionReason: null,
-    },
-    {
-        settlementId: 'S-1024',
-        userRef: 'u_3a90',
-        reason: 'OVERDUE',
-        amount: 1000,
-        paidAmount: 1000,
-        status: 'PAID',
-        createdAt: '2026-07-23 11:02',
-        paidAt: '2026-07-23 11:40',
-        rentalId: 'R-87900',
-        returnAttemptId: 'RT-87905',
-        decisionReason: null,
-    },
-    {
-        settlementId: 'S-1018',
-        userRef: 'u_77a0',
-        reason: 'DAMAGE',
-        amount: 7000,
-        paidAmount: 7000,
-        status: 'PAID',
-        createdAt: '2026-07-22 18:33',
-        paidAt: '2026-07-22 19:02',
-        rentalId: 'R-87860',
-        returnAttemptId: 'RT-87866',
-        decisionReason: '살대 파손',
-    },
-    {
-        settlementId: 'S-1009',
-        userRef: 'u_0b3c',
-        reason: 'LOSS',
-        amount: 7000,
-        paidAmount: 7000,
-        status: 'PAID',
-        createdAt: '2026-07-22 09:15',
-        paidAt: '2026-07-22 10:31',
-        rentalId: 'R-87801',
-        returnAttemptId: null,
-        decisionReason: null,
-    },
-];
-
-/*
- * ---------------------------------------------------------------- UUID 변환
- *
- * 위 데이터는 읽기 쉬우라고 `R-88102`·`ST-003`·`SL-03-03` 같은 표시 코드로 적었습니다.
- * 실제 서버는 전부 `CHAR(36)` UUID 를 줍니다 (ERD). 그 차이를 나중에 메우면 화면·검색·링크를
- * 다시 손대야 하므로, **내보내는 시점에 UUID 로 바꿔** 지금부터 실제 모양으로 다룹니다.
- *
- * 슬롯·검수 목업과 같은 네임스페이스를 써서 화면끼리 ID 가 이어집니다. 슬롯 상세의
- * `연결 반납 시도` 가 가리키는 값이 반납 이력의 그 건과 실제로 같은 UUID 입니다.
- *
- * 사람이 읽던 코드는 버리지 않고 `slotLabel` 로 남깁니다 — 표에 UUID 만 깔면 어느 슬롯인지
- * 알 수 없습니다.
- */
-/** 요청한 모양의 슬롯을 실제로 집어 UUID·표시 라벨을 함께 만듭니다. */
-function resolveSlot(stationName: string, shape: SlotShapeRequest | null) {
-    if (!shape) return { slotId: null, slotLabel: null };
+/** 시드 대여가 쓴 슬롯의 표시 정보. 슬롯 번호는 대여소 안에서만 유일합니다. */
+function slotRefOf(slotNumber: number) {
+    const slot = seedSlotOf(slotNumber);
     return {
-        slotId: slotUuidOf(stationName, shape),
-        slotLabel: slotLabelOf(stationName, shape),
+        slotId: slot?.slotId ?? null,
+        slotLabel: slot ? formatSlotLabel(slot.slotNumber) : null,
     };
 }
 
-export const MOCK_RENTALS: Rental[] = RAW_RENTALS.map(({ slotShape, ...item }) => ({
-    ...item,
-    ...resolveSlot(item.stationName, slotShape),
-    userRef: userUuid(item.userRef),
-    rentalId: rentalUuid(item.rentalId),
-    stationId: stationUuid(item.stationName),
-    returnAttemptId: item.returnAttemptId && returnUuid(item.returnAttemptId),
-    settlementId: item.settlementId && settlementUuid(item.settlementId),
-})) as Rental[];
+/** 학번 → 가명 UUID. 화면에 나가는 건 이 값뿐입니다 (학번은 절대 아닙니다). */
+function userRefOf(studentNo: string): string {
+    return seedUserOf(studentNo)?.userRef ?? '';
+}
 
 /**
- * 반납 행.
+ * 보강 — 반납 시각.
  *
- * **검수는 손으로 적지 않고 슬롯에서 파생합니다.** 반납이 들어간 슬롯에 걸린 검수가 곧
- * 그 반납의 검수입니다 — 그래야 반납 상세에서 검수로 넘어갔을 때 실재하는 검수가 나오고,
- * 검수 처리 상태도 슬롯 상태와 어긋나지 않습니다.
- *
- * 슬롯이 없는 반납(선정 전 실패)은 검수 ID 를 만들 수 없습니다. ERD §9.2-2 는 AI 결과를
- * 슬롯 배정보다 먼저 저장하므로 실제 서버에는 슬롯 없는 검수 행이 존재하지만, 이 목업의
- * 검수는 슬롯에서 파생되므로 표현할 수 없습니다. 그 대신 `reviewStatus` 는 행에 적힌
- * 값을 그대로 씁니다 — AI 가 판정을 못 낸 건은 사람이 봐야 하는 게 맞습니다.
+ * 시드 문서에 반납 시도 표가 없습니다. 검수가 그 반납을 보고 돌아간 것이므로 **검수
+ * 추론 시각 직전**이어야 앞뒤가 맞습니다. 검수가 없는 슬롯이면 대여 기한을 씁니다.
  */
-export const MOCK_RETURNS: ReturnAttempt[] = RAW_RETURNS.map(({ slotShape, ...item }) => {
-    const inspection = slotShape && inspectionRefOf(item.stationName, slotShape);
+function attemptedAtOf(rental: SeedRental): string {
+    const inspection = seedInspectionOfSlot(rental.slotNumber);
+    return inspection?.processedAt ?? rental.dueAt;
+}
+
+/* ---------------------------------------------------------------------- 대여 */
+
+/** 시드 문서 「대여(Rental) 4건」 표. */
+export const MOCK_RENTALS: Rental[] = SEED_RENTALS.map((rental) => ({
+    rentalId: rental.rentalId,
+    userRef: userRefOf(rental.studentNo),
+    stationName: SEED_STATION.name,
+    stationId: SEED_STATION.stationId,
+    ...slotRefOf(rental.slotNumber),
+    rentedAt: rental.rentedAt,
+    dueAt: rental.dueAt,
+    status: rental.status,
+    returnAttemptId: rental.returnAttemptId,
+    settlementId: rental.rentalId === SEED_SETTLEMENT.rentalId ? SEED_SETTLEMENT.settlementId : null,
+})) as Rental[];
+
+/* ---------------------------------------------------------------------- 반납 */
+
+/**
+ * 반납 시도.
+ *
+ * **반납이 있는 대여만 행이 생깁니다.** 시드의 김학생 대여는 `ACTIVE`(아직 안 돌아옴)라
+ * 반납 시도가 없습니다 — 4건 중 3건입니다.
+ *
+ * `status` 를 `COMPLETED` 로 박지 않습니다. 시드 문서 「참고」가 짚은 대로 반납 상태
+ * 머신이 이 시드에서 완주하지 않아 화면에는 `PHYSICAL_DONE`(물리 완료·서버 반영 전)
+ * 으로 뜹니다. 오류가 아니라 시드가 그 지점까지만 만들어져 있는 것입니다.
+ *
+ * 검수(`inspectionId`·`reviewStatus`)는 손으로 적지 않고 슬롯에 걸린 시드 검수에서
+ * 가져옵니다. 그래야 반납 상세에서 검수로 넘어갔을 때 실재하는 검수가 나옵니다.
+ */
+export const MOCK_RETURNS: ReturnAttempt[] = SEED_RENTALS.filter(
+    (rental) => rental.returnAttemptId !== null,
+).map((rental) => {
+    const inspection = seedInspectionOfSlot(rental.slotNumber);
 
     return {
-        ...item,
-        ...resolveSlot(item.stationName, slotShape),
-        userRef: userUuid(item.userRef),
-        returnAttemptId: returnUuid(item.returnAttemptId),
-        rentalId: rentalUuid(item.rentalId),
-        stationId: stationUuid(item.stationName),
+        returnAttemptId: rental.returnAttemptId!,
+        rentalId: rental.rentalId,
+        userRef: userRefOf(rental.studentNo),
+        stationName: SEED_STATION.name,
+        stationId: SEED_STATION.stationId,
+        ...slotRefOf(rental.slotNumber),
+        attemptedAt: attemptedAtOf(rental),
+        status: rental.status === 'COMPLETED' ? 'COMPLETED' : 'PHYSICAL_DONE',
+        aiResult: inspection?.aiResult ?? 'NORMAL',
+        aiScore: inspection?.aiScore ?? null,
+        modelVersion: SEED_MODEL_VERSION,
+        /** 보강 — 추론 지연. 시드 문서에 없습니다. */
+        latencyMs: 820,
         inspectionId: inspection?.inspectionId ?? null,
-        reviewStatus: inspection?.reviewStatus ?? item.reviewStatus ?? null,
-        settlementId: item.settlementId && settlementUuid(item.settlementId),
+        reviewStatus: inspection?.reviewStatus ?? null,
+        settlementId:
+            rental.rentalId === SEED_SETTLEMENT.rentalId ? SEED_SETTLEMENT.settlementId : null,
     };
 }) as ReturnAttempt[];
 
+/* ---------------------------------------------------------------------- 정산 */
+
 /**
- * 정산의 슬롯은 **연결된 반납·대여에서 가져옵니다.**
+ * 시드 문서 「정산(Settlement) 1건」 표.
  *
- * 파손 정산의 슬롯은 파손이 발견된 자리, 즉 그 반납이 들어간 슬롯입니다. 분실 정산은
- * 반납이 없으니 우산이 나간 자리, 즉 대여의 인출 슬롯입니다. 예전에는 정산 행에도 슬롯
- * 코드를 따로 적어 뒀는데, 반납이 가리키는 슬롯과 다른 값이 되어 같은 사건의 슬롯이
- * 화면마다 달랐습니다.
+ * 슬롯은 **연결된 반납에서 가져옵니다.** 파손 정산의 슬롯은 파손이 발견된 자리, 즉 그
+ * 반납이 들어간 슬롯입니다. 따로 적으면 같은 사건의 슬롯이 화면마다 달라집니다.
  */
-function slotOfSettlement(item: RawSettlement) {
-    const attempt = item.returnAttemptId
-        ? RAW_RETURNS.find((row) => row.returnAttemptId === item.returnAttemptId)
-        : undefined;
-    const rental = RAW_RENTALS.find((row) => row.rentalId === item.rentalId);
-    const source = attempt ?? rental;
+export const MOCK_SETTLEMENTS: Settlement[] = (() => {
+    const rental = SEED_RENTALS.find((row) => row.rentalId === SEED_SETTLEMENT.rentalId);
+    if (!rental) return [];
 
-    return source
-        ? resolveSlot(source.stationName, source.slotShape)
-        : { slotId: null, slotLabel: null };
-}
-
-export const MOCK_SETTLEMENTS: Settlement[] = RAW_SETTLEMENTS.map((item) => ({
-    ...item,
-    ...slotOfSettlement(item),
-    userRef: userUuid(item.userRef),
-    settlementId: settlementUuid(item.settlementId),
-    rentalId: rentalUuid(item.rentalId),
-    returnAttemptId: item.returnAttemptId && returnUuid(item.returnAttemptId),
-})) as Settlement[];
+    return [
+        {
+            settlementId: SEED_SETTLEMENT.settlementId,
+            userRef: userRefOf(rental.studentNo),
+            reason: SEED_SETTLEMENT.reason,
+            amount: SEED_SETTLEMENT.amount,
+            paidAmount: SEED_SETTLEMENT.paidAmount,
+            status: SEED_SETTLEMENT.status,
+            createdAt: SEED_SETTLEMENT.createdAt,
+            paidAt: null,
+            rentalId: rental.rentalId,
+            returnAttemptId: rental.returnAttemptId,
+            ...slotRefOf(rental.slotNumber),
+            /** 보강 — 관리자 판정 사유. 시드 문서에 없습니다. */
+            decisionReason: '캐노피 파손',
+        },
+    ];
+})() as Settlement[];
 
 export function findRental(id: string | undefined) {
     return MOCK_RENTALS.find((item) => item.rentalId === id);
@@ -813,130 +187,74 @@ export interface UserSummary {
     timeline: UserTimelineEntry[];
 }
 
-const RAW_USER: UserSummary = {
-    userRef: 'u_8f3a',
-    period: '최근 30일',
-    totalRentals: 8,
-    normalReturns: 6,
-    damagedOrLost: 1,
-    outstandingAmount: 7000,
-    timeline: [
-        {
-            at: '2026-07-24 09:20',
-            kind: '정산',
-            linkId: 'S-1043',
-            to: '/history/settlements/S-1043',
-            target: '파손 · ₩7,000',
-            statusLabel: '미정산',
-            statusTone: 'red',
-        },
-        {
-            at: '2026-07-24 09:12',
-            kind: '반납',
-            linkId: 'RT-88213',
-            to: '/history/returns/RT-88213',
-            target: '제1공학관 · SL-03-07',
-            statusLabel: '검수 대기',
-            statusTone: 'amber',
-        },
-        {
-            at: '2026-07-23 14:05',
-            kind: '대여',
-            linkId: 'R-88021',
-            to: '/history/rentals/R-88021',
-            target: '제1공학관 · SL-03-07',
-            statusLabel: '반납완료',
-            statusTone: 'green',
-        },
-        {
-            at: '2026-07-20 10:30',
-            kind: '반납',
-            linkId: 'RT-87720',
-            to: '/history/returns/RT-87720',
-            target: '정문 광장 · SL-01-05',
-            statusLabel: '반납완료',
-            statusTone: 'green',
-        },
-        {
-            at: '2026-07-20 08:15',
-            kind: '대여',
-            linkId: 'R-87699',
-            to: '/history/rentals/R-87699',
-            target: '정문 광장 · SL-01-05',
-            statusLabel: '반납완료',
-            statusTone: 'green',
-        },
-        {
-            at: '2026-07-18 19:40',
-            kind: '반납',
-            linkId: 'RT-87510',
-            to: '/history/returns/RT-87510',
-            target: '경영관 · SL-05-02',
-            statusLabel: '반납완료',
-            statusTone: 'green',
-        },
-        {
-            at: '2026-07-18 17:02',
-            kind: '대여',
-            linkId: 'R-87488',
-            to: '/history/rentals/R-87488',
-            target: '경영관 · SL-05-02',
-            statusLabel: '반납완료',
-            statusTone: 'green',
-        },
-    ],
-};
-
 /**
- * 타임라인의 「대상」 글자.
+ * 사용자 통합 이력.
  *
- * **손으로 적지 않고 연결된 기록에서 가져옵니다.** 예전에는 `'제1공학관 · SL-03-07'`
- * 처럼 문자열을 박아 놨는데 두 가지가 어긋났습니다.
- *   - `SL-03-07` 은 `station_code` 에 기대는 옛 표기입니다. ERD v3.0 이 그 컬럼을 P0
- *     필수에서 빼서 앱 전체를 `N번 슬롯` 으로 바꿨는데 **이 화면만 남아 있었습니다.**
- *   - 07 번은 제1공학관에 없는 슬롯입니다. 링크로 들어간 상세 화면과 글자가 달랐습니다.
+ * 시드에서 **미납 정산이 걸린 사용자**를 고릅니다 — 화면이 보여 줘야 하는 게 그 상태이고,
+ * 아무 일도 없는 사용자를 띄우면 집계·타임라인이 전부 0 이라 아무것도 확인할 수 없습니다.
+ * 시드에서는 최학생(202400004)입니다.
  *
- * 같은 사건을 두 곳에 따로 적어 두면 반드시 갈라집니다. 이제 대여·반납은 그 기록의
- * 대여소·슬롯을, 정산은 사유·금액을 그대로 씁니다.
+ * 집계도 손으로 적지 않고 위 목업에서 셉니다. 예전에는 숫자를 따로 적어 둬서 타임라인과
+ * 어긋났습니다.
  */
-function timelineTarget(entry: UserTimelineEntry): string {
-    if (entry.kind === '정산') {
-        const settlement = MOCK_SETTLEMENTS.find(
-            (item) => item.settlementId === settlementUuid(entry.linkId),
-        );
-        return settlement
-            ? `${SETTLEMENT_REASON_LABEL[settlement.reason]} · ${formatWon(settlement.amount)}`
-            : entry.target;
-    }
+const FOCUS_RENTAL = SEED_RENTALS.find((row) => row.rentalId === SEED_SETTLEMENT.rentalId);
 
-    const record =
-        entry.kind === '대여'
-            ? MOCK_RENTALS.find((item) => item.rentalId === rentalUuid(entry.linkId))
-            : MOCK_RETURNS.find((item) => item.returnAttemptId === returnUuid(entry.linkId));
+function buildUserSummary(): UserSummary {
+    const userRef = FOCUS_RENTAL ? userRefOf(FOCUS_RENTAL.studentNo) : '';
+    const rentals = MOCK_RENTALS.filter((row) => row.userRef === userRef);
+    const returns = MOCK_RETURNS.filter((row) => row.userRef === userRef);
+    const settlements = MOCK_SETTLEMENTS.filter((row) => row.userRef === userRef);
 
-    if (!record) return entry.target;
-    return record.slotLabel ? `${record.stationName} · ${record.slotLabel}` : record.stationName;
+    const timeline: UserTimelineEntry[] = [
+        ...rentals.map(
+            (row): UserTimelineEntry => ({
+                at: row.rentedAt,
+                kind: '대여',
+                linkId: row.rentalId,
+                to: `/history/rentals/${row.rentalId}`,
+                target: `${row.stationName} ${row.slotLabel ?? ''}`.trim(),
+                statusLabel: '대여',
+                statusTone: 'slate',
+            }),
+        ),
+        ...returns.map(
+            (row): UserTimelineEntry => ({
+                at: row.attemptedAt,
+                kind: '반납',
+                linkId: row.returnAttemptId,
+                to: `/history/returns/${row.returnAttemptId}`,
+                target: `${row.stationName} ${row.slotLabel ?? ''}`.trim(),
+                statusLabel: '물리 완료',
+                statusTone: 'amber',
+            }),
+        ),
+        ...settlements.map(
+            (row): UserTimelineEntry => ({
+                at: row.createdAt,
+                kind: '정산',
+                linkId: row.settlementId,
+                to: `/history/settlements/${row.settlementId}`,
+                target: `${SETTLEMENT_REASON_LABEL[row.reason]} · ${formatWon(row.amount)}`,
+                statusLabel: '미납',
+                statusTone: 'red',
+            }),
+        ),
+        // 최신순. 같은 시각이면 대여 → 반납 → 정산 순서가 자연스럽습니다.
+    ].sort((a, b) => b.at.localeCompare(a.at));
+
+    return {
+        userRef,
+        period: '최근 30일',
+        totalRentals: rentals.length,
+        // 파손·분실로 끝나지 않은 반납.
+        normalReturns: returns.filter((row) => row.aiResult === 'NORMAL').length,
+        damagedOrLost: returns.filter((row) => row.aiResult === 'DAMAGED').length,
+        outstandingAmount: settlements.reduce(
+            (sum, row) => sum + (row.amount - row.paidAmount),
+            0,
+        ),
+        timeline,
+    };
 }
 
-/** 타임라인의 링크도 같은 규칙으로 바꿉니다. 안 바꾸면 눌러도 없는 화면으로 갑니다. */
-export const MOCK_USER: UserSummary = {
-    ...RAW_USER,
-    userRef: userUuid(RAW_USER.userRef),
-    timeline: RAW_USER.timeline.map((entry) => {
-        const id =
-            entry.kind === '대여'
-                ? rentalUuid(entry.linkId)
-                : entry.kind === '반납'
-                  ? returnUuid(entry.linkId)
-                  : settlementUuid(entry.linkId);
-        const path =
-            entry.kind === '대여' ? 'rentals' : entry.kind === '반납' ? 'returns' : 'settlements';
-
-        return {
-            ...entry,
-            linkId: id,
-            to: `/history/${path}/${id}`,
-            target: timelineTarget(entry),
-        };
-    }),
-};
+export const MOCK_USER: UserSummary = buildUserSummary();

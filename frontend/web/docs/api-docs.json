@@ -1,0 +1,1149 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "OpenAPI definition",
+    "version": "v0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Generated server url"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/chatbot/messages": {
+      "post": {
+        "tags": [
+          "chatbot-controller"
+        ],
+        "operationId": "sendMessage",
+        "parameters": [
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatMessageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatMessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "user-auth-controller"
+        ],
+        "operationId": "login",
+        "parameters": [
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserLoginResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/auth/login": {
+      "post": {
+        "tags": [
+          "admin-auth-controller"
+        ],
+        "operationId": "login_1",
+        "parameters": [
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminLoginResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/slots/{slotId}/status": {
+      "patch": {
+        "tags": [
+          "slot-admin-controller"
+        ],
+        "operationId": "updateStatus",
+        "parameters": [
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "slotId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SlotStatusUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SlotSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/inspections/{inspectionId}/decision": {
+      "patch": {
+        "tags": [
+          "inspection-admin-controller"
+        ],
+        "operationId": "decide",
+        "parameters": [
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "inspectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InspectionDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionDecisionResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/stations/{stationId}/slots": {
+      "get": {
+        "tags": [
+          "slot-admin-controller"
+        ],
+        "operationId": "listSlots",
+        "parameters": [
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "stationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SlotListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/stations/{stationId}/inventory": {
+      "get": {
+        "tags": [
+          "slot-admin-controller"
+        ],
+        "operationId": "getInventory",
+        "parameters": [
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "stationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SlotInventoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/slots/{slotId}": {
+      "get": {
+        "tags": [
+          "slot-admin-controller"
+        ],
+        "operationId": "getSlotDetail",
+        "parameters": [
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "slotId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SlotDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/inspections": {
+      "get": {
+        "tags": [
+          "inspection-admin-controller"
+        ],
+        "operationId": "list",
+        "parameters": [
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "aiResult",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "NORMAL",
+                "DAMAGED",
+                "UNCERTAIN"
+              ]
+            }
+          },
+          {
+            "name": "reviewStatus",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "DECIDED"
+              ]
+            }
+          },
+          {
+            "name": "modelVersion",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionPageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/inspections/{inspectionId}": {
+      "get": {
+        "tags": [
+          "inspection-admin-controller"
+        ],
+        "operationId": "getDetail",
+        "parameters": [
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "inspectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ChatMessageRequest": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "message": {
+            "type": "string"
+          },
+          "screenContext": {
+            "type": "string"
+          },
+          "clientContext": {
+            "$ref": "#/components/schemas/ClientContext"
+          }
+        }
+      },
+      "ClientContext": {
+        "type": "object",
+        "properties": {
+          "hasActiveRental": {
+            "type": "boolean"
+          },
+          "hasPendingSettlement": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ChatAction": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "OPEN_MAP",
+              "OPEN_MY_PAGE",
+              "OPEN_HISTORY",
+              "OPEN_INQUIRY",
+              "NONE"
+            ]
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      },
+      "ChatMessageResponse": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "answer": {
+            "type": "string"
+          },
+          "intent": {
+            "type": "string",
+            "enum": [
+              "RENTAL_GUIDE",
+              "RETURN_GUIDE",
+              "EXTENSION_GUIDE",
+              "LOSS_OR_DAMAGE_GUIDE",
+              "UNSETTLED_GUIDE",
+              "STATION_GUIDE",
+              "GENERAL_INQUIRY"
+            ]
+          },
+          "action": {
+            "$ref": "#/components/schemas/ChatAction"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "STATIC_FAQ",
+              "EXTERNAL_LLM",
+              "STATIC_FAQ_FALLBACK"
+            ]
+          },
+          "fallback": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UserLoginRequest": {
+        "type": "object",
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "format": "email",
+            "minLength": 1
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "identifier",
+          "password"
+        ]
+      },
+      "UserLoginResponse": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "tokenType": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "faceRegistered": {
+            "type": "boolean"
+          }
+        }
+      },
+      "AdminLoginRequest": {
+        "type": "object",
+        "properties": {
+          "loginId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "loginId",
+          "password"
+        ]
+      },
+      "AdminLoginResponse": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "tokenType": {
+            "type": "string"
+          },
+          "adminId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "loginId": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "idleExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "absoluteExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SlotStatusUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "targetServiceStatus": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "ADMIN_REVIEW",
+              "OUT_OF_SERVICE"
+            ]
+          },
+          "targetItemCondition": {
+            "type": "string",
+            "enum": [
+              "EMPTY",
+              "NORMAL",
+              "DAMAGED",
+              "REPAIRABLE",
+              "UNKNOWN"
+            ]
+          },
+          "reasonCode": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "physicalStateConfirmed": {
+            "type": "boolean"
+          },
+          "expectedUpdatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "expectedUpdatedAt",
+          "targetItemCondition",
+          "targetServiceStatus"
+        ]
+      },
+      "SlotSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "slotId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slotNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "occupancyStatus": {
+            "type": "string"
+          },
+          "itemCondition": {
+            "type": "string"
+          },
+          "serviceStatus": {
+            "type": "string"
+          },
+          "lockStatus": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedBy": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "InspectionDecisionRequest": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "NORMAL",
+              "DAMAGED",
+              "KEEP_ADMIN_REVIEW"
+            ]
+          },
+          "reasonCode": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "physicalStateConfirmed": {
+            "type": "boolean"
+          },
+          "expectedUpdatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "decision",
+          "expectedUpdatedAt"
+        ]
+      },
+      "InspectionDecisionResult": {
+        "type": "object",
+        "properties": {
+          "inspectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reviewStatus": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string"
+          },
+          "decidedBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "slot": {
+            "$ref": "#/components/schemas/SlotState"
+          },
+          "settlement": {
+            "$ref": "#/components/schemas/SettlementState"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SettlementState": {
+        "type": "object",
+        "properties": {
+          "settlementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "paidAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "outstandingAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "SlotState": {
+        "type": "object",
+        "properties": {
+          "slotId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "occupancyStatus": {
+            "type": "string"
+          },
+          "itemCondition": {
+            "type": "string"
+          },
+          "serviceStatus": {
+            "type": "string"
+          },
+          "lockStatus": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SlotListResponse": {
+        "type": "object",
+        "properties": {
+          "stationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SlotSummaryResponse"
+            }
+          }
+        }
+      },
+      "SlotInventoryResponse": {
+        "type": "object",
+        "properties": {
+          "stationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "totalSlotCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "occupiedSlotCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "emptySlotCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "unknownOccupancySlotCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "availableUmbrellaCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "adminReviewSlotCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "outOfServiceSlotCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "damagedUmbrellaCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "asOf": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "LatestInspectionView": {
+        "type": "object",
+        "properties": {
+          "inspectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "aiResult": {
+            "type": "string"
+          },
+          "aiScore": {
+            "type": "number"
+          },
+          "modelVersion": {
+            "type": "string"
+          },
+          "processedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reviewStatus": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string"
+          }
+        }
+      },
+      "LatestReturnAttemptView": {
+        "type": "object",
+        "properties": {
+          "returnAttemptId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "rentalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "SlotDetailResponse": {
+        "type": "object",
+        "properties": {
+          "slotId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slotNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "occupancyStatus": {
+            "type": "string"
+          },
+          "itemCondition": {
+            "type": "string"
+          },
+          "serviceStatus": {
+            "type": "string"
+          },
+          "lockStatus": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "latestReturnAttempt": {
+            "$ref": "#/components/schemas/LatestReturnAttemptView"
+          },
+          "latestInspection": {
+            "$ref": "#/components/schemas/LatestInspectionView"
+          },
+          "updatedBy": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "InspectionPageResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InspectionSummaryResponse"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          }
+        }
+      },
+      "InspectionSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "inspectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "returnAttemptId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slotId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "aiResult": {
+            "type": "string"
+          },
+          "aiScore": {
+            "type": "number"
+          },
+          "modelVersion": {
+            "type": "string"
+          },
+          "processedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reviewStatus": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "InspectionDetailResponse": {
+        "type": "object",
+        "properties": {
+          "inspectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "returnAttemptId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "rentalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slotId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "aiResult": {
+            "type": "string"
+          },
+          "aiScore": {
+            "type": "number"
+          },
+          "modelVersion": {
+            "type": "string"
+          },
+          "processedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reviewStatus": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string"
+          },
+          "decisionReasonCode": {
+            "type": "string"
+          },
+          "decisionNote": {
+            "type": "string"
+          },
+          "decidedBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "slotOccupancyStatus": {
+            "type": "string"
+          },
+          "slotItemCondition": {
+            "type": "string"
+          },
+          "slotServiceStatus": {
+            "type": "string"
+          },
+          "slotLockStatus": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}

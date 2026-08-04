@@ -10,6 +10,7 @@ import {
     findSettlement,
 } from '@/features/history/mocks/history';
 import { findInspection } from '@/features/inspections/mocks/inspections';
+import { formatDateTime, formatDayTime, formatTimeOnly } from '@/shared/lib/datetime';
 import { findStation } from '@/features/stations/mocks/stations';
 
 /**
@@ -116,14 +117,19 @@ describe('참조 무결성 — 화면에서 눌렀을 때 빈 화면이 나오�
 });
 
 describe('AI 결과와 관리자 검수는 짝이 맞는다', () => {
-    it('AI 가 정상으로 본 반납은 관리자 검수로 넘어오지 않는다', () => {
+    it('AI 가 정상으로 본 반납은 검수 대기로 남지 않는다', () => {
         /*
-         * 검수는 AI 가 정상이 아니라고 본 건만 생깁니다. 정상인데 검수가 걸려 있으면
-         * 화면에서 "왜 이게 검수 대기인지" 를 설명할 수 없습니다.
+         * **예전 단언은 틀렸습니다.** "AI 가 정상이면 검수 자체가 없다" 로 적혀 있었는데,
+         * EC2 시드가 반증합니다 — 검수 `7aa9f1b8…` 는 `aiResult=NORMAL` 인데 레코드가
+         * 있고 `DECIDED` 입니다.
+         *
+         * 실제 규칙은 "검수가 안 생긴다" 가 아니라 **"사람 손을 안 탄다"** 입니다.
+         * 검수 레코드는 반납 시도마다 남고(DB 유니크 제약 `uk_damage_inspection_
+         * return_attempt_id`), AI 가 정상으로 본 건은 `DECIDED` 로 바로 닫힙니다.
+         * 그래서 「검수 대기」 목록에 올라오지 않습니다.
          */
         for (const attempt of MOCK_RETURNS.filter((item) => item.aiResult === 'NORMAL')) {
-            expect(attempt.reviewStatus, `반납 ${attempt.returnAttemptId}`).toBeNull();
-            expect(attempt.inspectionId, `반납 ${attempt.returnAttemptId}`).toBeNull();
+            expect(attempt.reviewStatus, `반납 ${attempt.returnAttemptId}`).not.toBe('PENDING');
         }
     });
 
@@ -236,10 +242,19 @@ describe('금액 규칙', () => {
 });
 
 describe('반납 상태 자체의 정합성', () => {
-    it('반납 완료가 아닌 건에는 정산이 붙지 않는다', () => {
-        // 복구 필요·실패·물리 완료는 아직 끝난 반납이 아닙니다. 정산은 그 뒤 단계입니다.
-        for (const attempt of MOCK_RETURNS.filter((item) => item.status !== 'COMPLETED')) {
-            expect(attempt.settlementId, `반납 ${attempt.returnAttemptId}`).toBeNull();
+    it('정산이 붙은 반납은 파손 검수가 끝난 건이다', () => {
+        /*
+         * **예전 단언은 틀렸습니다.** "반납이 `COMPLETED` 가 아니면 정산이 없다" 로
+         * 적혀 있었는데, EC2 시드가 반증합니다 — 최학생의 반납은 `PHYSICAL_DONE`
+         * (물리 완료·서버 반영 전)인데 파손 정산 `da4f6574…` 가 이미 붙어 있습니다.
+         *
+         * 정산을 만드는 건 반납 완료가 아니라 **관리자의 파손 판정**입니다
+         * (`ADMIN-INSPECTION-003`: 검수·슬롯·정산이 한 트랜잭션). 반납 상태 머신이
+         * 완주하기 전에 판정이 먼저 날 수 있고, 시드가 정확히 그 상태입니다.
+         */
+        for (const attempt of MOCK_RETURNS.filter((item) => item.settlementId !== null)) {
+            expect(attempt.aiResult, `반납 ${attempt.returnAttemptId}`).toBe('DAMAGED');
+            expect(attempt.reviewStatus, `반납 ${attempt.returnAttemptId}`).toBe('DECIDED');
         }
     });
 
@@ -258,15 +273,19 @@ describe('반납 상태 자체의 정합성', () => {
         }
     });
 
-    it('반납 상태가 다섯 값을 골고루 쓴다 — 상수 열이면 화면을 검증할 수 없다', () => {
-        /*
-         * 예전에 14건 전부 COMPLETED 였습니다. 그러면 반납 상태 열이 상수라서 그 열이
-         * 제대로 그려지는지, 필터가 도는지 화면으로 확인할 방법이 없습니다.
-         */
-        const used = new Set(MOCK_RETURNS.map((item) => item.status));
-        expect(used.size).toBeGreaterThanOrEqual(3);
-        expect(used).toContain('COMPLETED');
-    });
+    /*
+     * ⚠️ **삭제한 테스트: `반납 상태가 다섯 값을 골고루 쓴다`**
+     *
+     * 목업이 이력을 지어내던 시절, 반납 상태 열이 상수가 되지 않도록 `PROCESSING`·
+     * `COMPLETED`·`RECOVERY_REQUIRED`… 를 골고루 섞어 뒀는지 검사하던 테스트입니다.
+     *
+     * EC2 시드에는 반납이 3건뿐이고 전부 `PHYSICAL_DONE` 입니다. 지어낼 수 없습니다 —
+     * 목업을 실제 데이터에 맞추기로 한 이상 다양성은 서버가 만들어야 합니다.
+     *
+     * **잃은 것을 분명히 적어 둡니다**: 반납 상태 배지·필터가 다섯 값에서 제대로 그려지는지
+     * **목업만으로는 더 이상 확인할 수 없습니다.** 그 검증이 필요하면 컴포넌트 테스트에서
+     * 값을 직접 주입하거나(`RETURN_STATUS_LABEL` 전수), 백엔드에 시드 추가를 요청하세요.
+     */
 });
 
 describe('사용자 식별자', () => {
@@ -407,10 +426,24 @@ describe('대여와 반납의 개수·매칭 관계', () => {
         }
     });
 
-    it('대여중·분실 대여는 완료된 반납을 가리키지 않는다', () => {
-        // 아직 안 돌아왔거나 잃어버린 건이라 완료 반납이 있을 수 없습니다.
-        for (const rental of MOCK_RENTALS.filter((item) => item.status !== 'COMPLETED')) {
+    it('대여중·분실 대여에는 반납 시도가 없다', () => {
+        /*
+         * **예전 단언은 범위가 넓었습니다.** `status !== 'COMPLETED'` 전부를 잡아서
+         * `RETURNING` 까지 "반납 시도가 없어야 한다" 고 했는데, `RETURNING` 은 말 그대로
+         * **반납이 진행 중**이라 시도가 반드시 있습니다. 시드의 대여 4건 중 3건이 그렇습니다.
+         *
+         * 아직 안 돌아왔거나(ACTIVE) 잃어버린(LOST) 건에만 시도가 없습니다.
+         */
+        for (const rental of MOCK_RENTALS.filter(
+            (item) => item.status === 'ACTIVE' || item.status === 'LOST',
+        )) {
             expect(rental.returnAttemptId, `대여 ${rental.rentalId}`).toBeNull();
+        }
+    });
+
+    it('반납중 대여는 반납 시도를 가리킨다', () => {
+        for (const rental of MOCK_RENTALS.filter((item) => item.status === 'RETURNING')) {
+            expect(rental.returnAttemptId, `대여 ${rental.rentalId}`).not.toBeNull();
         }
     });
 
@@ -426,39 +459,118 @@ describe('대여와 반납의 개수·매칭 관계', () => {
         }
     });
 
-    it('한 대여에 시도가 여러 건인 사례가 실제로 있다', () => {
-        /*
-         * 화면이 "한 대여에 여러 건일 수 있습니다" 라고 안내하는데 데이터에 그 사례가
-         * 없으면 그 안내를 확인할 방법이 없습니다. 실패 후 재시도가 그 경우입니다.
-         */
-        const perRental = new Map<string, number>();
-        for (const attempt of MOCK_RETURNS) {
-            perRental.set(attempt.rentalId, (perRental.get(attempt.rentalId) ?? 0) + 1);
+    /*
+     * ⚠️ **삭제한 테스트: `한 대여에 시도가 여러 건인 사례가 실제로 있다`**
+     *
+     * 반납 화면이 "한 대여에 여러 건일 수 있습니다" 라고 안내하는데 데이터에 그 사례가
+     * 있는지 보던 테스트입니다. EC2 시드는 대여 4건에 반납 3건, 전부 1:1 이라 재시도
+     * 사례가 없습니다. 지어내면 다시 실제와 어긋납니다.
+     *
+     * **잃은 것**: 그 안내 문구가 가리키는 상황을 목업으로 재현할 수 없습니다.
+     * 실패 후 재시도 시드가 필요하면 백엔드에 요청하세요.
+     */
+
+    it('한 대여가 가리키는 반납은 실재한다', () => {
+        // 여러 건이든 한 건이든, 가리키는 대상이 없는 건 언제나 오류입니다.
+        const ids = new Set(MOCK_RETURNS.map((item) => item.returnAttemptId));
+        for (const rental of MOCK_RENTALS.filter((item) => item.returnAttemptId !== null)) {
+            expect(ids.has(rental.returnAttemptId!), `대여 ${rental.rentalId}`).toBe(true);
         }
-        expect([...perRental.values()].some((n) => n > 1)).toBe(true);
     });
 });
 
-describe('조회 기간 프리셋이 구분되는 데이터', () => {
+describe('조회 기간', () => {
     /*
-     * 목업이 한 주에 몰려 있으면 `최근 일주일`·`한 달`·`세 달` 이 전부 같은 결과를
-     * 냅니다. 필터가 동작해도 화면으로 확인할 방법이 없어집니다.
+     * ⚠️ **삭제한 테스트: `세 프리셋이 각각 다른 건수를 낸다`**
+     *
+     * 예전 목업은 `최근 일주일`·`한 달`·`세 달` 이 서로 다른 결과를 내도록 14일 전·49일
+     * 전 대여를 일부러 심어 뒀습니다. EC2 시드의 대여 4건은 전부 07-31 ~ 08-01 이틀에
+     * 몰려 있어서 세 프리셋이 같은 결과를 냅니다.
+     *
+     * **잃은 것**: 기간 필터가 실제로 거르는지 목업만으로는 확인할 수 없습니다.
+     * 필터 로직 자체는 `lib/dateRange.test.ts` 가 순수 함수로 검증하고 있어서,
+     * 없어진 건 "화면에서 눈으로 보는" 경로뿐입니다.
      */
     const days = MOCK_RENTALS.map((item) => item.rentedAt.slice(0, 10)).sort();
-    const ASOF = '2026-07-24';
-
-    it('세 프리셋이 각각 다른 건수를 낸다', () => {
-        const count = (from: string) => days.filter((d) => d >= from && d <= ASOF).length;
-        const week = count('2026-07-18');
-        const month = count('2026-06-25');
-        const quarter = count('2026-04-26');
-
-        expect(week).toBeLessThan(month);
-        expect(month).toBeLessThan(quarter);
-    });
+    /** 시드 기준일. `ec2Seed.ts` 의 `SEED_DATE` 와 같아야 합니다. */
+    const ASOF = '2026-08-01';
 
     it('모든 대여가 세 달 안에 있다 — 기본 조회에서 사라지는 건이 없다', () => {
-        expect(days[0] >= '2026-04-26').toBe(true);
-        expect(days[days.length - 1] <= ASOF).toBe(true);
+        const quarterAgo = '2026-05-03';
+        expect(days[0] >= quarterAgo, `가장 오래된 대여 ${days[0]}`).toBe(true);
+        expect(days[days.length - 1] <= ASOF, `가장 최근 대여 ${days.at(-1)}`).toBe(true);
+    });
+});
+
+describe('화면 표시용 불변식', () => {
+    it('사용자 축약 표시(앞 8자)가 사람마다 다르다', () => {
+        /*
+         * 회귀 테스트. 화면은 `userRef` 를 앞 8자 + `…` 로 줄여 보여 줍니다 (화면흐름 §12).
+         * 처음 시드에서 네 사람을 뒷자리만 다르게 두는 바람에 대여 목록의 「사용자」 열이
+         * 넷 다 `b1f6e0c4…` 로 똑같이 나왔습니다. 누가 누구인지 알 수 없는 표였습니다.
+         */
+        const refs = MOCK_RENTALS.map((item) => item.userRef.slice(0, 8));
+        expect(new Set(refs).size, `축약 표시: ${refs.join(', ')}`).toBe(refs.length);
+    });
+
+    it('시각 필드가 서버 형식이고, 표시 도우미가 자를 수 있다', () => {
+        /*
+         * 회귀 테스트. 목업을 시드에 맞추며 시각이 서버 `DATETIME(6)` 이 됐는데 화면은
+         * `value.slice(5)` 로 자르고 있어서, 표에 `08-01T08:52:00.000000+09:00` 이
+         * 그대로 찍혔습니다. 이제 `shared/lib/datetime` 이 두 형식을 다 자릅니다.
+         */
+        for (const rental of MOCK_RENTALS) {
+            expect(formatDayTime(rental.rentedAt), rental.rentalId).toMatch(
+                /^\d{2}-\d{2} \d{2}:\d{2}$/,
+            );
+            expect(formatDateTime(rental.dueAt), rental.rentalId).toMatch(
+                /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/,
+            );
+        }
+        for (const attempt of MOCK_RETURNS) {
+            expect(formatTimeOnly(attempt.attemptedAt), attempt.returnAttemptId).toMatch(
+                /^\d{2}:\d{2}$/,
+            );
+        }
+    });
+});
+
+describe('EC2 시드와 일치한다', () => {
+    /*
+     * 이 블록이 새 안전망입니다. 목업이 시드 문서에서 벗어나면 여기서 걸립니다 —
+     * 예전처럼 "화면은 그려지는데 실서버와 다른 데이터" 로 흘러가지 않게요.
+     * 출처: `EC2-DEMO-SEED-DATA.md` (2026-08-01), 전사본은 `mocks/ec2Seed.ts`.
+     */
+    it('대여 4건 · 반납 3건 · 정산 1건', () => {
+        expect(MOCK_RENTALS).toHaveLength(4);
+        // 반납은 ACTIVE 대여 1건을 뺀 나머지입니다.
+        expect(MOCK_RETURNS).toHaveLength(3);
+        expect(MOCK_SETTLEMENTS).toHaveLength(1);
+    });
+
+    it('정산 1건이 시드의 그 정산이다 — 파손 · 7,000원 · 미납', () => {
+        const [settlement] = MOCK_SETTLEMENTS;
+        expect(settlement.settlementId).toBe('da4f6574-1adc-41dc-9585-f6d47ef1e8f6');
+        expect(settlement.rentalId).toBe('48b931c4-9367-4f3f-98d3-41c37a11b3aa');
+        expect(settlement.reason).toBe('DAMAGE');
+        expect(settlement.amount).toBe(7000);
+        expect(settlement.status).toBe('PENDING');
+    });
+
+    it('대여 ID 가 시드 문서의 네 건 그대로다', () => {
+        expect(MOCK_RENTALS.map((item) => item.rentalId).sort()).toEqual(
+            [
+                '8c1e78f4-cc39-4b36-a671-78fa8a14f7e7',
+                '683578ad-f5bd-48e3-90ba-dd041645d2f3',
+                '53986655-6b48-4af2-9893-dee0f58fd828',
+                '48b931c4-9367-4f3f-98d3-41c37a11b3aa',
+            ].sort(),
+        );
+    });
+
+    it('모든 이력이 대여소 한 곳(정문 대여소)에 속한다', () => {
+        for (const row of [...MOCK_RENTALS, ...MOCK_RETURNS]) {
+            expect(row.stationId, row.stationName).toBe('186c47d2-6553-4b36-8d7e-de810f40010d');
+        }
     });
 });

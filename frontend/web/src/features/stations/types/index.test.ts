@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
     SLOT_DISPLAY_TONE,
+    SLOT_SERVICE_TONE,
     deriveSlotDisplayStatus,
     formatSlotLabel,
     formatUpdatedAt,
@@ -127,7 +128,7 @@ describe('slotStatusHint', () => {
     });
 
     it('나머지는 `한글 · CODE` 모양을 그대로 지킨다', () => {
-        expect(slotStatusHint('ADMIN_REVIEW')).toBe('판정 대기 · ADMIN_REVIEW');
+        expect(slotStatusHint('ADMIN_REVIEW')).toBe('관리자 확인 · ADMIN_REVIEW');
         expect(slotStatusHint('OUT_OF_SERVICE')).toBe('이용 중지 · OUT_OF_SERVICE');
     });
 });
@@ -256,13 +257,53 @@ describe('슬롯 표시 색', () => {
         );
     });
 
-    it('정상 상태만 초록이고, 문제 상태는 회색이 아니다', () => {
+    it('초록은 지금 대여 가능한 상태에만 쓴다', () => {
         expect(SLOT_DISPLAY_TONE.AVAILABLE).toBe('green');
-        // 회색은 '아무 일 없음'입니다. 빈 슬롯만 해당합니다.
+        /*
+         * 나머지 다섯은 어느 것도 초록이면 안 됩니다. 초록은 훑을 때 '손댈 것 없음'으로
+         * 읽히는 색이라, 관리자가 봐야 할 상태에 붙으면 그냥 지나칩니다.
+         */
+        for (const status of [
+            'EMPTY',
+            'DAMAGED',
+            'ADMIN_REVIEW',
+            'OUT_OF_SERVICE',
+            'UNKNOWN',
+        ] as const) {
+            expect(SLOT_DISPLAY_TONE[status], status).not.toBe('green');
+        }
+    });
+
+    it('서비스 축 배지 색이 파생 배지와 같다', () => {
+        /*
+         * 같은 슬롯이 목록 배지와 검수 상세의 「서비스 상태」 행에서 **다른 색이면
+         * 다른 상태로 읽힙니다.** 두 표는 키 집합이 달라 따로 두지만(서비스 축에는
+         * `EMPTY`·`DAMAGED`·`UNKNOWN` 이 없음) 겹치는 세 값의 색은 같아야 합니다.
+         *
+         * 「이용 중지」를 회색→보라로 바꿨을 때 이쪽이 회색으로 남아 실제로 어긋났습니다.
+         */
+        for (const status of ['AVAILABLE', 'ADMIN_REVIEW', 'OUT_OF_SERVICE'] as const) {
+            expect(SLOT_SERVICE_TONE[status], status).toBe(SLOT_DISPLAY_TONE[status]);
+        }
+    });
+
+    it('회색은 손댈 것 없는 상태에만 쓴다', () => {
+        /*
+         * **「빈 슬롯」과 「이용 중지」의 색을 다시 맞바꿨습니다.**
+         *
+         * 한동안 회색이 「이용 중지」였습니다 — '꺼짐=회색'이 뜻과 맞다는 이유였고,
+         * 그 자체로는 틀린 말이 아닙니다. 그런데 그러면 「빈 슬롯」이 보라가 되어
+         * **표에서 제일 튀는 게 아무 문제 없는 슬롯**이 됩니다. 빈 슬롯은 누가 빌려
+         * 갔을 뿐 정상이고, 관리자가 할 일이 없습니다.
+         *
+         * 색은 '뜻이 맞느냐'보다 **'훑을 때 뭐가 걸리느냐'**로 정합니다. 조치가 필요 없는
+         * 상태가 조용해야 필요한 상태가 눈에 들어옵니다.
+         */
         expect(SLOT_DISPLAY_TONE.EMPTY).toBe('slate');
+
+        // 관리자가 손대야 풀리는 상태들은 회색이면 안 됩니다 — 표에서 잊힙니다.
         for (const status of ['DAMAGED', 'ADMIN_REVIEW', 'OUT_OF_SERVICE', 'UNKNOWN'] as const) {
             expect(SLOT_DISPLAY_TONE[status], status).not.toBe('slate');
-            expect(SLOT_DISPLAY_TONE[status], status).not.toBe('green');
         }
     });
 });

@@ -65,6 +65,22 @@ describe('rentalDisplayStatus', () => {
         expect(rentalDisplayStatus(rental({ dueAt: '2026-07-25 09:00' }), ASOF)).toBe('ACTIVE');
     });
 
+    it('서버 ISO 형식과 화면 표시 형식을 섞어도 같은 날 시각을 제대로 비교한다', () => {
+        /*
+         * 회귀 테스트. `dueAt` 은 서버 `DATETIME(6)`(`…T09:00:00.000000+09:00`)인데
+         * 기준 시각은 화면 상수(`2026-07-24 09:20`)라 형식이 다릅니다. 11번째 글자가
+         * `T`(0x54) 대 공백(0x20) 이라 그냥 문자열 비교하면 **같은 날짜에서 언제나 ISO
+         * 쪽이 큽니다** — 기한 09:00 이 기준 09:20 보다 나중이라고 나와 연체를 놓칩니다.
+         *
+         * 목업을 EC2 시드에 맞추면서 `dueAt` 이 ISO 가 되어 실제로 생긴 자리입니다.
+         */
+        const isoBefore = '2026-07-24T09:00:00.000000+09:00';
+        const isoAfter = '2026-07-24T09:40:00.000000+09:00';
+
+        expect(rentalDisplayStatus(rental({ dueAt: isoBefore }), ASOF)).toBe('OVERDUE');
+        expect(rentalDisplayStatus(rental({ dueAt: isoAfter }), ASOF)).toBe('ACTIVE');
+    });
+
     it('대여중이 아니면 기한이 지났어도 연체가 아니다', () => {
         /*
          * 이미 반납·분실·취소로 끝난 건은 연체 배지를 달면 안 됩니다. 끝난 건의

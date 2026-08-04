@@ -1,5 +1,4 @@
 import { DetailLink } from '@/features/stations/components/DetailLink';
-import { DeviceBadge } from '@/features/stations/components/DeviceBadge';
 import { formatStockRatio } from '@/features/map/lib/distribution';
 import { getStationStatus, STATION_STATUS_META, type Station } from '@/features/stations/types';
 import { DataTable, TBody, Td, TableCard, Th, THead, Tr } from '@/shared/components/DataTable';
@@ -29,14 +28,11 @@ export function DistributionList({
         <TableCard>
             <DataTable>
                 <THead>
-                    <Th className="w-[26%]">대여소</Th>
+                    <Th className="w-[32%]">대여소</Th>
                     <Th align="center" className="w-[12%]">
                         상태
                     </Th>
-                    <Th align="center" className="w-[10%]">
-                        온라인
-                    </Th>
-                    <Th align="center" className="w-[16%]">
+                    <Th align="center" className="w-[20%]">
                         사용 가능 / 전체
                     </Th>
                     <Th align="center" className="w-[12%]">
@@ -84,9 +80,6 @@ export function DistributionList({
                                         />
                                         {meta.label}
                                     </span>
-                                </Td>
-                                <Td align="center">
-                                    <DeviceBadge status={station.deviceStatus} />
                                 </Td>
                                 <Td align="center" className="tabular-nums">
                                     <span className="font-bold text-brand-ink">

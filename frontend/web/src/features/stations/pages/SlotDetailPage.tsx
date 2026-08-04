@@ -2,8 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { RETURN_STATUS_LABEL, RETURN_STATUS_TONE } from '@/features/history/types';
-import { formatScore } from '@/features/inspections/mocks/aiVerdict';
-import { DeviceBadge } from '@/features/stations/components/DeviceBadge';
+import { formatScore } from '@/features/inspections/lib/aiScore';
 import { SlotLockIcon } from '@/features/stations/components/SlotLockIcon';
 import { SlotStatusDialog } from '@/features/stations/components/SlotStatusDialog';
 import {
@@ -203,7 +202,15 @@ export function SlotDetailPage() {
                  * 있다는 사실 자체는 화면에 남습니다 — 원인을 좁히는 데 한 단계 더 걸릴 뿐입니다.
                  * 대여소 단위 개수는 재고 화면의 `unknownOccupancySlotCount` 카드에 있습니다.
                  */}
-                <InfoCard title="슬롯 상태">
+                {/*
+                 * 제목이 **「실물 상태」**입니다 — 예전에는 「슬롯 상태」였는데, 목록 표의
+                 * 열 제목도 「슬롯 상태」라 같은 낱말이 다른 것을 가리켰습니다.
+                 *   목록 「슬롯 상태」 — 4축을 뭉갠 **파생 배지**
+                 *   이 카드          — 그 배지가 못 말하는 **원값 두 축**(우산 품질·잠금)
+                 * 점유·서비스는 위 요약 배지에서 되읽히므로 여기 없습니다(아래 주석 참고).
+                 * 그래서 이 카드가 담는 건 "실물이 지금 어떤가"입니다.
+                 */}
+                <InfoCard title="실물 상태">
                     <InfoRow label="우산 상태">
                         {/*
                          * 이 줄만 배지입니다. 3번(확인 필요)과 5번(수리 가능)처럼 **할 일이
@@ -240,20 +247,28 @@ export function SlotDetailPage() {
                      * 만들 수 없는 조합이라 지금은 감수합니다.
                      * TODO: 슬롯 4축 불변식을 화면에서 검사하게 되면 그 경고로 대신하세요.
                      */}
-                    <InfoRow label="잠금 여부">
+                    <InfoRow label="잠금">
                         {/*
-                         * 표와 달리 상세는 자리가 넉넉합니다. 아이콘만 두면 `잠금 확인 불가`와
-                         * `잠금 오류`를 색으로만 구분해야 해서 글자를 같이 답니다.
+                         * **정상 잠김이면 아이콘만, 나머지 셋은 글자를 붙입니다.**
+                         *
+                         * 예전 주석은 "아이콘만 두면 `확인 불가`와 `오류`를 색으로만 구분해야
+                         * 한다"고 했는데, 지금 `SlotLockIcon` 은 **모양으로** 가릅니다 —
+                         * 고리 열림/닫힘에 더해 열쇠구멍 자리에 `?`(확인 불가)·`!`(오류)를
+                         * 넣습니다. 색맹이어도 구분됩니다.
+                         *
+                         * 그래도 이상 상태에는 글자를 남깁니다. 그 표식이 12px 아이콘 안의
+                         * 7.5px 글자라 훑을 때 놓치기 쉽고, 이 셋은 관리자가 손대야 하는
+                         * 상태입니다. 반대로 `LOCKED` 는 아무 일도 없다는 뜻이라 아이콘 옆에
+                         * 「잠금」이라고 한 번 더 쓰면 같은 말을 두 번 하는 셈입니다.
                          */}
                         <span className="flex items-center gap-[7px]">
                             <SlotLockIcon status={slot.lockStatus} />
-                            <span className="text-[13px] font-semibold text-brand-ink">
-                                {LOCK_STATUS_LABEL[slot.lockStatus]}
-                            </span>
+                            {slot.lockStatus !== 'LOCKED' && (
+                                <span className="text-[13px] font-semibold text-brand-ink">
+                                    {LOCK_STATUS_LABEL[slot.lockStatus]}
+                                </span>
+                            )}
                         </span>
-                    </InfoRow>
-                    <InfoRow label="온라인">
-                        <DeviceBadge status={station.deviceStatus} />
                     </InfoRow>
                     {/*
                      * 「최근 갱신」은 여기 두지 않습니다. 우측 상단 PageBar 의 meta 가 **같은
@@ -311,7 +326,7 @@ export function SlotDetailPage() {
                                         {decisionText(inspection.decision)}
                                     </Badge>
                                 ) : (
-                                    <Badge tone="amber">판정 대기</Badge>
+                                    <Badge tone="amber">미판정</Badge>
                                 )}
                             </InfoRow>
                             {/*
@@ -486,68 +501,86 @@ function SlotHistoryTable({ entries }: { entries: SlotHistoryEntry[] }) {
                     </Badge>
                 </div>
                 <p className="mt-[7px] text-[12.5px] font-medium leading-relaxed text-brand-muted">
-                    이력 API가 아직 없어 최근 검수·반납 시도로 구성한 예시입니다. 실제 기록이
-                    아니므로 판단 근거로 쓰지 마세요.
+                    {entries.length > 0
+                        ? '이력 API가 아직 없어 최근 검수·반납 시도로 구성한 예시입니다. 실제 기록이 아니므로 판단 근거로 쓰지 마세요.'
+                        : '이력 API가 아직 없습니다. 이 슬롯에는 예시를 만들 근거(검수·반납 시도)도 없어 비워 둡니다.'}
                 </p>
             </div>
 
-            <DataTable>
-                {/*
-                 * 이 표는 '언제 · 무엇이 · 어떻게 바뀌었나' 세 가지만 보여줍니다.
-                 * 위 카드에 이미 있는 것은 여기서 반복하지 않습니다.
-                 *
-                 * 연결ID — 표시 필드의 `최근 returnAttemptId` 는 '슬롯 상태' 카드에 있습니다.
-                 *   표에 36자 UUID 를 깔면 자리만 잡아먹습니다.
-                 * 사유 — 되돌려받는 API 가 없습니다. `ADMIN-SLOT-STATUS-001` 과
-                 *   `ADMIN-INSPECTION-003` 은 `reasonCode`·`note` 를 **받기만** 하고 조회
-                 *   응답에는 그 필드가 없습니다.
-                 * 검수 링크 — §7.6 `ACT-WEB-SLOT-DETAIL-004 연결 검수 이동` 은 '최근 검수'
-                 *   카드의 '검수 상세에서 보기'(검수가 있으면 항상 표시)와 미처리일 때 뜨는
-                 *   상단 '검수하기' 버튼이 충족합니다. 같은 목적지를 세 번 둘 이유가 없습니다.
-                 */}
-                <THead>
-                    <Th className="w-[28%]">시각</Th>
-                    <Th className="w-[24%]">구분</Th>
-                    <Th align="center" className="w-[48%]">
-                        상태 변화
-                    </Th>
-                </THead>
+            {/*
+             * **근거가 없으면 표를 그리지 않습니다.**
+             *
+             * 예전에는 검수도 반납도 없는 슬롯에까지 「반납 → 지금 상태」 + 「대여」 두 줄을
+             * 지어냈습니다. 시드 5번 슬롯이 그 경우인데, 그 슬롯은 관리자가 순찰 중
+             * 「수리 가능」으로 직접 지정한 자리라 대여도 반납도 없습니다(시드 문서 「이력 없음」).
+             * 화면이 있지도 않은 반납 사건을 만들어 틀린 이야기를 하고 있었습니다.
+             *
+             * 「목업」 배지를 달아 뒀더라도 근거 0인 자리는 비웁니다 — 옆 「최근 검수」 카드도
+             * 같은 방식입니다.
+             */}
+            {entries.length === 0 ? (
+                <p className="px-5 pb-6 text-[13px] font-medium text-brand-muted">
+                    표시할 상태 이력이 없습니다.
+                </p>
+            ) : (
+                <DataTable>
+                    {/*
+                     * 이 표는 '언제 · 무엇이 · 어떻게 바뀌었나' 세 가지만 보여줍니다.
+                     * 위 카드에 이미 있는 것은 여기서 반복하지 않습니다.
+                     *
+                     * 연결ID — 표시 필드의 `최근 returnAttemptId` 는 '슬롯 상태' 카드에 있습니다.
+                     *   표에 36자 UUID 를 깔면 자리만 잡아먹습니다.
+                     * 사유 — 되돌려받는 API 가 없습니다. `ADMIN-SLOT-STATUS-001` 과
+                     *   `ADMIN-INSPECTION-003` 은 `reasonCode`·`note` 를 **받기만** 하고 조회
+                     *   응답에는 그 필드가 없습니다.
+                     * 검수 링크 — §7.6 `ACT-WEB-SLOT-DETAIL-004 연결 검수 이동` 은 '최근 검수'
+                     *   카드의 '검수 상세에서 보기'(검수가 있으면 항상 표시)와 미처리일 때 뜨는
+                     *   상단 '검수하기' 버튼이 충족합니다. 같은 목적지를 세 번 둘 이유가 없습니다.
+                     */}
+                    <THead>
+                        <Th className="w-[28%]">시각</Th>
+                        <Th className="w-[24%]">구분</Th>
+                        <Th align="center" className="w-[48%]">
+                            상태 변화
+                        </Th>
+                    </THead>
 
-                <TBody>
-                    {entries.map((entry) => (
-                        <Tr key={`${entry.at}-${entry.kind}`} className="h-[56px]">
-                            <Td className="tabular-nums">{formatUpdatedAt(entry.at)}</Td>
-                            <Td className="font-bold text-brand-ink">{entry.kind}</Td>
-                            <Td align="center">
-                                {/*
-                                 * 화살표를 열 한가운데 **고정**합니다.
-                                 *
-                                 * flex 로 나란히 두면 배지 글자 수에 따라('빈 슬롯' vs
-                                 * '관리자 확인') 화살표 위치가 행마다 달라져서 지그재그로
-                                 * 보입니다. 양옆을 `1fr` 로 잡고 가운데를 `auto` 로 두면
-                                 * 화살표 x 좌표가 어느 행이든 같습니다.
-                                 * 왼쪽은 오른쪽 끝에, 오른쪽은 왼쪽 끝에 붙여 화살표를 향하게 합니다.
-                                 */}
-                                <span className="grid grid-cols-[1fr_auto_1fr] items-center gap-[12px]">
-                                    <Badge
-                                        tone={SLOT_DISPLAY_TONE[entry.from]}
-                                        className="justify-self-end whitespace-nowrap"
-                                    >
-                                        {slotStatusText(entry.from)}
-                                    </Badge>
-                                    <ArrowRight />
-                                    <Badge
-                                        tone={SLOT_DISPLAY_TONE[entry.to]}
-                                        className="justify-self-start whitespace-nowrap"
-                                    >
-                                        {slotStatusText(entry.to)}
-                                    </Badge>
-                                </span>
-                            </Td>
-                        </Tr>
-                    ))}
-                </TBody>
-            </DataTable>
+                    <TBody>
+                        {entries.map((entry) => (
+                            <Tr key={`${entry.at}-${entry.kind}`} className="h-[56px]">
+                                <Td className="tabular-nums">{formatUpdatedAt(entry.at)}</Td>
+                                <Td className="font-bold text-brand-ink">{entry.kind}</Td>
+                                <Td align="center">
+                                    {/*
+                                     * 화살표를 열 한가운데 **고정**합니다.
+                                     *
+                                     * flex 로 나란히 두면 배지 글자 수에 따라('빈 슬롯' vs
+                                     * '관리자 확인') 화살표 위치가 행마다 달라져서 지그재그로
+                                     * 보입니다. 양옆을 `1fr` 로 잡고 가운데를 `auto` 로 두면
+                                     * 화살표 x 좌표가 어느 행이든 같습니다.
+                                     * 왼쪽은 오른쪽 끝에, 오른쪽은 왼쪽 끝에 붙여 화살표를 향하게 합니다.
+                                     */}
+                                    <span className="grid grid-cols-[1fr_auto_1fr] items-center gap-[12px]">
+                                        <Badge
+                                            tone={SLOT_DISPLAY_TONE[entry.from]}
+                                            className="justify-self-end whitespace-nowrap"
+                                        >
+                                            {slotStatusText(entry.from)}
+                                        </Badge>
+                                        <ArrowRight />
+                                        <Badge
+                                            tone={SLOT_DISPLAY_TONE[entry.to]}
+                                            className="justify-self-start whitespace-nowrap"
+                                        >
+                                            {slotStatusText(entry.to)}
+                                        </Badge>
+                                    </span>
+                                </Td>
+                            </Tr>
+                        ))}
+                    </TBody>
+                </DataTable>
+            )}
         </TableCard>
     );
 }

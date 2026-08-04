@@ -70,13 +70,18 @@ describe('대여소 검색', () => {
         expect(hit[0].stationId).toBe(target.stationId);
     });
 
+    /*
+     * 아래 둘은 예전에 `MOCK_STATIONS[2]`·`[1]` 을 집었습니다. 목업이 대여소를 8곳
+     * 지어내던 시절의 값이라, EC2 시드(대여소 1곳)로 맞추면서 `undefined` 가 됐습니다.
+     * 검색 규칙 자체를 보는 테스트라 대상이 몇 번째인지는 상관이 없습니다.
+     */
     it('UUID 전체를 붙여 넣어도 찾는다', () => {
-        const target = MOCK_STATIONS[2];
+        const target = MOCK_STATIONS[0];
         expect(search(target.stationId)).toEqual([target]);
     });
 
     it('대소문자를 가리지 않는다', () => {
-        const target = MOCK_STATIONS[1];
+        const target = MOCK_STATIONS[0];
         expect(search(target.stationId.slice(0, 8).toUpperCase())).toEqual([target]);
     });
 });

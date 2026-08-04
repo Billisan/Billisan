@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 
 import { DetailLink } from '@/features/stations/components/DetailLink';
-import { DeviceBadge } from '@/features/stations/components/DeviceBadge';
 import { SlotLockIcon } from '@/features/stations/components/SlotLockIcon';
 import {
     deriveSlotDisplayStatus,
@@ -11,50 +10,57 @@ import {
     slotStatusHint,
     slotStatusText,
     type SlotSummary,
-    type Station,
 } from '@/features/stations/types';
 import { Badge } from '@/shared/components/Badge';
 import { DataTable, TBody, Td, TableCard, Th, THead, Tr } from '@/shared/components/DataTable';
 
 interface SlotTableProps {
     /**
-     * 슬롯의 표시 라벨('SL-03-01')은 `station_code` + `slot_number` 로 만듭니다.
-     * 슬롯별 온라인도 슬롯의 영속 상태가 아니라 대여소 장치 상태에서 파생합니다.
-     * 그래서 slotId 만이 아니라 대여소가 통째로 필요합니다.
+     * **`station` 을 더 이상 받지 않습니다.** 예전에는 슬롯마다 「온라인」 배지를 그리려고
+     * 대여소를 통째로 넘겼습니다. 그 배지는 `STATION.device_status` 에서 파생하는데,
+     * 그 값을 내려 주는 관리자 API 가 없어 늘 「확인 불가」였습니다. 열을 없애면서
+     * 이 표가 대여소를 알아야 할 이유도 사라졌습니다 — 표시에 필요한 건 슬롯뿐입니다.
      *
      * **검수 열은 없습니다.** `ADMIN-SLOT-001` 응답에 검수 요약이 없어서 목록에서는
      * 판단할 수 없습니다. 검수 여부는 슬롯 상세와 검수 목록에서 봅니다.
      */
-    station: Station;
     slots: SlotSummary[];
 }
 
-export function SlotTable({ station, slots }: SlotTableProps) {
+export function SlotTable({ slots }: SlotTableProps) {
     const navigate = useNavigate();
 
     return (
         <TableCard>
             <DataTable>
                 {/*
-                 * 열 너비는 시안(1280px) 기준입니다.
-                 * 상태 배지가 `이용 가능(AVAILABLE)` 에서 `이용 가능` 으로 짧아졌고 온라인도
-                 * `ON`/`OFF` 라, 넓혀 뒀던 두 칸을 줄이고 남은 폭을 slotId·최근 갱신에 넘깁니다.
+                 * 열 너비 — **합이 정확히 100% 여야 합니다.**
+                 *
+                 * `DataTable` 이 `table-fixed` 라 지정한 폭이 그대로 열 너비가 되는데,
+                 * 예전 값은 `20 + 18 + 8.16 + 9 + 26.9 + 11.07 = 93.13%` 였습니다. 남는
+                 * 6.87% 를 브라우저가 알아서 나눠 주면서 「최근 갱신」과 「상세」 사이가
+                 * 휑하게 벌어졌습니다. 시안에서 폭을 하나씩 재다 생긴 소수점들이라
+                 * 합을 맞춘 적이 없었고, 「온라인」 열을 빼면서 더 도드라졌습니다.
+                 *
+                 * 배분 규칙 둘:
+                 *   1. 앞 두 열(`슬롯`·`슬롯 상태`)은 넉넉히 — 왼쪽에서 읽기 시작하는
+                 *      값이라 붙어 있으면 눈이 갈라지지 않습니다.
+                 *   2. 뒤 세 열(`잠금 여부`·`최근 갱신`·`상세`)은 **똑같이 14%씩**.
+                 *      담는 게 아이콘 하나 · `08-01 09:19` · 링크뿐이라 넓힐 이유가 없고,
+                 *      폭이 제각각이면 오른쪽 끝의 간격이 들쭉날쭉해 보입니다.
                  */}
                 <THead>
-                    <Th className="w-[20%]">슬롯</Th>
-                    <Th align="center" className="w-[18%]">
-                        우산 상태
+                    <Th className="w-[34%]">슬롯</Th>
+                    <Th align="center" className="w-[24%]">
+                        슬롯 상태
                     </Th>
-                    <Th align="center" className="w-[8.16%]">
+                    <Th align="center" className="w-[14%]">
                         잠금 여부
                     </Th>
-                    <Th align="center" className="w-[9%]">
-                        온라인
-                    </Th>
-                    <Th align="center" className="w-[26.9%]">
+                    <Th align="center" className="w-[14%]">
                         최근 갱신
                     </Th>
-                    <Th className="w-[11.07%]">
+                    <Th className="w-[14%]">
                         <span className="sr-only">슬롯 작업</span>
                     </Th>
                 </THead>
@@ -102,9 +108,6 @@ export function SlotTable({ station, slots }: SlotTableProps) {
                                     <span className="flex justify-center">
                                         <SlotLockIcon status={slot.lockStatus} />
                                     </span>
-                                </Td>
-                                <Td align="center">
-                                    <DeviceBadge status={station.deviceStatus} />
                                 </Td>
                                 <Td align="center" className="tabular-nums">
                                     {formatUpdatedAt(slot.updatedAt)}
