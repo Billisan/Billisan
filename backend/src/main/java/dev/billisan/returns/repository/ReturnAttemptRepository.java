@@ -8,4 +8,7 @@ import java.util.UUID;
 public interface ReturnAttemptRepository extends JpaRepository<ReturnAttempt, UUID> {
 
     Optional<ReturnAttempt> findFirstByReturnSlotIdOrderByCreatedAtDesc(UUID returnSlotId);
+
+    /** EDGE-RETURN-001 — requestId 멱등 사전조회. */
+    Optional<ReturnAttempt> findByRequestId(String requestId);
 }
