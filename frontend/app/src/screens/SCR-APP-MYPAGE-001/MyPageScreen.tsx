@@ -1,16 +1,18 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useNavigation } from '@react-navigation/native'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
 import { logout } from '../../api/authApi'
+import { getHomeSummary } from '../../api/homeApi'
 import { getCurrentRental } from '../../api/rentalApi'
 import { getPendingSettlements } from '../../api/settlementApi'
 import { getMe } from '../../api/userApi'
-import Logo from '../../assets/logo.svg'
 import { Button } from '../../components/common/Button'
+import { ConfirmModal } from '../../components/common/ConfirmModal'
 import { ErrorBanner } from '../../components/common/ErrorBanner'
 import { LoadingScreen } from '../../components/common/LoadingScreen'
+import { AppHeader } from '../../components/layout/AppHeader'
 import { Screen } from '../../components/layout/Screen'
 import type { MyPageStackParamList } from '../../navigation/MyPageStackNavigator'
 import { useAuthStore } from '../../store/useAuthStore'
@@ -58,10 +60,18 @@ function rentalStatusLabel(status: string) {
 export function MyPageScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MyPageStackParamList>>()
   const clearAuth = useAuthStore((state) => state.clearAuth)
+  const [extendModalVisible, setExtendModalVisible] = useState(false)
+  const [reportModalVisible, setReportModalVisible] = useState(false)
 
   const userQuery = useQuery({ queryKey: ['mypage-user'], queryFn: getMe })
   const rentalQuery = useQuery({ queryKey: ['mypage-rental'], queryFn: getCurrentRental })
-  const settlementQuery = useQuery({ queryKey: ['mypage-settlements'], queryFn: getPendingSettlements })
+  const settlementQuery = useQuery({
+    queryKey: ['mypage-settlements'],
+    queryFn: getPendingSettlements,
+  })
+  // 알림 배지 수만 필요해서 HOME-001을 재사용한다(§2.5 API 매핑엔 없지만, 신규 API·타입을 만들지
+  // 않기 위한 선택 — 2026-08-04). 전용 카운트가 필요해지면 ALERT-001 기반으로 다시 정리한다.
+  const alertCountQuery = useQuery({ queryKey: ['mypage-alert-count'], queryFn: getHomeSummary })
 
   const logoutMutation = useMutation({
     mutationFn: logout,
@@ -88,30 +98,31 @@ export function MyPageScreen() {
   const settlements = settlementQuery.data
 
   return (
-    <Screen>
+    <Screen edges={['right', 'bottom', 'left']}>
+      <AppHeader
+        schoolName={profile.schoolName}
+        alertCount={alertCountQuery.data?.alertCount ?? 0}
+      />
       <ScrollView
         className="flex-1"
         contentContainerClassName="gap-6 px-6 pb-24 pt-6"
         refreshControl={
           <RefreshControl
-            refreshing={userQuery.isRefetching || rentalQuery.isRefetching || settlementQuery.isRefetching}
+            refreshing={
+              userQuery.isRefetching ||
+              rentalQuery.isRefetching ||
+              settlementQuery.isRefetching ||
+              alertCountQuery.isRefetching
+            }
             onRefresh={() => {
               userQuery.refetch()
               rentalQuery.refetch()
               settlementQuery.refetch()
+              alertCountQuery.refetch()
             }}
           />
         }
       >
-        <View className="flex-row items-center justify-between">
-          <Logo width={64} height={30} />
-          <Text className="flex-1 text-center text-sm font-medium text-text-secondary">
-            {profile.schoolName}
-          </Text>
-          {/* SCR-APP-NOTIFICATION-001은 아직 착수 전이라 탭 이동 없이 아이콘만 표시한다. */}
-          <MaterialCommunityIcons name="bell-outline" size={24} color="#1E2A38" />
-        </View>
-
         <View className="flex-row items-center gap-4">
           <View className="h-14 w-14 items-center justify-center rounded-full bg-secondary">
             <Text className="text-lg font-bold text-text">{profile.displayName.slice(0, 1)}</Text>
@@ -122,10 +133,10 @@ export function MyPageScreen() {
           </View>
         </View>
 
-        <View className="gap-3 rounded-2xl bg-white p-5">
+        <View className="gap-4 rounded-2xl bg-white p-5">
           <View className="flex-row items-center justify-between">
             <Text className="text-base font-bold text-text">현재 대여 현황</Text>
-            {rental && (
+            {rental ? (
               <View
                 className={`rounded-full px-3 py-1 ${rental.overdueDays > 0 ? 'bg-error-bg' : 'bg-rented-bg'}`}
               >
@@ -135,13 +146,22 @@ export function MyPageScreen() {
                   {rental.overdueDays > 0 ? '연체중' : rentalStatusLabel(rental.status)}
                 </Text>
               </View>
+            ) : (
+              settlements &&
+              settlements.items.length > 0 && (
+                <View className="rounded-full bg-purple-100 px-3 py-1">
+                  <Text className="text-xs font-bold text-purple-700">미정산</Text>
+                </View>
+              )
             )}
           </View>
 
           {rentalQuery.isPending && (
             <Text className="text-sm text-text-secondary">불러오는 중이에요</Text>
           )}
-          {rentalQuery.isError && <Text className="text-sm text-text-secondary">대여 정보를 불러오지 못했어요</Text>}
+          {rentalQuery.isError && (
+            <Text className="text-sm text-text-secondary">대여 정보를 불러오지 못했어요</Text>
+          )}
 
           {!rentalQuery.isPending && !rentalQuery.isError && !rental && (
             <Text className="text-sm text-text-secondary">대여 중인 우산이 없어요</Text>
@@ -149,13 +169,25 @@ export function MyPageScreen() {
 
           {rental && (
             <>
-              <Text className="text-base font-bold text-text-tertiary">{rental.checkoutStation.name}</Text>
-              <Text className="text-sm text-text-secondary">{formatRentedAt(rental.rentedAt)} 대여</Text>
+              <View className="mb-6 flex-row items-center justify-between">
+                <Text className="text-base font-medium">
+                  {rental.checkoutStation.name}
+                </Text>
+                <Text className="text-base font-medium text-text-secondary">
+                  {formatRentedAt(rental.rentedAt)} 대여
+                </Text>
+              </View>
 
               {rental.overdueDays > 0 ? (
-                <Text className="text-sm font-bold text-error-text">
-                  연체 {rental.overdueDays}일째 · 연체료 {formatAmount(rental.calculatedOverdueAmount)}
-                </Text>
+                <View className="gap-2">
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-sm text-text-secondary">반납까지 남은 시간</Text>
+                    <Text className="text-sm font-bold text-error-text">기한 지남</Text>
+                  </View>
+                  <View className="h-2 w-full overflow-hidden rounded-full bg-disabled">
+                    <View className="h-2 w-full rounded-full bg-error-cta" />
+                  </View>
+                </View>
               ) : (
                 <View className="gap-2">
                   <Text className="text-sm text-text-secondary">반납까지 남은 시간</Text>
@@ -171,16 +203,16 @@ export function MyPageScreen() {
                 </View>
               )}
 
-              {/* 연장·신고는 DEFERRED_NOT_CONTRACTED — 자리만 배치, 눌러도 동작 없음(2026-08-04 확인). */}
-              <View className="flex-row gap-3">
+              {/* 연장·신고는 DEFERRED_NOT_CONTRACTED — 확인 모달까지만 Mock, 실제 서버 반영 없음(2026-08-04). */}
+              <View className="mt-4 flex-row gap-3">
                 <Pressable
-                  onPress={() => {}}
+                  onPress={() => setExtendModalVisible(true)}
                   className="flex-1 items-center justify-center rounded-2xl border border-disabled px-4 py-3 active:opacity-70"
                 >
                   <Text className="text-sm font-bold text-text-tertiary">연장하기</Text>
                 </Pressable>
                 <Pressable
-                  onPress={() => {}}
+                  onPress={() => setReportModalVisible(true)}
                   className="flex-1 items-center justify-center rounded-2xl border border-disabled px-4 py-3 active:opacity-70"
                 >
                   <Text className="text-sm font-bold text-text-tertiary">신고하기</Text>
@@ -193,11 +225,20 @@ export function MyPageScreen() {
         {settlementQuery.isError && <ErrorBanner message="미정산 정보를 불러오지 못했어요" />}
 
         {settlements && settlements.items.length > 0 && (
-          <View className="gap-2 rounded-2xl bg-secondary p-5">
-            <Text className="text-base font-bold text-text-tertiary">미정산 {settlements.items.length}건</Text>
-            <Text className="text-sm text-text-tertiary">{formatAmount(settlements.totalOutstandingAmount)}</Text>
+          <View className="flex-row items-center justify-between rounded-2xl bg-error-bg p-5">
+            <View>
+              <Text className="text-sm text-text-secondary">미정산 금액</Text>
+              <Text className="text-lg font-bold text-error-text">
+                {formatAmount(settlements.totalOutstandingAmount)}
+              </Text>
+            </View>
             {/* PAYMENT-001~003 실제 결제 흐름은 Phase 7에서 연결 — 지금은 자리만 배치. */}
-            <Button label="결제하기" onPress={() => {}} />
+            <Pressable
+              onPress={() => {}}
+              className="items-center justify-center rounded-2xl bg-error-cta px-5 py-3 active:opacity-80"
+            >
+              <Text className="text-sm font-bold text-white">결제하기</Text>
+            </Pressable>
           </View>
         )}
 
@@ -217,6 +258,26 @@ export function MyPageScreen() {
           </Pressable>
         </View>
       </ScrollView>
+
+      <ConfirmModal
+        visible={extendModalVisible}
+        title="대여 기간을 연장할까요?"
+        description="1회 연장이 가능합니다."
+        confirmLabel="연장하기"
+        confirmVariant="primary"
+        onCancel={() => setExtendModalVisible(false)}
+        onConfirm={() => setExtendModalVisible(false)}
+      />
+      <ConfirmModal
+        visible={reportModalVisible}
+        title="우산 파손·분실을 신고할까요?"
+        description="신고 후 관리자 확인을 거쳐 처리돼요."
+        warningText="분실·파손 시 우산가액이 청구될 수 있어요."
+        confirmLabel="신고하기"
+        confirmVariant="danger"
+        onCancel={() => setReportModalVisible(false)}
+        onConfirm={() => setReportModalVisible(false)}
+      />
     </Screen>
   )
 }

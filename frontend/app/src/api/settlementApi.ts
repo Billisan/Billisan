@@ -3,7 +3,7 @@ import type { PendingSettlementsResponse } from '../types/settlement'
 type MockScenario = 'NO_RENTAL' | 'ACTIVE_RENTAL' | 'OVERDUE_UNSETTLED'
 
 // 수동 테스트 시나리오 — rentalApi.ts의 MOCK_SCENARIO와 같은 값으로 맞춰야 화면이 일관되게 보인다.
-const MOCK_SCENARIO: MockScenario = 'ACTIVE_RENTAL'
+const MOCK_SCENARIO: MockScenario = 'OVERDUE_UNSETTLED'
 
 const MIN_DELAY_MS = 300
 const MAX_DELAY_MS = 800

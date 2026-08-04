@@ -14,6 +14,7 @@ module.exports = {
         text: '#000000',
         'text-secondary': '#5F5E5E',
         'text-tertiary': '#8A6416',
+        'text-school': '#14468D',
         // 대여중 Chip 전용(미실측 — 목업 스크린샷 기준 근사치, 2026-08-04).
         'rented-bg': '#E8ECFB',
         'rented-text': '#4C5FD9',

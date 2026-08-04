@@ -1,9 +1,10 @@
 import { useNavigation } from '@react-navigation/native'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
-import { ScrollView, Text, View } from 'react-native'
+import { ScrollView } from 'react-native'
 import { submitInquiry } from '../../api/inquiryApi'
 import { Button } from '../../components/common/Button'
+import { ConfirmModal } from '../../components/common/ConfirmModal'
 import { ErrorBanner } from '../../components/common/ErrorBanner'
 import { SelectField } from '../../components/common/SelectField'
 import { TextField } from '../../components/common/TextField'
@@ -18,11 +19,15 @@ export function InquiryScreen() {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [attemptedSubmit, setAttemptedSubmit] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false)
 
   const inquiryMutation = useMutation({
     mutationFn: submitInquiry,
-    onSuccess: () => setSubmitted(true),
+    onSuccess: () => {
+      setConfirmModalVisible(false)
+      navigation.goBack()
+    },
+    onError: () => setConfirmModalVisible(false),
   })
 
   const hasEmptyField = type.trim() === '' || title.trim() === '' || content.trim() === ''
@@ -32,61 +37,62 @@ export function InquiryScreen() {
     if (hasEmptyField) {
       return
     }
-    inquiryMutation.mutate({ type, title, content })
-  }
-
-  if (submitted) {
-    return (
-      <Screen>
-        <View className="flex-1 items-center justify-center gap-4 px-8">
-          <Text className="text-lg font-bold text-text">문의가 접수됐어요</Text>
-          <Text className="text-center text-sm text-text-secondary">
-            확인 후 순차적으로 답변드릴게요.
-          </Text>
-          <Button label="마이페이지로 돌아가기" onPress={() => navigation.goBack()} />
-        </View>
-      </Screen>
-    )
+    setConfirmModalVisible(true)
   }
 
   return (
-    <Screen>
-      <ScrollView className="flex-1" contentContainerClassName="gap-4 px-6 py-6">
+    <Screen background="white">
+      <ScrollView className="flex-1" contentContainerClassName="gap-8 px-6">
         <SelectField
           label="유형"
+          labelClassName="mb-2 text-base font-semibold text-text-secondary"
           value={type}
           options={INQUIRY_TYPES}
           onSelect={setType}
           placeholder="문의 유형을 선택해주세요"
           hasError={attemptedSubmit && type.trim() === ''}
+          errorMessage="유형을 선택해주세요"
           visible={typePickerVisible}
           onOpen={() => setTypePickerVisible(true)}
           onClose={() => setTypePickerVisible(false)}
         />
         <TextField
           label="제목"
+          labelClassName="mb-2 text-base font-semibold text-text-secondary"
           value={title}
           onChangeText={setTitle}
           placeholder="제목을 입력해주세요"
           hasError={attemptedSubmit && title.trim() === ''}
+          errorMessage="제목을 입력해주세요"
         />
         <TextField
           label="내용"
+          labelClassName="mb-2 text-base font-semibold text-text-secondary"
           value={content}
           onChangeText={setContent}
           placeholder="문의 내용을 입력해주세요"
           multiline
           numberOfLines={12}
           hasError={attemptedSubmit && content.trim() === ''}
+          errorMessage="내용을 입력해주세요"
         />
-        {attemptedSubmit && hasEmptyField && (
-          <Text className="text-sm font-medium text-error-text">
-            유형·제목·내용을 모두 입력해주세요
-          </Text>
-        )}
         {inquiryMutation.isError && <ErrorBanner message="문의 접수에 실패했어요. 다시 시도해주세요" />}
         <Button label="문의하기" onPress={handleSubmit} disabled={inquiryMutation.isPending} />
       </ScrollView>
+
+      <ConfirmModal
+        visible={confirmModalVisible}
+        title="접수하시겠습니까?"
+        description="확인 후 순차적으로 답변드리겠습니다."
+        confirmLabel="접수하기"
+        confirmVariant="primary"
+        onCancel={() => setConfirmModalVisible(false)}
+        onConfirm={() => {
+          if (!inquiryMutation.isPending) {
+            inquiryMutation.mutate({ type, title, content })
+          }
+        }}
+      />
     </Screen>
   )
 }

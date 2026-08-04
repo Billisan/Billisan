@@ -3,10 +3,10 @@ import { useQuery } from '@tanstack/react-query'
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
 import { getHomeSummary } from '../../api/homeApi'
 import { getShortTermWeather } from '../../api/weatherApi'
-import Logo from '../../assets/logo.svg'
 import { Button } from '../../components/common/Button'
 import { ErrorBanner } from '../../components/common/ErrorBanner'
 import { LoadingScreen } from '../../components/common/LoadingScreen'
+import { AppHeader } from '../../components/layout/AppHeader'
 import { Screen } from '../../components/layout/Screen'
 
 const RAIN_RECOMMEND_THRESHOLD = 50
@@ -55,7 +55,8 @@ export function HomeScreen() {
   const maxRainProbability = Math.max(0, ...weatherItems.map((item) => item.precipitationProbability))
 
   return (
-    <Screen>
+    <Screen edges={['right', 'bottom', 'left']}>
+      <AppHeader schoolName={user.schoolName} alertCount={alertCount} />
       <ScrollView
         className="flex-1"
         contentContainerClassName="gap-6 px-6 pb-24 pt-6"
@@ -69,20 +70,6 @@ export function HomeScreen() {
           />
         }
       >
-        <View className="flex-row items-center justify-between">
-          <Logo width={64} height={30} />
-          <Text className="flex-1 text-center text-sm font-medium text-text-secondary">
-            {user.schoolName}
-          </Text>
-          {/* SCR-APP-NOTIFICATION-001은 Phase 8 미착수 화면이라 탭 이동 없이 배지 점만 표시한다. */}
-          <View className="relative">
-            <MaterialCommunityIcons name="bell-outline" size={24} color="#1E2A38" />
-            {alertCount > 0 && (
-              <View className="absolute right-0 top-0 h-2.5 w-2.5 rounded-full bg-primary" />
-            )}
-          </View>
-        </View>
-
         <View className="gap-1">
           <Text className="text-sm font-medium text-text-secondary">
             안녕하세요, {user.displayName}님!

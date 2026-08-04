@@ -20,7 +20,11 @@ export function MyPageStackNavigator() {
         component={MyPageScreen}
         options={{ headerShown: false }}
       />
-      <Stack.Screen name="Inquiry" component={InquiryScreen} options={{ title: '문의하기' }} />
+      <Stack.Screen
+        name="Inquiry"
+        component={InquiryScreen}
+        options={{ title: '문의하기', headerBackButtonDisplayMode: 'minimal' }}
+      />
     </Stack.Navigator>
   )
 }
