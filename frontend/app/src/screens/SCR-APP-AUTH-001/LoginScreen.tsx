@@ -1,5 +1,7 @@
+import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Text, View } from 'react-native'
+import { login } from '../../api/authApi'
 import { Button } from '../../components/common/Button'
 import { TextField } from '../../components/common/TextField'
 import { Screen } from '../../components/layout/Screen'
@@ -8,19 +10,24 @@ import { useAuthStore } from '../../store/useAuthStore'
 // 와이어프레임 1~2번 페이지 기준. "비밀번호를 잊으셨나요?" 링크는 노션 DEC-SF-002 기준으로
 // 넣지 않는다(2026-07-31 사용자 확인, PROJECT_GUIDE.md §12 참고).
 export function LoginScreen() {
-  const login = useAuthStore((state) => state.login)
+  const setAuth = useAuthStore((state) => state.setAuth)
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
-  const [hasError, setHasError] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleLogin = async () => {
-    setIsSubmitting(true)
-    const result = await login({ identifier, password })
-    // 비밀번호는 성공·실패 관계없이 요청 직후 즉시 비운다(PROJECT_GUIDE.md §9.3).
-    setPassword('')
-    setIsSubmitting(false)
-    setHasError(result === 'INVALID_CREDENTIALS')
+  const loginMutation = useMutation({
+    mutationFn: login,
+    onSuccess: setAuth,
+  })
+  const hasError = loginMutation.isError
+
+  const handleLogin = () => {
+    loginMutation.mutate(
+      { identifier, password },
+      {
+        // 비밀번호는 성공·실패 관계없이 요청 직후 즉시 비운다(PROJECT_GUIDE.md §9.3).
+        onSettled: () => setPassword(''),
+      },
+    )
   }
 
   return (
@@ -37,7 +44,7 @@ export function LoginScreen() {
             value={identifier}
             onChangeText={(value) => {
               setIdentifier(value)
-              setHasError(false)
+              loginMutation.reset()
             }}
             placeholder="이메일을 입력해주세요"
             hasError={hasError}
@@ -47,7 +54,7 @@ export function LoginScreen() {
             value={password}
             onChangeText={(value) => {
               setPassword(value)
-              setHasError(false)
+              loginMutation.reset()
             }}
             placeholder="비밀번호를 입력해주세요"
             secureTextEntry
@@ -60,7 +67,7 @@ export function LoginScreen() {
           )}
         </View>
 
-        <Button label="로그인" onPress={handleLogin} disabled={isSubmitting} />
+        <Button label="로그인" onPress={handleLogin} disabled={loginMutation.isPending} />
       </View>
     </Screen>
   )
