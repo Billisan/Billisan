@@ -1,4 +1,4 @@
--- V19 demo fixture: settlement and payment ledger scenarios.
+-- V19 demo fixture: fully paid settlement and payment ledger baseline.
 --
 -- This file is intentionally outside db/migration. Run numbered demo-fixture
 -- files in ascending order without the mysql --force option.
@@ -10,6 +10,8 @@
 --   the initial INSERT;
 -- - existing fixed rows are validated, never updated or deleted;
 -- - successful payments and damage settlement evidence are immutable history.
+-- - unpaid, partial-payment, and reconciliation-required states belong in
+--   opt-in scenario fixtures, not in this baseline.
 
 START TRANSACTION;
 
@@ -40,46 +42,46 @@ CREATE TEMPORARY TABLE `_fixture_expected_settlement` (
 
 INSERT INTO `_fixture_expected_settlement` VALUES
 	(
-		'damage-unpaid',
-		'77000000-0000-4000-8000-000000000001',
+		'damage-paid',
+		'77000000-0000-4000-8000-000000000005',
 		'202600005',
 		'44000000-0000-4000-8000-000000000003',
 		'66000000-0000-4000-8000-000000000001',
 		'DAMAGE',
 		7000,
-		0,
-		'PENDING',
+		7000,
+		'PAID',
 		TIMESTAMP('2026-08-03 05:00:00.000000'),
-		NULL,
-		TIMESTAMP('2026-08-03 05:00:00.000000')
+		TIMESTAMP('2026-08-03 05:11:00.000000'),
+		TIMESTAMP('2026-08-03 05:12:00.000000')
 	),
 	(
-		'overdue-unpaid',
-		'77000000-0000-4000-8000-000000000002',
+		'overdue-paid',
+		'77000000-0000-4000-8000-000000000006',
 		'202600003',
 		'44000000-0000-4000-8000-000000000009',
 		NULL,
 		'OVERDUE',
 		1000,
-		0,
-		'PENDING',
+		1000,
+		'PAID',
 		TIMESTAMP('2026-08-03 05:02:00.000000'),
-		NULL,
-		TIMESTAMP('2026-08-03 05:02:00.000000')
+		TIMESTAMP('2026-08-03 05:13:00.000000'),
+		TIMESTAMP('2026-08-03 05:14:00.000000')
 	),
 	(
-		'overdue-partially-paid',
-		'77000000-0000-4000-8000-000000000003',
+		'overdue-failed-then-paid',
+		'77000000-0000-4000-8000-000000000007',
 		'202600002',
 		'44000000-0000-4000-8000-000000000007',
 		NULL,
 		'OVERDUE',
 		2000,
-		1000,
-		'PENDING',
+		2000,
+		'PAID',
 		TIMESTAMP('2026-08-03 05:00:00.000000'),
-		NULL,
-		TIMESTAMP('2026-08-03 05:30:00.000000')
+		TIMESTAMP('2026-08-03 05:23:00.000000'),
+		TIMESTAMP('2026-08-03 05:24:00.000000')
 	),
 	(
 		'adjustment-paid',
@@ -124,13 +126,13 @@ CREATE TEMPORARY TABLE `_fixture_expected_payment` (
 INSERT INTO `_fixture_expected_payment` VALUES
 	(
 		10,
-		'partial-payment-success',
-		'78000000-0000-4000-8000-000000000001',
-		'77000000-0000-4000-8000-000000000003',
-		'fixture-payment-partial-success',
-		'fixture-toss-order-partial-success',
-		'fixture-toss-key-partial-success',
-		1000,
+		'damage-payment-success',
+		'78000000-0000-4000-8000-000000000005',
+		'77000000-0000-4000-8000-000000000005',
+		'fixture-payment-damage-success',
+		'fixture-toss-order-damage-success',
+		'fixture-toss-key-damage-success',
+		7000,
 		'TOSS_SANDBOX',
 		'DONE',
 		NULL,
@@ -144,6 +146,26 @@ INSERT INTO `_fixture_expected_payment` VALUES
 	),
 	(
 		20,
+		'overdue-payment-success',
+		'78000000-0000-4000-8000-000000000006',
+		'77000000-0000-4000-8000-000000000006',
+		'fixture-payment-overdue-success',
+		'fixture-toss-order-overdue-success',
+		'fixture-toss-key-overdue-success',
+		1000,
+		'TOSS_SANDBOX',
+		'DONE',
+		NULL,
+		NULL,
+		'SUCCEEDED',
+		TIMESTAMP('2026-08-03 05:12:00.000000'),
+		TIMESTAMP('2026-08-03 05:13:00.000000'),
+		TIMESTAMP('2026-08-03 05:13:01.000000'),
+		TIMESTAMP('2026-08-03 05:12:00.000000'),
+		TIMESTAMP('2026-08-03 05:13:01.000000')
+	),
+	(
+		30,
 		'completed-payment-success',
 		'78000000-0000-4000-8000-000000000002',
 		'77000000-0000-4000-8000-000000000004',
@@ -163,14 +185,14 @@ INSERT INTO `_fixture_expected_payment` VALUES
 		TIMESTAMP('2026-08-03 05:16:01.000000')
 	),
 	(
-		30,
-		'failed-payment',
-		'78000000-0000-4000-8000-000000000003',
-		'77000000-0000-4000-8000-000000000003',
-		'fixture-payment-failed',
-		'fixture-toss-order-failed',
-		'fixture-toss-key-failed',
-		1000,
+		40,
+		'baseline-failed-payment',
+		'78000000-0000-4000-8000-000000000007',
+		'77000000-0000-4000-8000-000000000007',
+		'fixture-payment-baseline-failed',
+		'fixture-toss-order-baseline-failed',
+		'fixture-toss-key-baseline-failed',
+		2000,
 		'TOSS_SANDBOX',
 		'ABORTED',
 		'FIXTURE_PAYMENT_DECLINED',
@@ -183,25 +205,67 @@ INSERT INTO `_fixture_expected_payment` VALUES
 		TIMESTAMP('2026-08-03 05:20:30.000000')
 	),
 	(
-		40,
-		'payment-reconciliation-required',
-		'78000000-0000-4000-8000-000000000004',
-		'77000000-0000-4000-8000-000000000001',
-		'fixture-payment-reconciliation',
-		'fixture-toss-order-reconciliation',
-		'fixture-toss-key-reconciliation',
-		7000,
+		50,
+		'payment-after-failure-success',
+		'78000000-0000-4000-8000-000000000008',
+		'77000000-0000-4000-8000-000000000007',
+		'fixture-payment-after-failure-success',
+		'fixture-toss-order-after-failure-success',
+		'fixture-toss-key-after-failure-success',
+		2000,
 		'TOSS_SANDBOX',
-		'PARTIAL_CANCELED',
-		'FIXTURE_PROVIDER_STATE_MISMATCH',
-		'Fixture provider state requires reconciliation',
-		'RECONCILIATION_REQUIRED',
-		TIMESTAMP('2026-08-03 05:25:00.000000'),
+		'DONE',
 		NULL,
-		TIMESTAMP('2026-08-03 05:26:00.000000'),
-		TIMESTAMP('2026-08-03 05:25:00.000000'),
-		TIMESTAMP('2026-08-03 05:26:00.000000')
+		NULL,
+		'SUCCEEDED',
+		TIMESTAMP('2026-08-03 05:22:00.000000'),
+		TIMESTAMP('2026-08-03 05:23:00.000000'),
+		TIMESTAMP('2026-08-03 05:23:01.000000'),
+		TIMESTAMP('2026-08-03 05:22:00.000000'),
+		TIMESTAMP('2026-08-03 05:23:01.000000')
 	);
+
+INSERT INTO `_fixture_40_conflict_guard` (`record_key`, `must_be_zero`)
+SELECT 'baseline-settlement-shape', 1
+WHERE (
+	SELECT COUNT(*) FROM `_fixture_expected_settlement`
+) <> 4
+	OR EXISTS (
+		SELECT 1
+		FROM `_fixture_expected_settlement`
+		WHERE `final_status` <> 'PAID'
+			OR `final_paid_amount` <> `amount`
+			OR `final_paid_at` IS NULL
+	);
+
+INSERT INTO `_fixture_40_conflict_guard` (`record_key`, `must_be_zero`)
+SELECT 'baseline-payment-shape', 1
+WHERE (
+	SELECT COUNT(*)
+	FROM `_fixture_expected_payment`
+	WHERE `status` = 'SUCCEEDED'
+) <> 4
+	OR (
+		SELECT COUNT(*)
+		FROM `_fixture_expected_payment`
+		WHERE `status` = 'FAILED'
+	) <> 1
+	OR EXISTS (
+		SELECT 1
+		FROM `_fixture_expected_payment`
+		WHERE `status` NOT IN ('SUCCEEDED', 'FAILED')
+	);
+
+INSERT INTO `_fixture_40_conflict_guard` (`record_key`, `must_be_zero`)
+SELECT 'prerequisite:normal-users', 1
+WHERE (
+	SELECT COUNT(*)
+	FROM `user_account`
+	WHERE `user_id` IN (
+		'202600001', '202600002', '202600003',
+		'202600004', '202600005', '202600006'
+	)
+) <> 6;
 
 -- Stage-30 parents and the immutable damage basis must exist before any
 -- Settlement is inserted.
@@ -341,8 +405,8 @@ FROM `_fixture_expected_settlement` AS `expected`
 INNER JOIN `_fixture_new_settlement` AS `new_row`
 	ON `new_row`.`settlement_id` = `expected`.`settlement_id`;
 
--- SUCCEEDED rows run first and credit their Settlement through V16 triggers.
--- FAILED and RECONCILIATION_REQUIRED are terminal evidence but add no credit.
+-- Insert order preserves the failed attempt before its replacement success.
+-- Only SUCCEEDED rows credit their Settlement through V16 triggers.
 INSERT INTO `payment_attempt` (
 	`payment_attempt_id`, `settlement_id`, `creation_request_id`,
 	`toss_order_id`, `toss_payment_key`, `amount`, `provider`, `toss_status`,
@@ -384,6 +448,21 @@ WHERE `actual`.`updated_at` <> `expected`.`final_updated_at`;
 
 -- Exact final Settlement materialization.
 INSERT INTO `_fixture_40_conflict_guard` (`record_key`, `must_be_zero`)
+SELECT 'baseline-final-record-count', 1
+WHERE (
+	SELECT COUNT(*)
+	FROM `settlement` AS `actual`
+	INNER JOIN `_fixture_expected_settlement` AS `expected`
+		ON `expected`.`settlement_id` = `actual`.`settlement_id`
+) <> 4
+	OR (
+		SELECT COUNT(*)
+		FROM `payment_attempt` AS `actual`
+		INNER JOIN `_fixture_expected_payment` AS `expected`
+			ON `expected`.`payment_attempt_id` = `actual`.`payment_attempt_id`
+	) <> 5;
+
+INSERT INTO `_fixture_40_conflict_guard` (`record_key`, `must_be_zero`)
 SELECT CONCAT('settlement-final:', `expected`.`settlement_id`), 1
 FROM `_fixture_expected_settlement` AS `expected`
 INNER JOIN `settlement` AS `actual`
@@ -418,6 +497,47 @@ LEFT JOIN (
 WHERE `settlement_actual`.`paid_amount`
 	<> COALESCE(`payment_total`.`succeeded_amount`, 0);
 
+INSERT INTO `_fixture_40_conflict_guard` (`record_key`, `must_be_zero`)
+SELECT CONCAT('baseline-settlement-not-paid:', `settlement_actual`.`settlement_id`), 1
+FROM `settlement` AS `settlement_actual`
+INNER JOIN `_fixture_expected_settlement` AS `expected`
+	ON `expected`.`settlement_id` = `settlement_actual`.`settlement_id`
+WHERE `settlement_actual`.`status` <> 'PAID'
+	OR `settlement_actual`.`paid_amount` <> `settlement_actual`.`amount`
+	OR `settlement_actual`.`paid_at` IS NULL;
+
+INSERT INTO `_fixture_40_conflict_guard` (`record_key`, `must_be_zero`)
+SELECT CONCAT('baseline-user-unpaid:', `user`.`user_id`), 1
+FROM `user_account` AS `user`
+WHERE `user`.`user_id` IN (
+	'202600001', '202600002', '202600003',
+	'202600004', '202600005', '202600006'
+)
+	AND (
+		`user`.`rental_eligible` <> TRUE
+		OR `user`.`rental_eligibility_evaluated_at` IS NULL
+		OR EXISTS (
+			SELECT 1
+			FROM `settlement`
+			WHERE `settlement`.`user_id` = `user`.`user_id`
+				AND `settlement`.`paid_amount` < `settlement`.`amount`
+		)
+	);
+
+INSERT INTO `_fixture_40_conflict_guard` (`record_key`, `must_be_zero`)
+SELECT CONCAT('failed-payment-parent-unpaid:', `payment`.`payment_attempt_id`), 1
+FROM `payment_attempt` AS `payment`
+INNER JOIN `_fixture_expected_payment` AS `expected`
+	ON `expected`.`payment_attempt_id` = `payment`.`payment_attempt_id`
+INNER JOIN `settlement`
+	ON `settlement`.`settlement_id` = `payment`.`settlement_id`
+WHERE `payment`.`status` = 'FAILED'
+	AND (
+		`settlement`.`status` <> 'PAID'
+		OR `settlement`.`paid_amount` <> `settlement`.`amount`
+		OR `settlement`.`paid_at` IS NULL
+	);
+
 -- Reason/amount policy is repeated as an explicit fixture assertion.
 INSERT INTO `_fixture_40_conflict_guard` (`record_key`, `must_be_zero`)
 SELECT CONCAT('settlement-amount-policy:', `settlement_id`), 1
@@ -443,7 +563,7 @@ INNER JOIN `damage_inspection` AS `inspection`
 	ON `inspection`.`inspection_id`
 		= `settlement_actual`.`damage_inspection_id`
 WHERE `settlement_actual`.`settlement_id`
-	= '77000000-0000-4000-8000-000000000001'
+	= '77000000-0000-4000-8000-000000000005'
 	AND NOT (
 		`settlement_actual`.`reason` = 'DAMAGE'
 		AND `settlement_actual`.`amount` = 7000
@@ -466,7 +586,7 @@ WHERE `payment_attempt_id` IN (
 			AND (`approved_at` IS NULL OR `completed_at` IS NULL)
 		)
 		OR (
-			`status` IN ('FAILED', 'RECONCILIATION_REQUIRED')
+			`status` = 'FAILED'
 			AND `completed_at` IS NULL
 		)
 	);
