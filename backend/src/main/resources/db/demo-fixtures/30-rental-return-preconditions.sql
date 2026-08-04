@@ -78,33 +78,15 @@ INSERT INTO `_fixture_expected_rental` VALUES
 		TIMESTAMP('2026-08-03 01:52:00.000000')
 	),
 	(
-		'active-rental',
-		'44000000-0000-4000-8000-000000000001',
-		'202600003',
-		'33000000-0000-4000-8000-000000000001',
-		'fixture-rental-active',
-		'ACTIVE',
-		'ACTIVE',
-		NULL,
-		NULL,
-		NULL,
-		TIMESTAMP('2026-08-01 01:00:00.000000'),
-		TIMESTAMP('2026-08-01 01:01:00.000000'),
-		TIMESTAMP('2026-08-02 01:01:00.000000'),
-		NULL,
-		TIMESTAMP('2026-08-01 01:00:00.000000'),
-		TIMESTAMP('2026-08-03 01:01:00.000000')
-	),
-	(
 		'failed-rental',
 		'44000000-0000-4000-8000-000000000005',
-		'202600002',
+		'202600007',
 		'33000000-0000-4000-8000-000000000002',
 		'fixture-rental-face-ineligible',
 		'FAILED',
 		'FAILED',
 		'USER_NOT_ELIGIBLE',
-		'Fixture user is not eligible for rental',
+		'Fixture user has no registered face profile',
 		TIMESTAMP('2026-08-03 01:30:05.000000'),
 		TIMESTAMP('2026-08-03 01:30:00.000000'),
 		NULL,
@@ -114,22 +96,40 @@ INSERT INTO `_fixture_expected_rental` VALUES
 		TIMESTAMP('2026-08-03 01:30:05.000000')
 	),
 	(
-		'return-recovery',
-		'44000000-0000-4000-8000-000000000002',
+		'admin-review-pending-history',
+		'44000000-0000-4000-8000-000000000008',
 		'202600004',
-		'33000000-0000-4000-8000-000000000002',
-		'fixture-rental-return-recovery',
+		'33000000-0000-4000-8000-000000000003',
+		'fixture-rental-review-pending-completed',
 		'RETURNING',
-		'RETURNING',
+		'COMPLETED',
 		NULL,
 		NULL,
 		NULL,
 		TIMESTAMP('2026-08-03 02:00:00.000000'),
 		TIMESTAMP('2026-08-03 02:01:00.000000'),
 		TIMESTAMP('2026-08-04 02:01:00.000000'),
-		NULL,
+		TIMESTAMP('2026-08-03 02:20:00.000000'),
 		TIMESTAMP('2026-08-03 02:00:00.000000'),
-		TIMESTAMP('2026-08-03 02:21:00.000000')
+		TIMESTAMP('2026-08-03 02:20:00.000000')
+	),
+	(
+		'completed-overdue-basis',
+		'44000000-0000-4000-8000-000000000009',
+		'202600003',
+		'33000000-0000-4000-8000-000000000004',
+		'fixture-rental-overdue-completed',
+		'RETURNING',
+		'COMPLETED',
+		NULL,
+		NULL,
+		NULL,
+		TIMESTAMP('2026-08-01 01:00:00.000000'),
+		TIMESTAMP('2026-08-01 01:01:00.000000'),
+		TIMESTAMP('2026-08-02 01:01:00.000000'),
+		TIMESTAMP('2026-08-03 04:50:00.000000'),
+		TIMESTAMP('2026-08-01 01:00:00.000000'),
+		TIMESTAMP('2026-08-03 04:50:00.000000')
 	),
 	(
 		'unpaid-settlement-basis',
@@ -188,20 +188,6 @@ CREATE TEMPORARY TABLE `_fixture_expected_return` (
 INSERT INTO `_fixture_expected_return` VALUES
 	(
 		10,
-		'recovery-failed-attempt',
-		'55000000-0000-4000-8000-000000000005',
-		'44000000-0000-4000-8000-000000000002',
-		NULL,
-		'fixture-return-recovery-failed',
-		'FAILED',
-		NULL,
-		NULL,
-		'LOCK_COMMAND_TIMEOUT',
-		TIMESTAMP('2026-08-03 02:05:00.000000'),
-		TIMESTAMP('2026-08-03 02:06:00.000000')
-	),
-	(
-		20,
 		'completed-normal',
 		'55000000-0000-4000-8000-000000000003',
 		'44000000-0000-4000-8000-000000000004',
@@ -215,7 +201,7 @@ INSERT INTO `_fixture_expected_return` VALUES
 		TIMESTAMP('2026-08-03 00:30:00.000000')
 	),
 	(
-		30,
+		20,
 		'completed-ai-failed',
 		'55000000-0000-4000-8000-000000000004',
 		'44000000-0000-4000-8000-000000000006',
@@ -229,21 +215,21 @@ INSERT INTO `_fixture_expected_return` VALUES
 		TIMESTAMP('2026-08-03 01:50:00.000000')
 	),
 	(
-		40,
-		'return-recovery',
-		'55000000-0000-4000-8000-000000000001',
-		'44000000-0000-4000-8000-000000000002',
+		30,
+		'admin-review-pending-history',
+		'55000000-0000-4000-8000-000000000007',
+		'44000000-0000-4000-8000-000000000008',
 		'33000000-0000-4000-8000-000000000003',
-		'fixture-return-recovery-required',
-		'RECOVERY_REQUIRED',
+		'fixture-return-review-pending-completed',
+		'COMPLETED',
+		TIMESTAMP('2026-08-03 02:19:00.000000'),
 		TIMESTAMP('2026-08-03 02:20:00.000000'),
 		NULL,
-		'LOCK_CONFIRMATION_TIMEOUT',
 		TIMESTAMP('2026-08-03 02:10:00.000000'),
-		TIMESTAMP('2026-08-03 02:21:00.000000')
+		TIMESTAMP('2026-08-03 02:20:00.000000')
 	),
 	(
-		50,
+		40,
 		'unpaid-settlement-basis',
 		'55000000-0000-4000-8000-000000000002',
 		'44000000-0000-4000-8000-000000000003',
@@ -257,7 +243,7 @@ INSERT INTO `_fixture_expected_return` VALUES
 		TIMESTAMP('2026-08-03 03:30:00.000000')
 	),
 	(
-		60,
+		50,
 		'payment-partial-parent',
 		'55000000-0000-4000-8000-000000000006',
 		'44000000-0000-4000-8000-000000000007',
@@ -269,6 +255,20 @@ INSERT INTO `_fixture_expected_return` VALUES
 		NULL,
 		TIMESTAMP('2026-08-03 04:25:00.000000'),
 		TIMESTAMP('2026-08-03 04:30:00.000000')
+	),
+	(
+		60,
+		'completed-overdue-basis',
+		'55000000-0000-4000-8000-000000000008',
+		'44000000-0000-4000-8000-000000000009',
+		'33000000-0000-4000-8000-000000000004',
+		'fixture-return-overdue-completed',
+		'COMPLETED',
+		TIMESTAMP('2026-08-03 04:49:00.000000'),
+		TIMESTAMP('2026-08-03 04:50:00.000000'),
+		NULL,
+		TIMESTAMP('2026-08-03 04:45:00.000000'),
+		TIMESTAMP('2026-08-03 04:50:00.000000')
 	);
 
 CREATE TEMPORARY TABLE `_fixture_expected_inspection` (
@@ -332,21 +332,21 @@ INSERT INTO `_fixture_expected_inspection` VALUES
 	),
 	(
 		'admin-review-pending',
-		'66000000-0000-4000-8000-000000000003',
-		'55000000-0000-4000-8000-000000000001',
-		'44000000-0000-4000-8000-000000000002',
+		'66000000-0000-4000-8000-000000000005',
+		'55000000-0000-4000-8000-000000000007',
+		'44000000-0000-4000-8000-000000000008',
 		'fixture-inspection-review-pending',
-		TIMESTAMP('2026-08-03 02:22:00.000000'),
+		TIMESTAMP('2026-08-03 02:21:00.000000'),
 		'COMPLETED',
 		'UNCERTAIN',
 		0.5200,
 		'fixture-ai-v1',
-		TIMESTAMP('2026-08-03 02:23:00.000000'),
-		NULL,
-		NULL,
-		NULL,
 		TIMESTAMP('2026-08-03 02:22:00.000000'),
-		TIMESTAMP('2026-08-03 02:23:00.000000')
+		NULL,
+		NULL,
+		NULL,
+		TIMESTAMP('2026-08-03 02:21:00.000000'),
+		TIMESTAMP('2026-08-03 02:22:00.000000')
 	),
 	(
 		'admin-damaged-decided',
@@ -549,22 +549,22 @@ CREATE TEMPORARY TABLE `_fixture_expected_slot_state` (
 INSERT INTO `_fixture_expected_slot_state` VALUES
 	(
 		'33000000-0000-4000-8000-000000000001',
-		'AVAILABLE', 'EMPTY', 'LOCKED', 'EMPTY',
+		'AVAILABLE', 'OCCUPIED', 'LOCKED', 'NORMAL',
 		TIMESTAMP('2026-08-03 05:00:00.000000')
 	),
 	(
 		'33000000-0000-4000-8000-000000000002',
-		'AVAILABLE', 'EMPTY', 'LOCKED', 'EMPTY',
+		'ADMIN_REVIEW', 'OCCUPIED', 'LOCKED', 'UNKNOWN',
 		TIMESTAMP('2026-08-03 05:00:00.000000')
 	),
 	(
 		'33000000-0000-4000-8000-000000000003',
-		'ADMIN_REVIEW', 'OCCUPIED', 'ERROR', 'UNKNOWN',
+		'ADMIN_REVIEW', 'OCCUPIED', 'LOCKED', 'UNKNOWN',
 		TIMESTAMP('2026-08-03 05:00:00.000000')
 	),
 	(
 		'33000000-0000-4000-8000-000000000004',
-		'AVAILABLE', 'EMPTY', 'LOCKED', 'EMPTY',
+		'AVAILABLE', 'OCCUPIED', 'LOCKED', 'NORMAL',
 		TIMESTAMP('2026-08-03 05:00:00.000000')
 	),
 	(
@@ -597,9 +597,10 @@ WHERE (
 	FROM `user_account`
 	WHERE `user_id` IN (
 		'202600001', '202600002', '202600003',
-		'202600004', '202600005', '202600006'
+		'202600004', '202600005', '202600006',
+		'202600007'
 	)
-) <> 6;
+) <> 7;
 
 INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
 SELECT 'prerequisite:admin', 1
@@ -643,6 +644,45 @@ WHERE `actual`.`user_id` IS NULL
 		WHEN 'fixture-face-register-demo-06' THEN '202600006'
 		ELSE NULL
 	END;
+
+-- Baseline stage 30 contains historical terminal rows only. Current blocking
+-- ACTIVE/RETURNING/RECOVERY_REQUIRED states belong in opt-in scenario fixtures.
+INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
+SELECT 'baseline-rental-shape', 1
+WHERE (
+	SELECT COUNT(*)
+	FROM `_fixture_expected_rental`
+	WHERE `final_status` = 'COMPLETED'
+) <> 6
+	OR (
+		SELECT COUNT(DISTINCT `user_id`)
+		FROM `_fixture_expected_rental`
+		WHERE `final_status` = 'COMPLETED'
+			AND `user_id` IN (
+				'202600001', '202600002', '202600003',
+				'202600004', '202600005', '202600006'
+			)
+	) <> 6
+	OR EXISTS (
+		SELECT 1
+		FROM `_fixture_expected_rental`
+		WHERE `final_status` IN ('REQUESTED', 'ACTIVE', 'RETURNING')
+	)
+	OR EXISTS (
+		SELECT 1
+		FROM `_fixture_expected_return`
+		WHERE `status` = 'RECOVERY_REQUIRED'
+	);
+
+INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
+SELECT 'baseline-unregistered-failure', 1
+WHERE NOT EXISTS (
+	SELECT 1
+	FROM `_fixture_expected_rental`
+	WHERE `rental_id` = '44000000-0000-4000-8000-000000000005'
+		AND `user_id` = '202600007'
+		AND `final_status` = 'FAILED'
+);
 
 -- Existing fixed IDs must match the complete final fixture row.
 INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
@@ -890,8 +930,8 @@ FROM `_fixture_expected_rental` AS `expected`
 INNER JOIN `_fixture_new_rental` AS `new_row`
 	ON `new_row`.`rental_id` = `expected`.`rental_id`;
 
--- FAILED is inserted before the retry for the same rental. It owns no
--- claimed_rental_guard; only the later RECOVERY_REQUIRED attempt owns it.
+-- Baseline Return Attempts are completed history only. Failed/recovery attempts
+-- are kept out of this file so they cannot block a normal demo user's projection.
 INSERT INTO `return_attempt` (
 	`return_attempt_id`, `rental_id`, `return_slot_id`, `request_id`,
 	`status`, `physical_completed_at`, `completed_at`, `failure_reason`,
@@ -1046,6 +1086,59 @@ WHERE (
 ) <> 7;
 
 INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
+SELECT CONCAT('baseline-ongoing-rental:', `rental`.`rental_id`), 1
+FROM `rental`
+WHERE `rental`.`user_id` IN (
+	'202600001', '202600002', '202600003',
+	'202600004', '202600005', '202600006'
+)
+	AND `rental`.`status` IN ('REQUESTED', 'ACTIVE', 'RETURNING');
+
+INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
+SELECT CONCAT('baseline-recovery-return:', `attempt`.`return_attempt_id`), 1
+FROM `return_attempt` AS `attempt`
+INNER JOIN `rental`
+	ON `rental`.`rental_id` = `attempt`.`rental_id`
+WHERE `rental`.`user_id` IN (
+	'202600001', '202600002', '202600003',
+	'202600004', '202600005', '202600006'
+)
+	AND `attempt`.`status` = 'RECOVERY_REQUIRED';
+
+INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
+SELECT CONCAT('baseline-user-eligibility:', `user`.`user_id`), 1
+FROM `user_account` AS `user`
+WHERE `user`.`user_id` IN (
+	'202600001', '202600002', '202600003',
+	'202600004', '202600005', '202600006'
+)
+	AND (
+		`user`.`face_registered` <> TRUE
+		OR `user`.`rental_eligible` <> TRUE
+		OR `user`.`rental_eligibility_evaluated_at` IS NULL
+		OR EXISTS (
+			SELECT 1
+			FROM `rental`
+			WHERE `rental`.`user_id` = `user`.`user_id`
+				AND `rental`.`status` IN ('REQUESTED', 'ACTIVE', 'RETURNING')
+		)
+		OR EXISTS (
+			SELECT 1
+			FROM `return_attempt`
+			INNER JOIN `rental`
+				ON `rental`.`rental_id` = `return_attempt`.`rental_id`
+			WHERE `rental`.`user_id` = `user`.`user_id`
+				AND `return_attempt`.`status` = 'RECOVERY_REQUIRED'
+		)
+		OR EXISTS (
+			SELECT 1
+			FROM `settlement`
+			WHERE `settlement`.`user_id` = `user`.`user_id`
+				AND `settlement`.`paid_amount` < `settlement`.`amount`
+		)
+	);
+
+INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
 SELECT CONCAT('rental-failure-shape:', `rental_id`), 1
 FROM `rental`
 WHERE `rental_id` IN (
@@ -1095,6 +1188,33 @@ WHERE `inspection`.`inspection_id` IN (
 	AND `inspection`.`rental_id` <> `return_actual`.`rental_id`;
 
 INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
+SELECT CONCAT('completed-return-orphan:', `expected`.`return_attempt_id`), 1
+FROM `_fixture_expected_return` AS `expected`
+LEFT JOIN `return_attempt` AS `attempt`
+	ON `attempt`.`return_attempt_id` = `expected`.`return_attempt_id`
+LEFT JOIN `rental`
+	ON `rental`.`rental_id` = `attempt`.`rental_id`
+WHERE `attempt`.`return_attempt_id` IS NULL
+	OR `rental`.`rental_id` IS NULL
+	OR `attempt`.`rental_id` <> `expected`.`rental_id`
+	OR `attempt`.`status` <> 'COMPLETED'
+	OR `rental`.`status` <> 'COMPLETED';
+
+INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
+SELECT CONCAT('completed-history-orphan:', `expected`.`inspection_id`), 1
+FROM `_fixture_expected_inspection` AS `expected`
+LEFT JOIN `damage_inspection` AS `inspection`
+	ON `inspection`.`inspection_id` = `expected`.`inspection_id`
+LEFT JOIN `return_attempt` AS `attempt`
+	ON `attempt`.`return_attempt_id` = `inspection`.`return_attempt_id`
+LEFT JOIN `rental`
+	ON `rental`.`rental_id` = `inspection`.`rental_id`
+WHERE `inspection`.`inspection_id` IS NULL
+	OR `attempt`.`return_attempt_id` IS NULL
+	OR `rental`.`rental_id` IS NULL
+	OR `attempt`.`rental_id` <> `rental`.`rental_id`;
+
+INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
 SELECT CONCAT('inspection-ai-shape:', `inspection_id`), 1
 FROM `damage_inspection`
 WHERE `inspection_id` IN (
@@ -1114,6 +1234,85 @@ WHERE `inspection_id` IN (
 			)
 		)
 	);
+
+INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
+SELECT CONCAT('admin-decision-slot:', `inspection`.`inspection_id`), 1
+FROM `damage_inspection` AS `inspection`
+INNER JOIN `return_attempt` AS `attempt`
+	ON `attempt`.`return_attempt_id` = `inspection`.`return_attempt_id`
+INNER JOIN `slot`
+	ON `slot`.`slot_id` = `attempt`.`return_slot_id`
+WHERE `inspection`.`inspection_id` IN (
+	'66000000-0000-4000-8000-000000000001',
+	'66000000-0000-4000-8000-000000000002'
+)
+	AND (
+		(
+			`inspection`.`admin_decision` = 'NORMAL'
+			AND NOT (
+				`slot`.`service_status` = 'AVAILABLE'
+				AND `slot`.`occupancy_status` = 'OCCUPIED'
+				AND `slot`.`lock_status` = 'LOCKED'
+				AND `slot`.`item_condition` = 'NORMAL'
+			)
+		)
+		OR (
+			`inspection`.`admin_decision` = 'DAMAGED'
+			AND NOT (
+				`slot`.`service_status` = 'OUT_OF_SERVICE'
+				AND `slot`.`occupancy_status` = 'OCCUPIED'
+				AND `slot`.`lock_status` = 'LOCKED'
+				AND `slot`.`item_condition` = 'DAMAGED'
+			)
+		)
+	);
+
+INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
+SELECT 'admin-review-slot', 1
+WHERE NOT EXISTS (
+	SELECT 1
+	FROM `damage_inspection` AS `inspection`
+	INNER JOIN `return_attempt` AS `attempt`
+		ON `attempt`.`return_attempt_id` = `inspection`.`return_attempt_id`
+	INNER JOIN `slot`
+		ON `slot`.`slot_id` = `attempt`.`return_slot_id`
+	WHERE `inspection`.`inspection_id` = '66000000-0000-4000-8000-000000000005'
+		AND `inspection`.`admin_decision` IS NULL
+		AND `slot`.`service_status` = 'ADMIN_REVIEW'
+		AND `slot`.`occupancy_status` = 'OCCUPIED'
+		AND `slot`.`lock_status` = 'LOCKED'
+		AND `slot`.`item_condition` = 'UNKNOWN'
+);
+
+INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
+SELECT 'slot-inventory-shape', 1
+WHERE (
+	SELECT COUNT(*)
+	FROM `slot`
+	WHERE `station_id` = '22000000-0000-4000-8000-000000000001'
+		AND `service_status` = 'AVAILABLE'
+		AND `occupancy_status` = 'OCCUPIED'
+		AND `lock_status` = 'LOCKED'
+		AND `item_condition` = 'NORMAL'
+) <> 2
+	OR (
+		SELECT COUNT(*)
+		FROM `slot`
+		WHERE `station_id` = '22000000-0000-4000-8000-000000000001'
+			AND `service_status` = 'ADMIN_REVIEW'
+			AND `occupancy_status` = 'OCCUPIED'
+			AND `lock_status` = 'LOCKED'
+			AND `item_condition` = 'UNKNOWN'
+	) <> 2
+	OR (
+		SELECT COUNT(*)
+		FROM `slot`
+		WHERE `station_id` = '22000000-0000-4000-8000-000000000001'
+			AND `service_status` = 'OUT_OF_SERVICE'
+			AND `occupancy_status` = 'OCCUPIED'
+			AND `lock_status` = 'LOCKED'
+			AND `item_condition` = 'DAMAGED'
+	) <> 1;
 
 INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
 SELECT CONCAT('device-evidence-identity:', `operation_id`), 1
