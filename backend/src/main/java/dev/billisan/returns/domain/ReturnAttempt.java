@@ -66,6 +66,11 @@ public class ReturnAttempt {
         return new ReturnAttempt(UUID.randomUUID(), rentalId, requestId, LocalDateTime.now());
     }
 
+    /** EDGE-RETURN-003 — 원자 선정된 SLOT을 반납 시도에 배정한다. */
+    public void assignReturnSlot(UUID returnSlotId) {
+        this.returnSlotId = returnSlotId;
+    }
+
     public UUID getReturnAttemptId() {
         return returnAttemptId;
     }
