@@ -93,6 +93,11 @@ public class Rental {
         this.dueAt = rentedAt.truncatedTo(ChronoUnit.HOURS).plusHours(1).plusDays(1);
     }
 
+    /** EDGE-RETURN-001 — 반납 시도 생성 시 ACTIVE에서 RETURNING으로 전이한다. */
+    public void returning() {
+        this.status = Status.RETURNING;
+    }
+
     public UUID getRentalId() {
         return rentalId;
     }

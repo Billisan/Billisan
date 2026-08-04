@@ -13,11 +13,11 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * ⚠️ 관리자 페이지 API가 읽기 전용으로 참조하는 데 필요한 컬럼만 매핑한다. 패키지명이
+ * EDGE-RETURN-001부터 반납 시도 생성(PROCESSING) 쓰기를 지원한다. {@code
+ * physical_completed_at}·{@code completed_at}·{@code failure_reason}은 아직
+ * 매핑하지 않았다 — PHYSICAL_DONE/COMPLETED/FAILED로의 전이는 이 오퍼레이션 범위 밖이라
+ * 이 엔티티가 그 컬럼에 쓰지 않으므로 매핑 누락이 문제가 되지 않는다. 패키지명이
  * {@code return}이 아니라 {@code returns}인 이유는 {@code return}이 Java 예약어라서다.
- * 실제 스키마엔 {@code request_id}·{@code physical_completed_at}·{@code completed_at}
- * 등 여기 없는 컬럼이 더 있다 — 이 엔티티는 반납 시도를 새로 만들지 않으므로(대여/반납
- * 상태 머신은 이 패키지 범위 밖) 매핑 누락이 문제가 되지 않는다.
  */
 @Entity
 @Table(name = "return_attempt")
@@ -36,6 +36,9 @@ public class ReturnAttempt {
     @Column(name = "return_slot_id", columnDefinition = "CHAR(36)")
     private UUID returnSlotId;
 
+    @Column(name = "request_id", updatable = false, nullable = false, length = 100)
+    private String requestId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
     private Status status;
@@ -49,6 +52,20 @@ public class ReturnAttempt {
     protected ReturnAttempt() {
     }
 
+    private ReturnAttempt(UUID returnAttemptId, UUID rentalId, String requestId, LocalDateTime createdAt) {
+        this.returnAttemptId = returnAttemptId;
+        this.rentalId = rentalId;
+        this.requestId = requestId;
+        this.status = Status.PROCESSING;
+        this.createdAt = createdAt;
+        this.updatedAt = createdAt;
+    }
+
+    /** EDGE-RETURN-001 — SLOT 미선정 상태로 새 반납 시도를 PROCESSING 상태로 생성한다. */
+    public static ReturnAttempt create(UUID rentalId, String requestId) {
+        return new ReturnAttempt(UUID.randomUUID(), rentalId, requestId, LocalDateTime.now());
+    }
+
     public UUID getReturnAttemptId() {
         return returnAttemptId;
     }
@@ -59,6 +76,10 @@ public class ReturnAttempt {
 
     public UUID getReturnSlotId() {
         return returnSlotId;
+    }
+
+    public String getRequestId() {
+        return requestId;
     }
 
     public Status getStatus() {
