@@ -9,8 +9,8 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 /**
@@ -82,12 +82,20 @@ public class Rental {
 
     /**
      * EDGE-DEVICE-001 — 물리적 UNLOCK 확인 후 REQUESTED에서 ACTIVE로 전이한다.
-     * dueAt은 "빌린 날의 다음 날 14시" 정책으로 고정 계산한다(팀 확정).
+     * dueAt은 "대여 시각을 다음 정시로 올림 + 1일" 정책으로 계산한다(팀 확정)
+     * 정확히 정시에 대여해도 항상 다음 시간으로 올린다 — 24시간 후 같은 분 단위 만료를 쓰면
+     * 반납 기한이 매분 다르게 흩어져 배치·스케줄러가 분 단위로 돌아야 하는데,
+     * 이렇게 정시로만 만료가 몰리게 하면 시간 단위 스케줄러로도 충분하다.
      */
     public void activate(LocalDateTime rentedAt) {
         this.status = Status.ACTIVE;
         this.rentedAt = rentedAt;
-        this.dueAt = LocalDate.from(rentedAt).plusDays(1).atTime(14, 0);
+        this.dueAt = rentedAt.truncatedTo(ChronoUnit.HOURS).plusHours(1).plusDays(1);
+    }
+
+    /** EDGE-RETURN-001 — 반납 시도 생성 시 ACTIVE에서 RETURNING으로 전이한다. */
+    public void returning() {
+        this.status = Status.RETURNING;
     }
 
     public UUID getRentalId() {
