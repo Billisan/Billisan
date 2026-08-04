@@ -6,7 +6,7 @@ import dev.billisan.device.dto.DeviceTerminalEventResponse;
 import dev.billisan.device.service.DeviceTerminalEventService;
 import dev.billisan.global.exception.DeviceOperationNotFoundException;
 import dev.billisan.global.exception.RentalNotFoundException;
-import dev.billisan.global.exception.UnsupportedDeviceEventException;
+import dev.billisan.global.exception.ReturnAttemptNotFoundException;
 import dev.billisan.global.mqtt.MqttPublisher;
 import dev.billisan.global.response.ApiError;
 import java.util.UUID;
@@ -66,8 +66,8 @@ public class DeviceTerminalEventRequestHandler {
             publishError(stationId, "RENTAL_NOT_FOUND", e.getMessage());
         } catch (DeviceOperationNotFoundException e) {
             publishError(stationId, "DEVICE_OPERATION_NOT_FOUND", e.getMessage());
-        } catch (UnsupportedDeviceEventException e) {
-            publishError(stationId, "UNSUPPORTED_DEVICE_EVENT", e.getMessage());
+        } catch (ReturnAttemptNotFoundException e) {
+            publishError(stationId, "RETURN_ATTEMPT_NOT_FOUND", e.getMessage());
         } catch (Exception e) {
             log.error("EDGE-DEVICE-001 처리 중 예상치 못한 예외가 발생했습니다: stationId={}", stationId, e);
             publishError(stationId, "INTERNAL_ERROR", "일시적인 오류가 발생했습니다.");

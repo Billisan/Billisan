@@ -13,11 +13,11 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * EDGE-RETURN-001부터 반납 시도 생성(PROCESSING) 쓰기를 지원한다. {@code
- * physical_completed_at}·{@code completed_at}·{@code failure_reason}은 아직
- * 매핑하지 않았다 — PHYSICAL_DONE/COMPLETED/FAILED로의 전이는 이 오퍼레이션 범위 밖이라
- * 이 엔티티가 그 컬럼에 쓰지 않으므로 매핑 누락이 문제가 되지 않는다. 패키지명이
- * {@code return}이 아니라 {@code returns}인 이유는 {@code return}이 Java 예약어라서다.
+ * EDGE-RETURN-001부터 반납 시도 생성(PROCESSING) 쓰기를, EDGE-DEVICE-001 반납 경로부터
+ * PHYSICAL_DONE/COMPLETED/RECOVERY_REQUIRED 전이 쓰기를 지원한다. {@code failure_reason}은
+ * 아직 매핑하지 않았다 — FAILED로의 전이는 이 오퍼레이션들 범위 밖이라 이 엔티티가 그
+ * 컬럼에 쓰지 않으므로 매핑 누락이 문제가 되지 않는다. 패키지명이 {@code return}이 아니라
+ * {@code returns}인 이유는 {@code return}이 Java 예약어라서다.
  */
 @Entity
 @Table(name = "return_attempt")
@@ -42,6 +42,12 @@ public class ReturnAttempt {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
     private Status status;
+
+    @Column(name = "physical_completed_at")
+    private LocalDateTime physicalCompletedAt;
+
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -71,6 +77,26 @@ public class ReturnAttempt {
         this.returnSlotId = returnSlotId;
     }
 
+    /** EDGE-DEVICE-001 — 물리적 LOCK 확인 후 PROCESSING에서 PHYSICAL_DONE으로 전이한다. */
+    public void markPhysicalDone(LocalDateTime physicalCompletedAt) {
+        this.status = Status.PHYSICAL_DONE;
+        this.physicalCompletedAt = physicalCompletedAt;
+    }
+
+    /** EDGE-DEVICE-001 — 검수 결과가 NORMAL이면 PHYSICAL_DONE에서 COMPLETED로 전이한다. */
+    public void complete(LocalDateTime completedAt) {
+        this.status = Status.COMPLETED;
+        this.completedAt = completedAt;
+    }
+
+    /**
+     * EDGE-DEVICE-001 — 검수 결과가 파손 의심(NORMAL 아님)이거나 아직 검수가 도착하지
+     * 않았으면 PHYSICAL_DONE에서 RECOVERY_REQUIRED로 전이해 관리자 개입을 기다린다.
+     */
+    public void requireRecovery() {
+        this.status = Status.RECOVERY_REQUIRED;
+    }
+
     public UUID getReturnAttemptId() {
         return returnAttemptId;
     }
@@ -89,6 +115,14 @@ public class ReturnAttempt {
 
     public Status getStatus() {
         return status;
+    }
+
+    public LocalDateTime getPhysicalCompletedAt() {
+        return physicalCompletedAt;
+    }
+
+    public LocalDateTime getCompletedAt() {
+        return completedAt;
     }
 
     public LocalDateTime getCreatedAt() {
