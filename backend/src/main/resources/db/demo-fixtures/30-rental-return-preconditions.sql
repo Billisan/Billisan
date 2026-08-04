@@ -6,7 +6,7 @@
 -- Reapplication contract:
 -- - insert a missing fixed ID only;
 -- - validate every existing fixed row before DML;
--- - never use INSERT IGNORE or an upsert;
+-- - never suppress duplicate-key failures or use an upsert;
 -- - let TRG_RETURN_ATTEMPT_BEFORE_INSERT complete RETURNING rentals;
 -- - keep DEVICE_OPERATION independent from Rental and Return Attempt IDs.
 
@@ -463,20 +463,78 @@ CREATE TEMPORARY TABLE `_fixture_expected_face_sync` (
 	UNIQUE (`request_id`)
 );
 
-INSERT INTO `_fixture_expected_face_sync` VALUES (
-	'face-register-succeeded',
-	'aa000000-0000-4000-8000-000000000001',
-	'fixture-face-register-eligible',
-	'11000000-0000-4000-8000-000000000001',
-	'REGISTER',
-	1,
-	'SUCCEEDED',
-	NULL,
-	TIMESTAMP('2026-08-03 00:01:00.000000'),
-	TIMESTAMP('2026-08-03 00:02:00.000000'),
-	TIMESTAMP('2026-08-03 00:01:00.000000'),
-	TIMESTAMP('2026-08-03 00:02:00.000000')
-);
+-- Orin registered_at proves profile registration, but not the Backend sync
+-- request/completion instants. Keep synthetic, deterministic Fixture audit times
+-- here instead of presenting the Orin timestamp as an exact integration history.
+-- face_profile_id remains in the separate user/profile catalog because the MySQL
+-- FACE_PROFILE_SYNC_OPERATION schema identifies profiles through user_ref only.
+INSERT INTO `_fixture_expected_face_sync` VALUES
+	(
+		'face-register-demo-01',
+		'aa000000-0000-4000-8000-000000000001',
+		'fixture-face-register-demo-01',
+		'f6f509d4-c001-446c-b6b7-537d65a093c3',
+		'REGISTER', 1, 'SUCCEEDED', NULL,
+		TIMESTAMP('2026-08-03 00:01:00.000000'),
+		TIMESTAMP('2026-08-03 00:02:00.000000'),
+		TIMESTAMP('2026-08-03 00:01:00.000000'),
+		TIMESTAMP('2026-08-03 00:02:00.000000')
+	),
+	(
+		'face-register-demo-02',
+		'aa000000-0000-4000-8000-000000000002',
+		'fixture-face-register-demo-02',
+		'f86a8791-c02b-4e50-b761-d9dd009909a9',
+		'REGISTER', 1, 'SUCCEEDED', NULL,
+		TIMESTAMP('2026-08-03 00:03:00.000000'),
+		TIMESTAMP('2026-08-03 00:04:00.000000'),
+		TIMESTAMP('2026-08-03 00:03:00.000000'),
+		TIMESTAMP('2026-08-03 00:04:00.000000')
+	),
+	(
+		'face-register-demo-03',
+		'aa000000-0000-4000-8000-000000000003',
+		'fixture-face-register-demo-03',
+		'0b8255a1-70e4-45af-80f2-b38e4164ea06',
+		'REGISTER', 1, 'SUCCEEDED', NULL,
+		TIMESTAMP('2026-08-03 00:05:00.000000'),
+		TIMESTAMP('2026-08-03 00:06:00.000000'),
+		TIMESTAMP('2026-08-03 00:05:00.000000'),
+		TIMESTAMP('2026-08-03 00:06:00.000000')
+	),
+	(
+		'face-register-demo-04',
+		'aa000000-0000-4000-8000-000000000004',
+		'fixture-face-register-demo-04',
+		'59b97d2b-a37d-4f75-bd33-4beb1bd3ac76',
+		'REGISTER', 1, 'SUCCEEDED', NULL,
+		TIMESTAMP('2026-08-03 00:07:00.000000'),
+		TIMESTAMP('2026-08-03 00:08:00.000000'),
+		TIMESTAMP('2026-08-03 00:07:00.000000'),
+		TIMESTAMP('2026-08-03 00:08:00.000000')
+	),
+	(
+		'face-register-demo-05',
+		'aa000000-0000-4000-8000-000000000005',
+		'fixture-face-register-demo-05',
+		'd8a6f8d6-3c43-4789-b980-a9f6918d53b8',
+		'REGISTER', 1, 'SUCCEEDED', NULL,
+		TIMESTAMP('2026-08-03 00:09:00.000000'),
+		TIMESTAMP('2026-08-03 00:10:00.000000'),
+		TIMESTAMP('2026-08-03 00:09:00.000000'),
+		TIMESTAMP('2026-08-03 00:10:00.000000')
+	),
+	(
+		'face-register-demo-06',
+		'aa000000-0000-4000-8000-000000000006',
+		'fixture-face-register-demo-06',
+		'3650e75c-ab2b-4455-8f00-c691fd2e66fb',
+		'REGISTER', 1, 'SUCCEEDED', NULL,
+		TIMESTAMP('2026-08-03 00:11:00.000000'),
+		TIMESTAMP('2026-08-03 00:12:00.000000'),
+		TIMESTAMP('2026-08-03 00:11:00.000000'),
+		TIMESTAMP('2026-08-03 00:12:00.000000')
+	);
 
 CREATE TEMPORARY TABLE `_fixture_expected_slot_state` (
 	`slot_id` CHAR(36) NOT NULL,
@@ -550,6 +608,41 @@ WHERE NOT EXISTS (
 	FROM `admin_account`
 	WHERE `admin_id` = '88000000-0000-4000-8000-000000000001'
 );
+
+INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
+SELECT 'face-sync-expected-shape', 1
+WHERE (
+	SELECT COUNT(*) FROM `_fixture_expected_face_sync`
+) <> 6
+	OR (
+		SELECT COUNT(DISTINCT `user_ref`) FROM `_fixture_expected_face_sync`
+	) <> 6
+	OR EXISTS (
+		SELECT 1
+		FROM `_fixture_expected_face_sync`
+		WHERE `operation_type` <> 'REGISTER'
+			OR `template_version` <> 1
+			OR `sync_status` <> 'SUCCEEDED'
+			OR `last_error_code` IS NOT NULL
+			OR `completed_at` IS NULL
+			OR `requested_at` > `completed_at`
+	);
+
+INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
+SELECT CONCAT('face-sync-user:', `expected`.`request_id`), 1
+FROM `_fixture_expected_face_sync` AS `expected`
+LEFT JOIN `user_account` AS `actual`
+	ON `actual`.`user_ref` = `expected`.`user_ref`
+WHERE `actual`.`user_id` IS NULL
+	OR `actual`.`user_id` <> CASE `expected`.`request_id`
+		WHEN 'fixture-face-register-demo-01' THEN '202600001'
+		WHEN 'fixture-face-register-demo-02' THEN '202600002'
+		WHEN 'fixture-face-register-demo-03' THEN '202600003'
+		WHEN 'fixture-face-register-demo-04' THEN '202600004'
+		WHEN 'fixture-face-register-demo-05' THEN '202600005'
+		WHEN 'fixture-face-register-demo-06' THEN '202600006'
+		ELSE NULL
+	END;
 
 -- Existing fixed IDs must match the complete final fixture row.
 INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
@@ -1079,6 +1172,51 @@ FROM `_fixture_expected_face_sync`
 WHERE `request_id` NOT LIKE 'fixture-%';
 
 INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
+SELECT 'face-sync-final-count', 1
+WHERE (
+	SELECT COUNT(*)
+	FROM `face_profile_sync_operation` AS `actual`
+	INNER JOIN `_fixture_expected_face_sync` AS `expected`
+		ON `expected`.`sync_operation_id` = `actual`.`sync_operation_id`
+) <> 6;
+
+INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
+SELECT CONCAT('face-sync-final:', `expected`.`sync_operation_id`), 1
+FROM `_fixture_expected_face_sync` AS `expected`
+LEFT JOIN `face_profile_sync_operation` AS `actual`
+	ON `actual`.`sync_operation_id` = `expected`.`sync_operation_id`
+WHERE `actual`.`sync_operation_id` IS NULL
+	OR NOT (
+		`actual`.`request_id` <=> `expected`.`request_id`
+		AND `actual`.`user_ref` <=> `expected`.`user_ref`
+		AND `actual`.`operation_type` <=> 'REGISTER'
+		AND `actual`.`template_version` <=> 1
+		AND `actual`.`sync_status` <=> 'SUCCEEDED'
+		AND `actual`.`last_error_code` IS NULL
+		AND `actual`.`requested_at` <=> `expected`.`requested_at`
+		AND `actual`.`completed_at` <=> `expected`.`completed_at`
+		AND `actual`.`requested_at` <= `actual`.`completed_at`
+	);
+
+INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
+SELECT 'face-sync-unregistered-user', 1
+WHERE EXISTS (
+	SELECT 1
+	FROM `face_profile_sync_operation`
+	WHERE `user_ref` = 'bb14cac2-74d1-4b7f-a69f-aa88fcf8f55e'
+		AND `operation_type` = 'REGISTER'
+		AND `sync_status` = 'SUCCEEDED'
+);
+
+INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
+SELECT CONCAT('face-sync-duplicate-request:', `actual`.`request_id`), 1
+FROM `face_profile_sync_operation` AS `actual`
+INNER JOIN `_fixture_expected_face_sync` AS `expected`
+	ON `expected`.`request_id` = `actual`.`request_id`
+GROUP BY `actual`.`request_id`
+HAVING COUNT(*) <> 1;
+
+INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
 SELECT CONCAT('slot-final:', `expected`.`slot_id`), 1
 FROM `_fixture_expected_slot_state` AS `expected`
 INNER JOIN `slot` AS `actual`
@@ -1138,6 +1276,22 @@ SELECT
 	`terminal_event_type`
 FROM `_fixture_expected_device_operation`
 ORDER BY `operation_id`;
+
+SELECT
+	`expected`.`scenario_key`,
+	`actual`.`sync_operation_id`,
+	`actual`.`request_id`,
+	`actual`.`user_ref`,
+	`actual`.`operation_type`,
+	`actual`.`template_version`,
+	`actual`.`sync_status`,
+	`actual`.`last_error_code`,
+	`actual`.`requested_at`,
+	`actual`.`completed_at`
+FROM `_fixture_expected_face_sync` AS `expected`
+INNER JOIN `face_profile_sync_operation` AS `actual`
+	ON `actual`.`sync_operation_id` = `expected`.`sync_operation_id`
+ORDER BY `expected`.`sync_operation_id`;
 
 DROP TEMPORARY TABLE `_fixture_new_rental`;
 DROP TEMPORARY TABLE `_fixture_expected_slot_state`;
