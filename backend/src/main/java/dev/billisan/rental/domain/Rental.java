@@ -98,6 +98,12 @@ public class Rental {
         this.status = Status.RETURNING;
     }
 
+    /** EDGE-DEVICE-001 — 반납 완료(검수 NORMAL) 시 RETURNING에서 COMPLETED로 전이한다. */
+    public void complete(LocalDateTime endedAt) {
+        this.status = Status.COMPLETED;
+        this.endedAt = endedAt;
+    }
+
     public UUID getRentalId() {
         return rentalId;
     }
