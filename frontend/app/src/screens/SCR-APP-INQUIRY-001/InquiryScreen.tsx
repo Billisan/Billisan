@@ -5,13 +5,16 @@ import { ScrollView, Text, View } from 'react-native'
 import { submitInquiry } from '../../api/inquiryApi'
 import { Button } from '../../components/common/Button'
 import { ErrorBanner } from '../../components/common/ErrorBanner'
+import { SelectField } from '../../components/common/SelectField'
 import { TextField } from '../../components/common/TextField'
 import { Screen } from '../../components/layout/Screen'
+import { INQUIRY_TYPES } from '../../types/inquiry'
 
 // INQUIRY-001은 12-R 미확정(DEFERRED_NOT_CONTRACTED) — types/inquiry.ts·api/inquiryApi.ts 주석 참고.
 export function InquiryScreen() {
   const navigation = useNavigation()
   const [type, setType] = useState('')
+  const [typePickerVisible, setTypePickerVisible] = useState(false)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [attemptedSubmit, setAttemptedSubmit] = useState(false)
@@ -49,12 +52,16 @@ export function InquiryScreen() {
   return (
     <Screen>
       <ScrollView className="flex-1" contentContainerClassName="gap-4 px-6 py-6">
-        <TextField
+        <SelectField
           label="유형"
           value={type}
-          onChangeText={setType}
-          placeholder="예: 결제 문의, 분실/파손 등"
+          options={INQUIRY_TYPES}
+          onSelect={setType}
+          placeholder="문의 유형을 선택해주세요"
           hasError={attemptedSubmit && type.trim() === ''}
+          visible={typePickerVisible}
+          onOpen={() => setTypePickerVisible(true)}
+          onClose={() => setTypePickerVisible(false)}
         />
         <TextField
           label="제목"
@@ -69,7 +76,7 @@ export function InquiryScreen() {
           onChangeText={setContent}
           placeholder="문의 내용을 입력해주세요"
           multiline
-          numberOfLines={6}
+          numberOfLines={12}
           hasError={attemptedSubmit && content.trim() === ''}
         />
         {attemptedSubmit && hasEmptyField && (

@@ -35,8 +35,8 @@ export function TextField({
         numberOfLines={numberOfLines}
         textAlignVertical={multiline ? 'top' : 'center'}
         className={`w-full rounded-xl border px-4 py-3 text-base text-text ${
-          hasError ? 'border-error-text bg-error-bg' : 'border-disabled'
-        }`}
+          multiline ? 'min-h-[220px]' : ''
+        } ${hasError ? 'border-error-text bg-error-bg' : 'border-disabled'}`}
       />
     </View>
   )
