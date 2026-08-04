@@ -61,9 +61,9 @@ INSERT INTO `rental` (`rental_id`, `user_id`, `checkout_slot_id`, `rental_reques
 	`failure_code`, `failure_message`, `failed_at`, `requested_at`, `rented_at`, `due_at`, `ended_at`, `created_at`, `updated_at`)
 SELECT 'b3500000-0000-4000-8000-000000000001', '202600004',
 	'33000000-0000-4000-8000-000000000001', 'fixture-scenario-35-normal-rental',
-	'RETURNING', NULL, NULL, NULL, TIMESTAMP('2026-08-04 14:00:00.000000'),
-	TIMESTAMP('2026-08-04 14:01:00.000000'), TIMESTAMP('2026-08-05 14:01:00.000000'), NULL,
-	TIMESTAMP('2026-08-04 14:00:00.000000'), TIMESTAMP('2026-08-04 14:20:00.000000')
+	'RETURNING', NULL, NULL, NULL, TIMESTAMP('2026-08-03 14:00:00.000000'),
+	TIMESTAMP('2026-08-03 14:01:00.000000'), TIMESTAMP('2026-08-04 14:01:00.000000'), NULL,
+	TIMESTAMP('2026-08-03 14:00:00.000000'), TIMESTAMP('2026-08-04 14:20:00.000000')
 WHERE NOT EXISTS (SELECT 1 FROM `rental` WHERE `rental_id` = 'b3500000-0000-4000-8000-000000000001');
 
 INSERT INTO `return_attempt` (`return_attempt_id`, `rental_id`, `return_slot_id`, `request_id`, `status`,

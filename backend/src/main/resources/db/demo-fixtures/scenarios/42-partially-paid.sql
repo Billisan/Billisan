@@ -16,7 +16,7 @@ INSERT INTO `_scenario_42_guard` SELECT 'partial-graph',1 WHERE
 	(EXISTS(SELECT 1 FROM `settlement` WHERE `settlement_id`='c4200000-0000-4000-8000-000000000001')) <>
 	(EXISTS(SELECT 1 FROM `payment_attempt` WHERE `payment_attempt_id`='c4200000-0000-4000-8000-000000000002'));
 INSERT INTO `settlement` (`settlement_id`,`user_id`,`rental_id`,`damage_inspection_id`,`reason`,`amount`,`paid_amount`,`status`,`created_at`,`paid_at`,`updated_at`)
-SELECT 'c4200000-0000-4000-8000-000000000001','202600006','44000000-0000-4000-8000-000000000006',NULL,'OVERDUE',2000,0,'PENDING',TIMESTAMP('2026-08-04 17:00:00'),NULL,TIMESTAMP('2026-08-04 17:00:00')
+SELECT 'c4200000-0000-4000-8000-000000000001','202600006','44000000-0000-4000-8000-000000000006',NULL,'OVERDUE',2000,0,'PENDING',TIMESTAMP('2026-08-03 17:00:00'),NULL,TIMESTAMP('2026-08-03 17:00:00')
 WHERE NOT EXISTS(SELECT 1 FROM `settlement` WHERE `settlement_id`='c4200000-0000-4000-8000-000000000001');
 INSERT INTO `payment_attempt` (`payment_attempt_id`,`settlement_id`,`creation_request_id`,`toss_order_id`,`toss_payment_key`,`amount`,`provider`,`toss_status`,`failure_code`,`failure_message`,`status`,`requested_at`,`approved_at`,`completed_at`,`created_at`,`updated_at`)
 SELECT 'c4200000-0000-4000-8000-000000000002','c4200000-0000-4000-8000-000000000001','fixture-scenario-42-partial-success','fixture-scenario-42-toss-order','fixture-scenario-42-toss-key',1000,'TOSS_SANDBOX','DONE',NULL,NULL,'SUCCEEDED',TIMESTAMP('2026-08-04 17:01:00'),TIMESTAMP('2026-08-04 17:02:00'),TIMESTAMP('2026-08-04 17:02:01'),TIMESTAMP('2026-08-04 17:01:00'),TIMESTAMP('2026-08-04 17:02:01')
