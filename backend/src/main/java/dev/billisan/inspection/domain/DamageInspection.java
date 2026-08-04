@@ -22,7 +22,9 @@ import java.util.UUID;
  * ({@link dev.billisan.inspection.service.InspectionAdminService} 참조).
  * {@code decision_reason_code}/{@code decision_note}(관리자 API 계약이 응답 필드로
  * 문서화한 값)는 실제 스키마에 대응 컬럼이 없어 이 엔티티엔 두지 않는다 — API 요청은
- * 받지만 저장하지 않는다(API 계약과 실제 스키마 사이 갭, 재확인 필요).
+ * 받지만 저장하지 않는다(API 계약과 실제 스키마 사이 갭, 재확인 필요). EDGE-INSPECT-001부터
+ * 검수 결과 생성(쓰기)을 지원한다 — {@code errorCode}·{@code inferenceNode}(요청 페이로드
+ * 필드)도 대응 컬럼이 없어 받기만 하고 저장하지 않는다.
  */
 @Entity
 @Table(name = "damage_inspection")
@@ -82,6 +84,52 @@ public class DamageInspection {
     private LocalDateTime updatedAt;
 
     protected DamageInspection() {
+    }
+
+    private DamageInspection(
+            UUID inspectionId,
+            UUID returnAttemptId,
+            UUID rentalId,
+            String requestId,
+            ProcessStatus status,
+            AiResult aiResult,
+            BigDecimal confidence,
+            String modelVersion,
+            LocalDateTime requestedAt) {
+        this.inspectionId = inspectionId;
+        this.returnAttemptId = returnAttemptId;
+        this.rentalId = rentalId;
+        this.requestId = requestId;
+        this.requestedAt = requestedAt;
+        this.status = status;
+        this.aiResult = aiResult;
+        this.confidence = confidence;
+        this.modelVersion = modelVersion;
+        this.completedAt = requestedAt;
+        this.createdAt = requestedAt;
+        this.updatedAt = requestedAt;
+    }
+
+    /**
+     * EDGE-INSPECT-001 — Orin이 보고한 검수 결과를 저장한다.
+     */
+    public static DamageInspection create(
+            UUID returnAttemptId,
+            UUID rentalId,
+            String requestId,
+            ProcessStatus status,
+            AiResult aiResult,
+            BigDecimal confidence,
+            String modelVersion) {
+        // DB는 DATETIME(6)(마이크로초)인데 now()는 나노초라 안 잘라두면 CAS 값이 어긋난다.
+        LocalDateTime now = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS);
+        return new DamageInspection(
+                UUID.randomUUID(), returnAttemptId, rentalId, requestId, status, aiResult, confidence, modelVersion, now);
+    }
+
+    /** result가 NORMAL이 아니면(DAMAGED·UNCERTAIN, 또는 실패로 aiResult가 NULL) 관리자 검토가 필요하다. */
+    public boolean requiresReview() {
+        return aiResult != AiResult.NORMAL;
     }
 
     /**
