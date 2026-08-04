@@ -612,22 +612,25 @@ WHERE NOT EXISTS (
 
 INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
 SELECT 'face-sync-expected-shape', 1
-WHERE (
-	SELECT COUNT(*) FROM `_fixture_expected_face_sync`
-) <> 6
-	OR (
-		SELECT COUNT(DISTINCT `user_ref`) FROM `_fixture_expected_face_sync`
-	) <> 6
-	OR EXISTS (
-		SELECT 1
-		FROM `_fixture_expected_face_sync`
-		WHERE `operation_type` <> 'REGISTER'
-			OR `template_version` <> 1
-			OR `sync_status` <> 'SUCCEEDED'
-			OR `last_error_code` IS NOT NULL
-			OR `completed_at` IS NULL
-			OR `requested_at` > `completed_at`
-	);
+FROM (
+	SELECT
+		COUNT(*) AS `expected_count`,
+		COUNT(DISTINCT `user_ref`) AS `distinct_user_ref_count`,
+		SUM(CASE
+			WHEN `operation_type` <> 'REGISTER'
+				OR `template_version` <> 1
+				OR `sync_status` <> 'SUCCEEDED'
+				OR `last_error_code` IS NOT NULL
+				OR `completed_at` IS NULL
+				OR `requested_at` > `completed_at`
+			THEN 1
+			ELSE 0
+		END) AS `invalid_row_count`
+	FROM `_fixture_expected_face_sync`
+) AS `face_sync_shape`
+WHERE `face_sync_shape`.`expected_count` <> 6
+	OR `face_sync_shape`.`distinct_user_ref_count` <> 6
+	OR `face_sync_shape`.`invalid_row_count` <> 0;
 
 INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
 SELECT CONCAT('face-sync-user:', `expected`.`request_id`), 1
@@ -649,30 +652,37 @@ WHERE `actual`.`user_id` IS NULL
 -- ACTIVE/RETURNING/RECOVERY_REQUIRED states belong in opt-in scenario fixtures.
 INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
 SELECT 'baseline-rental-shape', 1
-WHERE (
-	SELECT COUNT(*)
+FROM (
+	SELECT
+		SUM(CASE WHEN `final_status` = 'COMPLETED' THEN 1 ELSE 0 END)
+			AS `completed_count`,
+		COUNT(DISTINCT CASE
+			WHEN `final_status` = 'COMPLETED'
+				AND `user_id` IN (
+					'202600001', '202600002', '202600003',
+					'202600004', '202600005', '202600006'
+				)
+			THEN `user_id`
+			ELSE NULL
+		END) AS `completed_fixture_user_count`,
+		SUM(CASE
+			WHEN `final_status` IN ('REQUESTED', 'ACTIVE', 'RETURNING')
+			THEN 1
+			ELSE 0
+		END) AS `blocking_rental_count`
 	FROM `_fixture_expected_rental`
-	WHERE `final_status` = 'COMPLETED'
-) <> 6
-	OR (
-		SELECT COUNT(DISTINCT `user_id`)
-		FROM `_fixture_expected_rental`
-		WHERE `final_status` = 'COMPLETED'
-			AND `user_id` IN (
-				'202600001', '202600002', '202600003',
-				'202600004', '202600005', '202600006'
-			)
-	) <> 6
-	OR EXISTS (
-		SELECT 1
-		FROM `_fixture_expected_rental`
-		WHERE `final_status` IN ('REQUESTED', 'ACTIVE', 'RETURNING')
-	)
-	OR EXISTS (
-		SELECT 1
-		FROM `_fixture_expected_return`
-		WHERE `status` = 'RECOVERY_REQUIRED'
-	);
+) AS `rental_shape`
+CROSS JOIN (
+	SELECT SUM(CASE
+		WHEN `status` = 'RECOVERY_REQUIRED' THEN 1
+		ELSE 0
+	END) AS `recovery_required_count`
+	FROM `_fixture_expected_return`
+) AS `return_shape`
+WHERE `rental_shape`.`completed_count` <> 6
+	OR `rental_shape`.`completed_fixture_user_count` <> 6
+	OR `rental_shape`.`blocking_rental_count` <> 0
+	OR `return_shape`.`recovery_required_count` <> 0;
 
 INSERT INTO `_fixture_30_conflict_guard` (`record_key`, `must_be_zero`)
 SELECT 'baseline-unregistered-failure', 1

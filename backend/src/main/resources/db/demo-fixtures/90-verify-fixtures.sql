@@ -882,9 +882,18 @@ WHERE `actual`.`user_id` IS NULL
 
 INSERT INTO `_fixture_verify_guard`
 SELECT 'user-population', 'USER_SCENARIOS', 1
-WHERE (SELECT COUNT(*) FROM `_fixture_user_authority`) <> 7
-	OR (SELECT COUNT(*) FROM `_fixture_user_authority` WHERE `face_registered` = TRUE) <> 6
-	OR (SELECT COUNT(*) FROM `_fixture_user_authority` WHERE `face_registered` = FALSE) <> 1;
+FROM (
+	SELECT
+		COUNT(*) AS `expected_count`,
+		SUM(CASE WHEN `face_registered` = TRUE THEN 1 ELSE 0 END)
+			AS `face_registered_count`,
+		SUM(CASE WHEN `face_registered` = FALSE THEN 1 ELSE 0 END)
+			AS `face_unregistered_count`
+	FROM `_fixture_user_authority`
+) AS `user_population`
+WHERE `user_population`.`expected_count` <> 7
+	OR `user_population`.`face_registered_count` <> 6
+	OR `user_population`.`face_unregistered_count` <> 1;
 
 -- Reject both forbidden identity-shaped JSON keys and any fixture student
 -- number appearing as a JSON string or number under an unrelated key.

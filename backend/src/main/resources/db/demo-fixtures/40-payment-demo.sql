@@ -227,34 +227,38 @@ INSERT INTO `_fixture_expected_payment` VALUES
 
 INSERT INTO `_fixture_40_conflict_guard` (`record_key`, `must_be_zero`)
 SELECT 'baseline-settlement-shape', 1
-WHERE (
-	SELECT COUNT(*) FROM `_fixture_expected_settlement`
-) <> 4
-	OR EXISTS (
-		SELECT 1
-		FROM `_fixture_expected_settlement`
-		WHERE `final_status` <> 'PAID'
-			OR `final_paid_amount` <> `amount`
-			OR `final_paid_at` IS NULL
-	);
+FROM (
+	SELECT
+		COUNT(*) AS `expected_count`,
+		SUM(CASE
+			WHEN `final_status` <> 'PAID'
+				OR `final_paid_amount` <> `amount`
+				OR `final_paid_at` IS NULL
+			THEN 1
+			ELSE 0
+		END) AS `invalid_row_count`
+	FROM `_fixture_expected_settlement`
+) AS `settlement_shape`
+WHERE `settlement_shape`.`expected_count` <> 4
+	OR `settlement_shape`.`invalid_row_count` <> 0;
 
 INSERT INTO `_fixture_40_conflict_guard` (`record_key`, `must_be_zero`)
 SELECT 'baseline-payment-shape', 1
-WHERE (
-	SELECT COUNT(*)
+FROM (
+	SELECT
+		SUM(CASE WHEN `status` = 'SUCCEEDED' THEN 1 ELSE 0 END)
+			AS `succeeded_count`,
+		SUM(CASE WHEN `status` = 'FAILED' THEN 1 ELSE 0 END)
+			AS `failed_count`,
+		SUM(CASE
+			WHEN `status` NOT IN ('SUCCEEDED', 'FAILED') THEN 1
+			ELSE 0
+		END) AS `invalid_status_count`
 	FROM `_fixture_expected_payment`
-	WHERE `status` = 'SUCCEEDED'
-) <> 4
-	OR (
-		SELECT COUNT(*)
-		FROM `_fixture_expected_payment`
-		WHERE `status` = 'FAILED'
-	) <> 1
-	OR EXISTS (
-		SELECT 1
-		FROM `_fixture_expected_payment`
-		WHERE `status` NOT IN ('SUCCEEDED', 'FAILED')
-	);
+) AS `payment_shape`
+WHERE `payment_shape`.`succeeded_count` <> 4
+	OR `payment_shape`.`failed_count` <> 1
+	OR `payment_shape`.`invalid_status_count` <> 0;
 
 INSERT INTO `_fixture_40_conflict_guard` (`record_key`, `must_be_zero`)
 SELECT 'prerequisite:normal-users', 1
