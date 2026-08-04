@@ -1,6 +1,7 @@
 package dev.billisan.slot.repository;
 
 import dev.billisan.rental.domain.Rental;
+import dev.billisan.returns.domain.ReturnAttempt;
 import dev.billisan.slot.domain.Slot;
 import dev.billisan.slot.domain.Slot.ItemCondition;
 import dev.billisan.slot.domain.Slot.LockStatus;
@@ -84,4 +85,37 @@ public interface SlotRepository extends JpaRepository<Slot, UUID> {
             @Param("lockStatus") LockStatus lockStatus,
             @Param("itemCondition") ItemCondition itemCondition,
             @Param("requestedStatus") Rental.Status requestedStatus);
+
+    /**
+     * EDGE-RETURN-003 반납 후보 선정
+     */
+    default Optional<Slot> findReturnSlotCandidate(UUID stationId) {
+        return findReturnSlotCandidates(
+                        stationId,
+                        ServiceStatus.AVAILABLE,
+                        OccupancyStatus.EMPTY,
+                        LockStatus.LOCKED,
+                        List.of(
+                                ReturnAttempt.Status.PROCESSING,
+                                ReturnAttempt.Status.PHYSICAL_DONE,
+                                ReturnAttempt.Status.RECOVERY_REQUIRED))
+                .stream()
+                .findFirst();
+    }
+
+    @Query("select s from Slot s "
+            + "where s.stationId = :stationId "
+            + "and s.serviceStatus = :serviceStatus "
+            + "and s.occupancyStatus = :occupancyStatus "
+            + "and s.lockStatus = :lockStatus "
+            + "and not exists ("
+            + "  select 1 from ReturnAttempt ra where ra.returnSlotId = s.slotId and ra.status in :openStatuses"
+            + ") "
+            + "order by s.slotNumber")
+    List<Slot> findReturnSlotCandidates(
+            @Param("stationId") UUID stationId,
+            @Param("serviceStatus") ServiceStatus serviceStatus,
+            @Param("occupancyStatus") OccupancyStatus occupancyStatus,
+            @Param("lockStatus") LockStatus lockStatus,
+            @Param("openStatuses") List<ReturnAttempt.Status> openStatuses);
 }
