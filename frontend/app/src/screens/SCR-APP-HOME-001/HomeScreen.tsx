@@ -1,10 +1,13 @@
-import { Text } from 'react-native'
+import { View } from 'react-native'
+import Logo from '../../assets/logo.svg'
 import { Screen } from '../../components/layout/Screen'
 
 export function HomeScreen() {
   return (
     <Screen>
-      <Text className="mt-10 text-center text-lg text-text">홈 화면 — 준비 중</Text>
+      <View className="mt-10 items-center">
+        <Logo width={144} height={67} />
+      </View>
     </Screen>
   )
 }
