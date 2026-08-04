@@ -1,3 +1,4 @@
+import { SEED_STATION } from '@/features/stations/mocks/ec2Seed';
 import type { Station } from '@/features/stations/types';
 
 /**
@@ -11,7 +12,11 @@ import type { Station } from '@/features/stations/types';
  * UUID·이름은 비밀값이 아닙니다 — 계정·비밀번호는 여기 두지 않습니다.
  *
  * `position` 은 분포도 좌표(0~100)입니다. ERD 에 좌표 컬럼이 없어서 화면 배치값을
- * 여기서 정합니다. 목업 '정문 광장'과 같은 자리를 씁니다.
+ * 여기서 정합니다.
+ *
+ * **값을 두 번 적지 않습니다.** 목업도 같은 시드를 쓰므로 `mocks/ec2Seed.ts` 한 곳에서
+ * 가져옵니다. 예전에는 여기와 목업에 따로 적혀 있어서, 한쪽만 고치면 목업 모드와
+ * 실 모드가 서로 다른 대여소를 가리켰습니다.
  *
  * TODO: 대여소 목록 API 가 계약에 들어오면 이 파일을 지우고 http 호출로 바꾸세요.
  */
@@ -24,8 +29,8 @@ export interface StationSeedEntry {
 
 export const REAL_STATIONS: StationSeedEntry[] = [
     {
-        stationId: '186c47d2-6553-4b36-8d7e-de810f40010d',
-        name: '정문 대여소',
-        position: { x: 20.1, y: 86.0 },
+        stationId: SEED_STATION.stationId,
+        name: SEED_STATION.name,
+        position: SEED_STATION.position,
     },
 ];

@@ -1,17 +1,17 @@
-import { MOCK_NS, mockUuid } from '@/features/stations/mocks/ids';
+import { SEED_SLOTS, SEED_STATION, SEED_SYNCED_AT } from '@/features/stations/mocks/ec2Seed';
 import { buildSlots } from '@/features/stations/mocks/slots';
 import { deriveSlotDisplayStatus, type Station } from '@/features/stations/types';
 
 /**
- * 대여소 목업 데이터.
+ * 대여소 목업 데이터 — **EC2 시드 그대로입니다** (`mocks/ec2Seed.ts`).
  *
  * 신원은 `stationId`(UUID)뿐입니다. ERD v3.0 이 `station_code`·`location_text` 를 P0 필수
  * 컬럼에서 뺐어서 표시도 `name` 으로만 합니다.
  *
- * **슬롯 개수는 `slotCount` 하나로 정합니다.** 상위 기획 §4.1 이 "제품·DB·API·화면은
- * 대여소당 3~5 SLOT을 지원"이라고 했고, ERD 는 "SLOT 행 수와 Station 설정으로 수량을
- * 결정하고 애플리케이션·DDL에 1 또는 3~5를 상수로 고정하지 않는다"고 했습니다.
- * 지금 값은 시연 구성일 뿐이고, 바꾸고 싶으면 아래 숫자만 고치면 됩니다.
+ * **대여소는 한 곳뿐입니다.** 예전에는 8곳을 지어냈는데, 실 서버에는 「정문 대여소」
+ * 하나만 있습니다. 개수를 맞춰 두면 실 API 로 스위치를 내려도 화면이 그대로입니다 —
+ * 목록 줄 수도, 지도 위 점 개수도, 대시보드 집계도요. 화면이 휑해 보이는 건 실제가
+ * 그렇기 때문이고, 그게 목업이 보여 줘야 하는 모습입니다.
  *
  * 재고 집계(available·damaged·adminReview)는 **손으로 적지 않고 슬롯에서 셉니다.**
  * 예전에는 두 곳을 따로 관리해서 화면끼리 숫자가 어긋날 수 있었습니다.
@@ -19,91 +19,27 @@ import { deriveSlotDisplayStatus, type Station } from '@/features/stations/types
  * TODO: 대여소 목록 API 가 계약에 들어오면 이 파일을 지우세요.
  */
 
-interface StationSeed {
-    name: string;
-    /** `location_text` — 좌표가 아니라 자유 텍스트입니다 */
-    /** 이 대여소에 실제로 설치된 SLOT 행 수 */
-    slotCount: number;
-    deviceStatus: Station['deviceStatus'];
-    serviceStatus: Station['serviceStatus'];
-    position: { x: number; y: number };
-}
-
-const SEEDS: StationSeed[] = [
+/**
+ * 집계 없이 설정만 담은 대여소. 슬롯 생성의 입력값입니다.
+ *
+ * `slotCount` 도 지어내지 않고 시드 슬롯 개수를 셉니다. 두 곳에 적으면 어긋납니다.
+ */
+const CONFIGS: Station[] = [
     {
-        name: '정문 광장',
-        slotCount: 5,
-        deviceStatus: 'ONLINE',
-        serviceStatus: 'AVAILABLE',
-        position: { x: 20.1, y: 86.0 },
-    },
-    {
-        name: '중앙도서관',
-        slotCount: 5,
-        deviceStatus: 'ONLINE',
-        serviceStatus: 'AVAILABLE',
-        position: { x: 46.8, y: 30.2 },
-    },
-    {
-        name: '제1공학관',
-        slotCount: 5,
-        deviceStatus: 'ONLINE',
-        serviceStatus: 'AVAILABLE',
-        position: { x: 79.9, y: 38.6 },
-    },
-    {
-        name: '경영관',
-        slotCount: 4,
-        deviceStatus: 'ONLINE',
-        serviceStatus: 'AVAILABLE',
-        position: { x: 28.2, y: 51.6 },
-    },
-    {
-        name: '자연과학관',
-        slotCount: 4,
-        deviceStatus: 'ONLINE',
-        serviceStatus: 'AVAILABLE',
-        position: { x: 59.7, y: 56.2 },
-    },
-    {
-        name: '생활관 A',
-        slotCount: 5,
-        deviceStatus: 'ONLINE',
-        serviceStatus: 'AVAILABLE',
-        position: { x: 82.3, y: 71.5 },
-    },
-    {
-        name: '빌리대역 출구',
-        slotCount: 5,
-        deviceStatus: 'ONLINE',
-        serviceStatus: 'AVAILABLE',
-        position: { x: 16.8, y: 20.2 },
-    },
-    {
-        name: '대운동장',
-        slotCount: 3,
-        // 장치가 끊긴 대여소. `ERROR` 와 구분되는 상태입니다.
-        deviceStatus: 'OFFLINE',
-        serviceStatus: 'MAINTENANCE',
-        position: { x: 50.0, y: 81.5 },
+        stationId: SEED_STATION.stationId,
+        name: SEED_STATION.name,
+        serviceStatus: SEED_STATION.serviceStatus,
+        deviceStatus: SEED_STATION.deviceStatus,
+        slotCount: SEED_SLOTS.length,
+        position: SEED_STATION.position,
+        // 아래는 buildSlots 로 채웁니다. 여기 값은 쓰이지 않습니다.
+        available: 0,
+        capacity: SEED_SLOTS.length,
+        damaged: 0,
+        adminReview: 0,
+        unknownOccupancy: 0,
     },
 ];
-
-/** 집계 없이 설정만 담은 대여소. 슬롯 생성의 입력값입니다. */
-const CONFIGS: Station[] = SEEDS.map((seed, index) => ({
-    stationId: mockUuid(MOCK_NS.station, index + 1),
-    name: seed.name,
-    serviceStatus: seed.serviceStatus,
-    deviceStatus: seed.deviceStatus,
-    slotCount: seed.slotCount,
-    position: seed.position,
-    // 아래는 buildSlots 로 채웁니다. 여기 값은 쓰이지 않습니다.
-    available: 0,
-    capacity: seed.slotCount,
-    damaged: 0,
-    adminReview: 0,
-    unknownOccupancy: 0,
-}));
 
 /**
  * 슬롯을 세어 집계를 채운 대여소.
@@ -151,4 +87,4 @@ export function listStations(): Station[] {
 }
 
 /** 목록 화면 상단에 표시하는 집계 기준 시각 */
-export const STATIONS_SYNCED_AT = '2026-07-24 09:20';
+export const STATIONS_SYNCED_AT = SEED_SYNCED_AT;

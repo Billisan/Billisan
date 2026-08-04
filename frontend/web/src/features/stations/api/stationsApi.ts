@@ -1,13 +1,17 @@
 import { env } from '@/config/env';
 import { http } from '@/lib/axios';
 import { errorStatusOf } from '@/lib/api-error';
-import { MODEL_VERSION, aiResultOf, aiScoreOf } from '@/features/inspections/mocks/aiVerdict';
 import { REAL_STATIONS, type StationSeedEntry } from '@/features/stations/api/stationSeed';
 import type { SlotStatusChange } from '@/features/stations/components/SlotStatusDialog';
-import { MOCK_NS, mockUuid } from '@/features/stations/mocks/ids';
-import { buildSlots, inspectionStateOf, slotSeq } from '@/features/stations/mocks/slots';
+import {
+    SEED_ASOF,
+    SEED_MODEL_VERSION,
+    seedInspectionOfSlot,
+    seedRentalOfSlot,
+} from '@/features/stations/mocks/ec2Seed';
+import { buildSlots } from '@/features/stations/mocks/slots';
 import { applyOverride, isInspectionDecided } from '@/features/stations/mocks/slotOverrides';
-import { findStation, listStations, STATIONS_SYNCED_AT } from '@/features/stations/mocks/stations';
+import { findStation, listStations } from '@/features/stations/mocks/stations';
 import type { SlotDetail, SlotSummary, Station } from '@/features/stations/types';
 
 /**
@@ -52,43 +56,54 @@ export interface SlotListResponse {
     items: SlotSummary[];
 }
 
-/** 목업 슬롯에 상세 전용 필드를 붙입니다. */
+/**
+ * 목업 슬롯에 상세 전용 필드를 붙입니다 — 전부 EC2 시드에서 가져옵니다.
+ *
+ * **`latestReturnAttempt` 는 '지금 나가 있는 대여'가 아니라 '최근 반납 시도'입니다.**
+ * 그래서 대여 상태가 `ACTIVE`(아직 안 돌아옴)면 반납 시도가 없어 `null` 입니다.
+ *
+ * 반납 상태를 `COMPLETED` 로 박지 않습니다. 시드 문서 「참고」가 짚은 대로 반납 상태
+ * 머신이 이 시드에서 완주하지 않아 실제로는 `PHYSICAL_DONE`(물리 완료·서버 반영 전)
+ * 로 뜹니다. 목업이 `COMPLETED` 라고 하면 실 API 로 갈아탄 순간 배지가 달라집니다.
+ */
 function toDetail(station: Station, slot: SlotSummary): SlotDetail {
-    const seq = slotSeq(station, slot.slotNumber);
-    const seeded = inspectionStateOf(station, slot.slotNumber);
-    // 관리자가 방금 판정했으면 그 결과가 우선입니다.
-    const reviewStatus = seeded
+    const inspection = seedInspectionOfSlot(slot.slotNumber);
+    const rental = seedRentalOfSlot(slot.slotNumber);
+    // 관리자가 방금 판정했으면 그 결과가 시드값을 이깁니다.
+    const reviewStatus = inspection
         ? isInspectionDecided(slot.slotId)
             ? ('DECIDED' as const)
-            : seeded
+            : inspection.reviewStatus
         : null;
     const decided = reviewStatus === 'DECIDED';
 
     return {
         ...slot,
         stationId: station.stationId,
-        latestReturnAttempt: seeded
-            ? {
-                  returnAttemptId: mockUuid(MOCK_NS.returnAttempt, seq),
-                  rentalId: mockUuid(MOCK_NS.rental, seq),
-                  status: 'COMPLETED',
-              }
-            : null,
-        latestInspection: reviewStatus
-            ? {
-                  inspectionId: mockUuid(MOCK_NS.inspection, seq),
-                  aiResult: aiResultOf(slot, decided),
-                  aiScore: aiScoreOf(slot, decided),
-                  modelVersion: MODEL_VERSION,
-                  processedAt: slot.updatedAt,
-                  reviewStatus,
-                  decision: decided
-                      ? slot.itemCondition === 'DAMAGED'
-                          ? 'DAMAGED'
-                          : 'NORMAL'
-                      : null,
-              }
-            : null,
+        latestReturnAttempt:
+            rental?.returnAttemptId != null
+                ? {
+                      returnAttemptId: rental.returnAttemptId,
+                      rentalId: rental.rentalId,
+                      status: rental.status === 'COMPLETED' ? 'COMPLETED' : 'PHYSICAL_DONE',
+                  }
+                : null,
+        latestInspection:
+            inspection && reviewStatus
+                ? {
+                      inspectionId: inspection.inspectionId,
+                      aiResult: inspection.aiResult,
+                      aiScore: inspection.aiScore,
+                      modelVersion: SEED_MODEL_VERSION,
+                      processedAt: inspection.processedAt,
+                      reviewStatus,
+                      // 방금 판정한 건이면 슬롯 품질이 결과입니다. 아니면 시드값 그대로.
+                      decision: !decided
+                          ? null
+                          : (inspection.decision ??
+                            (slot.itemCondition === 'DAMAGED' ? 'DAMAGED' : 'NORMAL')),
+                  }
+                : null,
         updatedBy: null,
     };
 }
@@ -182,8 +197,13 @@ export const stationsApi = {
              *
              * 계약상 `asOf` 는 "집계 기준 서버 시각" 이라 실 API 에서는 서버가 채웁니다.
              * 목업은 자기 데이터가 언제 것인지를 말해야 맞습니다.
+             *
+             * **표시용 문자열(`STATIONS_SYNCED_AT`)이 아니라 `SEED_ASOF` 입니다.** 스펙이
+             * 이 필드를 `date-time` 으로 정했는데 예전에는 `'2026-07-24 09:20'` 같은 표시
+             * 형식을 넣고 있었습니다. 화면은 두 형식을 다 견디지만(`formatServerTime`),
+             * 계약을 어기는 값을 목업이 내보내면 실 API 로 갈아탈 때 차이가 드러납니다.
              */
-            asOf: STATIONS_SYNCED_AT,
+            asOf: SEED_ASOF,
         };
 
         for (const slot of slots) {
