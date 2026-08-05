@@ -12,6 +12,9 @@ import java.util.UUID;
 @Table(name = "user_account")
 public class UserAccount {
 
+    /** P0 데모는 단일 대학 전제라 school_name 컬럼 없이 고정 문자열로 응답한다. */
+    public static final String SCHOOL_NAME = "빌리대학교";
+
     @Id
     @Column(name = "user_id", columnDefinition = "CHAR(9)", updatable = false, nullable = false)
     private String userId;

@@ -55,6 +55,12 @@ public class Rental {
     @Column(name = "ended_at")
     private LocalDateTime endedAt;
 
+    @Column(name = "failure_code", length = 100)
+    private String failureCode;
+
+    @Column(name = "failed_at")
+    private LocalDateTime failedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -138,6 +144,14 @@ public class Rental {
 
     public LocalDateTime getEndedAt() {
         return endedAt;
+    }
+
+    public String getFailureCode() {
+        return failureCode;
+    }
+
+    public LocalDateTime getFailedAt() {
+        return failedAt;
     }
 
     public LocalDateTime getCreatedAt() {

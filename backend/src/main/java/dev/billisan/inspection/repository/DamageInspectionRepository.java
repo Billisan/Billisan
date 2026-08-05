@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -24,6 +25,21 @@ public interface DamageInspectionRepository extends JpaRepository<DamageInspecti
      * 최신 검수는 먼저 {@code return_attempt_id}를 알아낸 뒤 이 메서드로 조회한다.
      */
     Optional<DamageInspection> findFirstByReturnAttemptIdOrderByCreatedAtDesc(UUID returnAttemptId);
+
+    /**
+     * ALERT-001 — 미판정(reviewedBy IS NULL) + 비정상(aiResult가 NORMAL이 아니거나, 실패로
+     * NULL) 검수만 rental과 조인해 사용자별로 직접 조회한다. 사용자의 전체 rentalId 목록을
+     * 먼저 메모리에 올린 뒤 IN 절로 넘기지 않는다.
+     */
+    @Query("""
+            select di from DamageInspection di
+            join Rental r on r.rentalId = di.rentalId
+            where r.userId = :userId
+              and di.reviewedBy is null
+              and (di.aiResult is null or di.aiResult <> :normal)
+            """)
+    List<DamageInspection> findRequiringReviewByUserId(
+            @Param("userId") String userId, @Param("normal") DamageInspection.AiResult normal);
 
     /** 판정(decide) CAS의 lost update 방지용 — {@link SlotRepository#findByIdForUpdate}와 동일 이유. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)

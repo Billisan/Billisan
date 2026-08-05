@@ -64,9 +64,11 @@ class UserAuthServiceTests {
 
         UserLoginResponse response = userAuthService.login(new UserLoginRequest(LOGIN_ID, PASSWORD));
 
-        assertThat(response.userRef()).isEqualTo(userRef);
-        assertThat(response.userRef()).isNotEqualTo(USER_ID);
-        assertThat(response.faceRegistered()).isFalse();
+        assertThat(response.user().userId()).isEqualTo(userRef);
+        assertThat(response.user().userId()).isNotEqualTo(USER_ID);
+        assertThat(response.user().displayName()).isEqualTo("Eligible Fixture User");
+        assertThat(response.user().schoolName()).isEqualTo(UserAccount.SCHOOL_NAME);
+        assertThat(response.user().faceRegistered()).isFalse();
         assertThat(response.tokenType()).isEqualTo("Bearer");
     }
 
