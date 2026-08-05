@@ -49,6 +49,7 @@ public class ReturnAttemptService {
                         "사용자의 활성 대여를 찾을 수 없습니다: " + userRef));
 
         rental.returning();
+        rentalRepository.flush();
 
         ReturnAttempt returnAttempt;
         try {
