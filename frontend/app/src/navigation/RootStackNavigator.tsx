@@ -2,12 +2,14 @@ import type { NavigatorScreenParams } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { Text, View } from 'react-native'
 import { ChatbotScreen } from '../screens/SCR-APP-CHATBOT-001/ChatbotScreen'
+import { NotificationScreen } from '../screens/SCR-APP-NOTIFICATION-001/NotificationScreen'
 import type { TabParamList } from './TabNavigator'
 import { TabNavigator } from './TabNavigator'
 
 export type RootStackParamList = {
   Tabs: NavigatorScreenParams<TabParamList>
   Chatbot: undefined
+  Notification: undefined
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
@@ -36,6 +38,11 @@ export function RootStackNavigator() {
         name="Chatbot"
         component={ChatbotScreen}
         options={{ headerTitle: ChatbotHeaderTitle, headerBackButtonDisplayMode: 'minimal' }}
+      />
+      <Stack.Screen
+        name="Notification"
+        component={NotificationScreen}
+        options={{ title: '알림', headerBackButtonDisplayMode: 'minimal' }}
       />
     </Stack.Navigator>
   )
