@@ -9,6 +9,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/${MYSQL_DATABASE}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      SPRING_DATASOURCE_HIKARI_CONNECTION_INIT_SQL: "SET time_zone = '+09:00'"
       JWT_SECRET: ${JWT_SECRET}
       MQTT_BROKER_URL: tcp://mosquitto:1883
       GMS_KEY: ${GMS_KEY}
@@ -36,8 +37,9 @@ services:
     restart: unless-stopped
     # Flyway V14가 만드는 트리거 생성에 필요(ci.yml의 테스트 MySQL 컨테이너와 동일 옵션).
     # 이게 없으면 binlog가 켜진 상태에서 트리거 생성이 거부되어 V14에서 마이그레이션이 실패한다.
-    command: --log-bin-trust-function-creators=1
+    command: --log-bin-trust-function-creators=1 --default-time-zone=+09:00
     environment:
+      TZ: Asia/Seoul
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
