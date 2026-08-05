@@ -92,7 +92,7 @@ export function HistoryScreen() {
         schoolName={headerQuery.data?.user.schoolName ?? ''}
         alertCount={headerQuery.data?.alertCount ?? 0}
       />
-      <View className="mb-4 flex-row gap-2 px-6 pt-4">
+      <View className="mb-4 flex-row justify-between p-6">
         {FILTERS.map((item) => (
           <Pressable
             key={item.value}
@@ -102,7 +102,7 @@ export function HistoryScreen() {
             }`}
           >
             <Text
-              className={`text-xs font-bold ${filter === item.value ? 'text-text' : 'text-text-secondary'}`}
+              className={`text-sm font-bold ${filter === item.value ? 'text-text' : 'text-text-secondary'}`}
             >
               {item.label}
             </Text>
@@ -114,11 +114,16 @@ export function HistoryScreen() {
         className="flex-1"
         contentContainerClassName="gap-4 px-6 pb-24 pt-2"
         refreshControl={
-          <RefreshControl refreshing={historyQuery.isRefetching} onRefresh={() => historyQuery.refetch()} />
+          <RefreshControl
+            refreshing={historyQuery.isRefetching}
+            onRefresh={() => historyQuery.refetch()}
+          />
         }
       >
         {items.length === 0 && (
-          <Text className="mt-10 text-center text-sm text-text-secondary">{EMPTY_MESSAGE[filter]}</Text>
+          <Text className="mt-10 text-center text-sm text-text-secondary">
+            {EMPTY_MESSAGE[filter]}
+          </Text>
         )}
 
         {monthGroups.map((group) => (
@@ -127,7 +132,9 @@ export function HistoryScreen() {
             monthLabel={group.label}
             items={group.items}
             expandedId={expandedId}
-            onToggleExpand={(rentalId) => setExpandedId((prev) => (prev === rentalId ? null : rentalId))}
+            onToggleExpand={(rentalId) =>
+              setExpandedId((prev) => (prev === rentalId ? null : rentalId))
+            }
           />
         ))}
       </ScrollView>

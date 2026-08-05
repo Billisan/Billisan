@@ -11,6 +11,7 @@ const MIN_DELAY_MS = 300
 const MAX_DELAY_MS = 800
 
 // 필터·상태 Chip·정산 뱃지 조합을 한 화면에서 확인할 수 있도록 상태별 1건씩 구성.
+// 대여 기한은 1일(24시간) 고정(2026-08-05 사용자 확인, DEC-SF-005 해소) — dueAt은 항상 rentedAt+24h.
 const MOCK_ITEMS: RentalHistoryItem[] = [
   {
     rentalId: 'mock-history-001',
@@ -19,7 +20,7 @@ const MOCK_ITEMS: RentalHistoryItem[] = [
     returnStationName: null,
     rentedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
     endedAt: null,
-    dueAt: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString(),
+    dueAt: new Date(Date.now() + 23 * 60 * 60 * 1000).toISOString(),
     settlementAmount: 0,
     settlementStatus: null,
     failureCode: null,
@@ -32,7 +33,7 @@ const MOCK_ITEMS: RentalHistoryItem[] = [
     returnStationName: '학생회관 앞',
     rentedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     endedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000).toISOString(),
-    dueAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000).toISOString(),
+    dueAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
     settlementAmount: 0,
     settlementStatus: null,
     failureCode: null,
@@ -44,8 +45,9 @@ const MOCK_ITEMS: RentalHistoryItem[] = [
     checkoutStationName: '공학관 1호관',
     returnStationName: '중앙도서관 1층',
     rentedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    endedAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
-    dueAt: new Date(Date.now() - 6.5 * 24 * 60 * 60 * 1000).toISOString(),
+    // 기한(rentedAt+24h)보다 늦게 반납 → 연체료 발생, 미정산으로 남은 케이스.
+    endedAt: new Date(Date.now() - 5.5 * 24 * 60 * 60 * 1000).toISOString(),
+    dueAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
     settlementAmount: 1000,
     settlementStatus: 'PENDING',
     failureCode: null,

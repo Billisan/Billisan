@@ -18,8 +18,9 @@ const SCENARIOS: Record<MockScenario, CurrentRentalDetail | null> = {
     checkoutSlotId: 'mock-slot-001',
     checkoutSlotNumber: 1,
     checkoutStation: { stationId: 'mock-station-001', name: '중앙도서관 1층' },
+    // 대여 기한은 1일(24시간) 고정(2026-08-05 사용자 확인, DEC-SF-005 해소).
     rentedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-    dueAt: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString(),
+    dueAt: new Date(Date.now() + 23 * 60 * 60 * 1000).toISOString(),
     overdueDays: 0,
     calculatedOverdueAmount: 0,
     latestReturnAttempt: null,
@@ -32,6 +33,7 @@ const SCENARIOS: Record<MockScenario, CurrentRentalDetail | null> = {
     checkoutSlotId: 'mock-slot-002',
     checkoutSlotNumber: 2,
     checkoutStation: { stationId: 'mock-station-001', name: '중앙도서관 1층' },
+    // 대여 기한 1일(24시간) 그대로 유지 — 30시간 전 대여 + 24시간 기한 = 6시간 전 초과.
     rentedAt: new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString(),
     dueAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
     overdueDays: 1,

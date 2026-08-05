@@ -61,8 +61,11 @@ export function HistoryItemCard({ item, expanded, onPress }: HistoryItemCardProp
 
   return (
     <Pressable onPress={onPress} className="gap-3 rounded-2xl bg-white p-5 active:opacity-90">
-      <View className="flex-row items-center justify-between">
-        <Text className="text-base font-bold text-text">{item.checkoutStationName}</Text>
+      <View className="flex-row items-center justify-between gap-2">
+        <Text className="flex-1 text-base font-bold text-text">
+          {item.checkoutStationName}
+          {item.returnStationName ? ` → ${item.returnStationName}` : ''}
+        </Text>
         <View className={`rounded-full px-3 py-1 ${chip.bgClass}`}>
           <Text className={`text-xs font-bold ${chip.textClass}`}>{chip.label}</Text>
         </View>
@@ -82,9 +85,6 @@ export function HistoryItemCard({ item, expanded, onPress }: HistoryItemCardProp
 
       {expanded && (
         <View className="gap-1 border-t border-disabled pt-3">
-          <Text className="text-xs text-text-secondary">
-            반납 대여소: {item.returnStationName ?? '반납 전'}
-          </Text>
           <Text className="text-xs text-text-secondary">반납 기한: {formatDateTime(item.dueAt)}</Text>
           {item.failureCode && (
             <Text className="text-xs text-error-text">

@@ -22,10 +22,11 @@ const SCENARIOS: Record<MockScenario, HomeSummary> = {
       rentalId: 'mock-rental-001',
       status: RENTAL_STATUS.ACTIVE,
       checkoutStationName: '중앙도서관 1층',
+      // 대여 기한은 1일(24시간) 고정(2026-08-05 사용자 확인, DEC-SF-005 해소).
       rentedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-      dueAt: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString(),
+      dueAt: new Date(Date.now() + 23 * 60 * 60 * 1000).toISOString(),
       overdue: false,
-      remainingFreeSeconds: 5 * 60 * 60,
+      remainingFreeSeconds: 23 * 60 * 60,
     },
     pendingSettlement: { count: 0, totalAmount: 0 },
     alertCount: 1,
