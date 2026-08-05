@@ -1,15 +1,18 @@
 package dev.billisan.rental.repository;
 
 import dev.billisan.rental.domain.Rental;
+import dev.billisan.rental.domain.Rental.Status;
 import jakarta.persistence.LockModeType;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface RentalRepository extends JpaRepository<Rental, UUID> {
+public interface RentalRepository extends JpaRepository<Rental, UUID>, JpaSpecificationExecutor<Rental> {
 
     Optional<Rental> findByRentalRequestId(String rentalRequestId);
 
@@ -25,4 +28,10 @@ public interface RentalRepository extends JpaRepository<Rental, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select r from Rental r where r.rentalId = :rentalId")
     Optional<Rental> findByIdForUpdate(@Param("rentalId") UUID rentalId);
+
+    /** RENTAL-001 — 진행 중(REQUESTED/ACTIVE/RETURNING) 대여는 사용자당 최대 1건이다. */
+    Optional<Rental> findFirstByUserIdAndStatusInOrderByRequestedAtDesc(String userId, List<Status> statuses);
+
+    /** ALERT-001 — RECOVERY_REQUIRED·ADMIN_REVIEW 파생 알림을 걸기 위한 사용자 대여 전체 조회. */
+    List<Rental> findByUserId(String userId);
 }

@@ -66,6 +66,16 @@ gms:
   # 두고 2000으로 올림. 팀 확정 수치는 아님.
   max-tokens: 2000
 
+# WEATHER-001 — 기상청 API 허브 초단기예보(getUltraSrtFcst, typ02 지점 조회). P0는 위경도를
+# 그대로 쓰지 않고 역삼(역삼역 인근) 격자좌표로 고정한다(2026-08-04 팀 결정,
+# nx/ny는 기상청 공식 LCC 격자 변환식으로 산출·역삼역·선릉역 좌표와 교차검증 완료).
+weather:
+  kma:
+    api-key: ${KMA_API_KEY:}
+    base-url: https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstInfoService_2.0
+    nx: 61
+    ny: 125
+
 chatbot:
   knowledge-location: "classpath:knowledge/*.md"
   # CHATBOT_MESSAGE_TOO_LONG 임계값 — 팀 확정 수치 아님, MVP 기본값(CLAUDE.md "미확정
