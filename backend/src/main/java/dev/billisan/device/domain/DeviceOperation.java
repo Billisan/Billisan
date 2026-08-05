@@ -124,9 +124,17 @@ public class DeviceOperation {
         this.updatedAt = requestedAt;
     }
 
+    /**
+     * 장치(Pi)가 보고하는 evidence.observedAt은 초 단위까지만 온다(소수점 없음) — requestedAt을
+     * 그대로 마이크로초로 두면, 명령 발행부터 물리 반응까지 1초 미만으로 끝났을 때 초 단위로
+     * 잘린 observedAt이 숫자상 더 이르게 보여 CK_DEVICE_OPERATION_LIFECYCLE_TIME_ORDER를
+     * 위반할 수 있다(EC2 실측 확인). withNano(0)로 같은 정밀도(초 단위)로 맞추면 이 비교가
+     * 항상 안전하다 — 버림은 순서를 보존하는 연산이라 별도의 보정치가 필요 없다.
+     */
     public static DeviceOperation request(UUID stationId, UUID slotId, OperationType operationType) {
         return new DeviceOperation(
-                UUID.randomUUID(), stationId, slotId, UUID.randomUUID().toString(), operationType, LocalDateTime.now());
+                UUID.randomUUID(), stationId, slotId, UUID.randomUUID().toString(), operationType,
+                LocalDateTime.now().withNano(0));
     }
 
     public boolean isTerminal() {
