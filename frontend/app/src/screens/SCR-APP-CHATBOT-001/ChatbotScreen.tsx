@@ -116,7 +116,11 @@ export function ChatbotScreen() {
       goToInquiry()
       return
     }
-    // OPEN_HISTORY(Phase 8)·OPEN_MAP(Phase 9)은 대상 화면이 아직 없어 버튼만 두고 라우팅은 자리만 둔다.
+    if (action.type === CHATBOT_ACTION_TYPE.OPEN_HISTORY) {
+      navigation.navigate('Tabs', { screen: 'History' })
+      return
+    }
+    // OPEN_MAP(Phase 8 지도)은 대상 화면이 아직 없어 버튼만 두고 라우팅은 자리만 둔다.
   }
 
   return (

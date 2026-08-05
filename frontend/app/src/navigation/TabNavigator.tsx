@@ -1,6 +1,8 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons'
+import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import type { NavigatorScreenParams } from '@react-navigation/native'
+import { Pressable } from 'react-native'
 import { HistoryScreen } from '../screens/SCR-APP-HISTORY-001/HistoryScreen'
 import { HomeScreen } from '../screens/SCR-APP-HOME-001/HomeScreen'
 import { MapScreen } from '../screens/SCR-APP-STATION-001/MapScreen'
@@ -16,6 +18,29 @@ export type TabParamList = {
 
 const Tab = createBottomTabNavigator<TabParamList>()
 
+// 활성 탭 필(pill)에 테두리를 주고 높이를 키우기 위한 커스텀 tabBarButton(2026-08-05 사용자 확인) —
+// tabBarActiveBackgroundColor만으로는 border를 줄 수 없다. React Navigation이 이 커스텀 버튼에
+// focused 여부를 accessibilityState가 아니라 'aria-selected' prop으로 전달해서 그걸로 판정한다.
+function TabBarButton({ children, style, ref: _ref, ...rest }: BottomTabBarButtonProps) {
+  const focused = rest['aria-selected'] === true
+
+  return (
+    <Pressable
+      {...rest}
+      style={[
+        style,
+        {
+          height: 52,
+          borderWidth: focused ? 1.5 : 0,
+          borderColor: focused ? '#FFD700' : 'transparent',
+        },
+      ]}
+    >
+      {children}
+    </Pressable>
+  )
+}
+
 // 2026-07-31 사용자 와이어프레임(PDF) 확인 후 하단 탭을 홈/지도/내역조회/마이페이지로 변경.
 // 챗봇(SCR-APP-CHATBOT-001)은 탭이 아니라 홈 화면 안의 플로팅 버튼으로 들어가는 구조라
 // 탭에서 뺐다 — 실제 연결은 홈 화면 구현(Phase 3)에서 마저 진행한다.
@@ -30,6 +55,7 @@ export function TabNavigator() {
         tabBarInactiveTintColor: '#5F5E5E',
         tabBarActiveBackgroundColor: '#FFEDC0',
         tabBarItemStyle: { marginHorizontal: 6, marginVertical: 8, borderRadius: 16 },
+        tabBarButton: (props) => <TabBarButton {...props} />,
       }}
     >
       <Tab.Screen

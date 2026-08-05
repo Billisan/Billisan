@@ -61,7 +61,11 @@ export function HomeScreen() {
 
   return (
     <Screen edges={['right', 'bottom', 'left']}>
-      <AppHeader schoolName={user.schoolName} alertCount={alertCount} />
+      <AppHeader
+        schoolName={user.schoolName}
+        alertCount={alertCount}
+        onPressAlert={() => rootNavigation.navigate('Notification')}
+      />
       <ScrollView
         className="flex-1"
         contentContainerClassName="gap-6 px-6 pb-24 pt-6"
