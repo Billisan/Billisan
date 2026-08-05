@@ -7,10 +7,13 @@ import dev.billisan.weather.dto.WeatherForecastResponse.Item.Condition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.http.HttpClient;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -39,6 +42,10 @@ public class WeatherService {
     private static final DateTimeFormatter BASE_TIME_FORMAT = DateTimeFormatter.ofPattern("HHmm");
     private static final int PUBLISH_AVAILABLE_MINUTE = 45;
 
+    /** 기상청 API 허브 장애·지연이 요청 스레드를 무한정 붙잡지 않도록 짧게 제한한다. */
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);
+    private static final Duration READ_TIMEOUT = Duration.ofSeconds(3);
+
     private static final String CATEGORY_PRECIPITATION_PROBABILITY = "POP";
     private static final String CATEGORY_PRECIPITATION_TYPE = "PTY";
     private static final String CATEGORY_SKY = "SKY";
@@ -54,7 +61,10 @@ public class WeatherService {
             @Value("${weather.kma.api-key:}") String apiKey,
             @Value("${weather.kma.nx}") int nx,
             @Value("${weather.kma.ny}") int ny) {
-        this.restClient = restClientBuilder.baseUrl(baseUrl).build();
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
+                HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build());
+        requestFactory.setReadTimeout(READ_TIMEOUT);
+        this.restClient = restClientBuilder.baseUrl(baseUrl).requestFactory(requestFactory).build();
         this.apiKey = apiKey;
         this.nx = nx;
         this.ny = ny;

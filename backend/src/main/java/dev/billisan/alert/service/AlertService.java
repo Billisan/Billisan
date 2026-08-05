@@ -4,8 +4,6 @@ import dev.billisan.alert.dto.AlertListResponse;
 import dev.billisan.global.exception.UserNotFoundException;
 import dev.billisan.inspection.domain.DamageInspection;
 import dev.billisan.inspection.repository.DamageInspectionRepository;
-import dev.billisan.rental.domain.Rental;
-import dev.billisan.rental.repository.RentalRepository;
 import dev.billisan.returns.domain.ReturnAttempt;
 import dev.billisan.returns.repository.ReturnAttemptRepository;
 import dev.billisan.settlement.domain.Settlement;
@@ -31,19 +29,16 @@ import java.util.UUID;
 public class AlertService {
 
     private final UserAccountRepository userAccountRepository;
-    private final RentalRepository rentalRepository;
     private final SettlementRepository settlementRepository;
     private final ReturnAttemptRepository returnAttemptRepository;
     private final DamageInspectionRepository damageInspectionRepository;
 
     public AlertService(
             UserAccountRepository userAccountRepository,
-            RentalRepository rentalRepository,
             SettlementRepository settlementRepository,
             ReturnAttemptRepository returnAttemptRepository,
             DamageInspectionRepository damageInspectionRepository) {
         this.userAccountRepository = userAccountRepository;
-        this.rentalRepository = rentalRepository;
         this.settlementRepository = settlementRepository;
         this.returnAttemptRepository = returnAttemptRepository;
         this.damageInspectionRepository = damageInspectionRepository;
@@ -68,18 +63,13 @@ public class AlertService {
                 .map(AlertListResponse.Item::unsettled)
                 .forEach(alerts::add);
 
-        List<UUID> rentalIds = rentalRepository.findByUserId(userId).stream().map(Rental::getRentalId).toList();
-        if (!rentalIds.isEmpty()) {
-            returnAttemptRepository.findByRentalIdInAndStatus(rentalIds, ReturnAttempt.Status.RECOVERY_REQUIRED).stream()
-                    .map(AlertListResponse.Item::recoveryRequired)
-                    .forEach(alerts::add);
+        returnAttemptRepository.findByUserIdAndStatus(userId, ReturnAttempt.Status.RECOVERY_REQUIRED).stream()
+                .map(AlertListResponse.Item::recoveryRequired)
+                .forEach(alerts::add);
 
-            damageInspectionRepository.findByRentalIdIn(rentalIds).stream()
-                    .filter(inspection -> inspection.getReviewedBy() == null
-                            && inspection.getAiResult() != DamageInspection.AiResult.NORMAL)
-                    .map(AlertListResponse.Item::adminReview)
-                    .forEach(alerts::add);
-        }
+        damageInspectionRepository.findRequiringReviewByUserId(userId, DamageInspection.AiResult.NORMAL).stream()
+                .map(AlertListResponse.Item::adminReview)
+                .forEach(alerts::add);
 
         alerts.sort(Comparator.comparing(AlertListResponse.Item::occurredAt).reversed());
         return alerts;

@@ -1,5 +1,7 @@
 package dev.billisan.global.paging;
 
+import dev.billisan.global.exception.InvalidRequestException;
+
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
@@ -13,7 +15,13 @@ public final class OffsetCursor {
         if (cursor == null || cursor.isBlank()) {
             return 0;
         }
-        return Integer.parseInt(new String(Base64.getDecoder().decode(cursor), StandardCharsets.UTF_8));
+        try {
+            return Integer.parseInt(new String(Base64.getDecoder().decode(cursor), StandardCharsets.UTF_8));
+        } catch (IllegalArgumentException e) {
+            // Base64.decode()의 IllegalArgumentException과 Integer.parseInt()의
+            // NumberFormatException(IllegalArgumentException 하위 클래스)을 함께 잡는다.
+            throw new InvalidRequestException("올바르지 않은 cursor 값입니다.", e);
+        }
     }
 
     public static String encode(int offset) {

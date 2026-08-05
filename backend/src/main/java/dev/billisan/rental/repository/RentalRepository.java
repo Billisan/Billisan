@@ -31,7 +31,4 @@ public interface RentalRepository extends JpaRepository<Rental, UUID>, JpaSpecif
 
     /** RENTAL-001 — 진행 중(REQUESTED/ACTIVE/RETURNING) 대여는 사용자당 최대 1건이다. */
     Optional<Rental> findFirstByUserIdAndStatusInOrderByRequestedAtDesc(String userId, List<Status> statuses);
-
-    /** ALERT-001 — RECOVERY_REQUIRED·ADMIN_REVIEW 파생 알림을 걸기 위한 사용자 대여 전체 조회. */
-    List<Rental> findByUserId(String userId);
 }

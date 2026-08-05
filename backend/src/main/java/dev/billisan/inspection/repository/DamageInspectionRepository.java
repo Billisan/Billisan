@@ -26,8 +26,20 @@ public interface DamageInspectionRepository extends JpaRepository<DamageInspecti
      */
     Optional<DamageInspection> findFirstByReturnAttemptIdOrderByCreatedAtDesc(UUID returnAttemptId);
 
-    /** ALERT-001 ADMIN_REVIEW 파생 — 미판정(reviewedBy IS NULL) 여부는 서비스에서 필터링한다. */
-    List<DamageInspection> findByRentalIdIn(List<UUID> rentalIds);
+    /**
+     * ALERT-001 — 미판정(reviewedBy IS NULL) + 비정상(aiResult가 NORMAL이 아니거나, 실패로
+     * NULL) 검수만 rental과 조인해 사용자별로 직접 조회한다. 사용자의 전체 rentalId 목록을
+     * 먼저 메모리에 올린 뒤 IN 절로 넘기지 않는다.
+     */
+    @Query("""
+            select di from DamageInspection di
+            join Rental r on r.rentalId = di.rentalId
+            where r.userId = :userId
+              and di.reviewedBy is null
+              and (di.aiResult is null or di.aiResult <> :normal)
+            """)
+    List<DamageInspection> findRequiringReviewByUserId(
+            @Param("userId") String userId, @Param("normal") DamageInspection.AiResult normal);
 
     /** 판정(decide) CAS의 lost update 방지용 — {@link SlotRepository#findByIdForUpdate}와 동일 이유. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)

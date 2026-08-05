@@ -30,6 +30,18 @@ public interface ReturnAttemptRepository extends JpaRepository<ReturnAttempt, UU
 
     Optional<ReturnAttempt> findFirstByRentalIdOrderByCreatedAtDesc(UUID rentalId);
 
+    /**
+     * ALERT-001 — 사용자의 특정 상태 반납 시도만 rental과 조인해 직접 조회한다. 사용자의
+     * 전체 rentalId 목록을 먼저 메모리에 올린 뒤 IN 절로 넘기지 않는다 — 누적 대여가 많은
+     * 사용자에서 IN 절이 비대해지는 걸 피한다.
+     */
+    @Query("""
+            select ra from ReturnAttempt ra
+            join Rental r on r.rentalId = ra.rentalId
+            where r.userId = :userId and ra.status = :status
+            """)
+    List<ReturnAttempt> findByUserIdAndStatus(@Param("userId") String userId, @Param("status") Status status);
+
     /** 완료 시도는 대여당 최대 1건(CLAUDE.md) — 이력 목록의 반납 대여소명 배치 조회용. */
     List<ReturnAttempt> findByRentalIdInAndStatus(List<UUID> rentalIds, Status status);
 
