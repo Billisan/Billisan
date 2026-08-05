@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.billisan.device.domain.DeviceOperation;
 import dev.billisan.device.dto.DeviceTerminalEventRequest;
 import dev.billisan.device.dto.DeviceTerminalEventRequest.EventType;
-import dev.billisan.device.dto.DeviceTerminalEventRequest.OperationType;
 import dev.billisan.device.dto.DeviceTerminalEventResponse;
 import dev.billisan.device.repository.DeviceOperationRepository;
 import dev.billisan.global.exception.DeviceOperationNotFoundException;
@@ -60,7 +59,7 @@ public class DeviceTerminalEventService {
 
     @Transactional
     public DeviceTerminalEventResponse recordTerminalEvent(DeviceTerminalEventRequest request) {
-        return request.operationType() == OperationType.LOCK
+        return request.returnAttemptId() != null
                 ? recordReturnLockEvent(request)
                 : recordRentalUnlockEvent(request);
     }
