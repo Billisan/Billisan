@@ -3,7 +3,8 @@ import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import Animated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated'
 import { sendChatbotMessage } from '../../api/chatbotApi'
 import { Screen } from '../../components/layout/Screen'
 import type { RootStackParamList } from '../../navigation/RootStackNavigator'
@@ -28,6 +29,18 @@ const SUGGESTED_QUESTIONS = [
   '가까운 대여소를 알려주세요',
 ]
 
+// INITIAL 화면 인사 문구(목업 반영, 2026-08-05 사용자 확인) — CHATBOT-001 응답이 아닌 화면 로컬 상수.
+const GREETING_MESSAGE = '안녕하세요, 빌리예요! 우산 대여 서비스 이용 중 궁금하신 점을 무엇이든 도와드릴게요.'
+
+// 서버 타임스탬프가 없어(§5.13) 화면 진입 시각을 그대로 표시(사용자 확인, 2026-08-05).
+function formatTimeLabel(date: Date) {
+  const hours = date.getHours()
+  const period = hours < 12 ? '오전' : '오후'
+  const displayHour = hours % 12 === 0 ? 12 : hours % 12
+  const displayMinutes = date.getMinutes().toString().padStart(2, '0')
+  return `오늘, ${period} ${displayHour}:${displayMinutes}`
+}
+
 let requestSeq = 0
 
 // SCR-APP-CHATBOT-001(app-screen-flow.md §2.9). 대화 이력은 이 컴포넌트의 로컬 state에만 유지되고
@@ -37,6 +50,12 @@ export function ChatbotScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [errorState, setErrorState] = useState<'timeout' | 'error' | null>(null)
+  const [sessionStartedAt] = useState(() => new Date())
+  // KeyboardAvoidingView의 Android 'height' behavior가 동작하지 않아(edge-to-edge 상태에서 RN 코어의
+  // Keyboard 이벤트가 불안정한 게 흔한 원인) reanimated의 네이티브 키보드 인셋 추적으로 교체(2026-08-05).
+  // 새 라이브러리 추가가 아니라 이미 package.json에 있는 react-native-reanimated를 처음 사용하는 것.
+  const keyboard = useAnimatedKeyboard({ isStatusBarTranslucentAndroid: true })
+  const keyboardAvoidingStyle = useAnimatedStyle(() => ({ paddingBottom: keyboard.height.value }))
 
   const mutation = useMutation({
     mutationFn: sendChatbotMessage,
@@ -99,33 +118,40 @@ export function ChatbotScreen() {
 
   return (
     <Screen background="white">
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <Animated.View style={[{ flex: 1 }, keyboardAvoidingStyle]}>
         <ScrollView className="flex-1" contentContainerClassName="gap-4 px-6 py-6">
-          {messages.length === 0 && (
-            <View className="gap-3">
-              <Text className="text-base font-bold text-text">무엇을 도와드릴까요?</Text>
-              <View className="flex-row flex-wrap gap-2">
-                {SUGGESTED_QUESTIONS.map((question) => (
-                  <Pressable
-                    key={question}
-                    onPress={() => handleSend(question)}
-                    className="rounded-full border border-disabled px-4 py-2 active:opacity-70"
-                  >
-                    <Text className="text-sm text-text">{question}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          )}
+          <View className="self-center rounded-full bg-background px-3 py-1">
+            <Text className="text-xs text-text-secondary">{formatTimeLabel(sessionStartedAt)}</Text>
+          </View>
+
+          <View className="max-w-[85%] self-start rounded-2xl rounded-tl-none bg-background px-4 py-3">
+            <Text className="text-lg text-text">{GREETING_MESSAGE}</Text>
+          </View>
+
+          <View className="self-start rounded-2xl border border-disabled bg-white">
+            {SUGGESTED_QUESTIONS.map((question, index) => (
+              <Pressable
+                key={question}
+                onPress={() => handleSend(question)}
+                className={`px-4 py-3 active:opacity-60 ${
+                  index < SUGGESTED_QUESTIONS.length - 1 ? 'border-b border-disabled' : ''
+                }`}
+              >
+                <Text className="text-lg text-text">{question}</Text>
+              </Pressable>
+            ))}
+          </View>
 
           {messages.map((message) => (
             <View
               key={message.id}
               className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-                message.role === 'user' ? 'self-end bg-primary' : 'self-start bg-secondary'
+                message.role === 'user'
+                  ? 'self-end rounded-tr-none bg-primary'
+                  : 'self-start rounded-tl-none bg-background'
               }`}
             >
-              <Text className="text-sm text-text">{message.text}</Text>
+              <Text className="text-lg text-text">{message.text}</Text>
               {message.fallback && (
                 <Text className="mt-1 text-xs text-text-secondary">정적 안내로 답변드렸어요</Text>
               )}
@@ -134,9 +160,10 @@ export function ChatbotScreen() {
                 message.action.type !== CHATBOT_ACTION_TYPE.NONE && (
                   <Pressable
                     onPress={() => handleAction(message.action!)}
-                    className="mt-2 self-start rounded-full bg-white px-3 py-2 active:opacity-70"
+                    className="mt-2 flex-row items-center gap-1 self-start rounded-full border border-disabled bg-white px-3 py-2 active:opacity-70"
                   >
                     <Text className="text-xs font-bold text-text">{message.action.label}</Text>
+                    <Text className="text-xs font-bold text-text">→</Text>
                   </Pressable>
                 )}
             </View>
@@ -182,14 +209,14 @@ export function ChatbotScreen() {
           <Pressable
             onPress={() => handleSend(input)}
             disabled={mutation.isPending || input.trim() === ''}
-            className={`items-center justify-center rounded-full p-3 ${
-              mutation.isPending || input.trim() === '' ? 'bg-disabled' : 'bg-primary active:opacity-80'
+            className={`items-center justify-center rounded-full bg-primary p-3 ${
+              mutation.isPending || input.trim() === '' ? 'opacity-40' : 'active:opacity-80'
             }`}
           >
             <MaterialCommunityIcons name="send" size={20} color="#1E2A38" />
           </Pressable>
         </View>
-      </KeyboardAvoidingView>
+      </Animated.View>
     </Screen>
   )
 }
