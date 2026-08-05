@@ -21,13 +21,17 @@ import dev.billisan.slot.domain.Slot;
 import dev.billisan.slot.repository.SlotRepository;
 import dev.billisan.user.domain.UserAccount;
 import dev.billisan.user.repository.UserAccountRepository;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** EDGE-DEVICE-001 — Pi가 보고한 장치 Terminal 이벤트를 반영한다(대여/UNLOCK, 반납/LOCK 둘 다). */
 @Service
 public class DeviceTerminalEventService {
+
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private final RentalRepository rentalRepository;
     private final ReturnAttemptRepository returnAttemptRepository;
@@ -202,9 +206,19 @@ public class DeviceTerminalEventService {
                 request.evidence().after().occupancyStatus(),
                 request.evidence().after().lockStatus(),
                 (short) request.evidence().schemaVersion(),
-                request.evidence().observedAt(),
+                toKstLocalDateTime(request.evidence().observedAt()),
                 writeEvidenceJson(request.evidence()),
                 completedAt);
+    }
+
+    /**
+     * 장치 오류·페이로드 누락으로 observedAt이 비어 올 수 있다 — null이면 그대로 null을
+     * 넘긴다(DB 컬럼도 NULL 허용, CK_DEVICE_OPERATION_LIFECYCLE_TIME_ORDER도 NULL은
+     * 통과시킨다). 리뷰로 발견: Instant 전환 전에는 이 케이스가 문제없이 NULL로 저장됐는데,
+     * atZone을 무조건 호출하도록 바꾸면서 NPE로 이벤트 처리 전체가 실패할 뻔했다.
+     */
+    private LocalDateTime toKstLocalDateTime(Instant instant) {
+        return instant == null ? null : instant.atZone(KST).toLocalDateTime();
     }
 
     private String writeEvidenceJson(DeviceTerminalEventRequest.Evidence evidence) {
