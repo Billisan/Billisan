@@ -22,12 +22,15 @@ import dev.billisan.slot.repository.SlotRepository;
 import dev.billisan.user.domain.UserAccount;
 import dev.billisan.user.repository.UserAccountRepository;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** EDGE-DEVICE-001 — Pi가 보고한 장치 Terminal 이벤트를 반영한다(대여/UNLOCK, 반납/LOCK 둘 다). */
 @Service
 public class DeviceTerminalEventService {
+
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private final RentalRepository rentalRepository;
     private final ReturnAttemptRepository returnAttemptRepository;
@@ -202,7 +205,7 @@ public class DeviceTerminalEventService {
                 request.evidence().after().occupancyStatus(),
                 request.evidence().after().lockStatus(),
                 (short) request.evidence().schemaVersion(),
-                request.evidence().observedAt(),
+                request.evidence().observedAt().atZone(KST).toLocalDateTime(),
                 writeEvidenceJson(request.evidence()),
                 completedAt);
     }
