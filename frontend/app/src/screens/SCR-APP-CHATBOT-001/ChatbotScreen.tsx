@@ -30,7 +30,8 @@ const SUGGESTED_QUESTIONS = [
 ]
 
 // INITIAL 화면 인사 문구(목업 반영, 2026-08-05 사용자 확인) — CHATBOT-001 응답이 아닌 화면 로컬 상수.
-const GREETING_MESSAGE = '안녕하세요, 빌리예요! 우산 대여 서비스 이용 중 궁금하신 점을 무엇이든 도와드릴게요.'
+const GREETING_MESSAGE =
+  '안녕하세요, 빌리예요! 우산 대여 서비스 이용 중 궁금하신 점을 무엇이든 도와드릴게요.'
 
 // 서버 타임스탬프가 없어(§5.13) 화면 진입 시각을 그대로 표시(사용자 확인, 2026-08-05).
 function formatTimeLabel(date: Date) {
@@ -73,7 +74,9 @@ export function ChatbotScreen() {
       ])
     },
     onError: (error: Error) => {
-      setErrorState(error.message === CHATBOT_ERROR_CODE.CHATBOT_PROVIDER_TIMEOUT ? 'timeout' : 'error')
+      setErrorState(
+        error.message === CHATBOT_ERROR_CODE.CHATBOT_PROVIDER_TIMEOUT ? 'timeout' : 'error',
+      )
     },
   })
 
@@ -198,13 +201,13 @@ export function ChatbotScreen() {
           )}
         </ScrollView>
 
-        <View className="flex-row items-center gap-2 border-t border-disabled px-4 py-3">
+        <View className="flex-row items-center gap-2 border-t border-disabled p-3">
           <TextInput
             value={input}
             onChangeText={setInput}
             placeholder="궁금한 점을 물어보세요"
             editable={!mutation.isPending}
-            className="flex-1 rounded-full border border-disabled px-4 py-3 text-base text-text"
+            className="flex-1 rounded-full border border-disabled p-3 text-base text-text"
           />
           <Pressable
             onPress={() => handleSend(input)}
