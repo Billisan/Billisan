@@ -1,6 +1,11 @@
 import type { AlertItem } from '../types/alert'
 import { ALERT_ACTION_TYPE, ALERT_TYPE } from '../types/alert'
 
+type MockScenario = 'WITH_ITEMS' | 'EMPTY'
+
+// 수동 테스트 시나리오 — 'EMPTY'로 바꾸면 알림이 아예 없는 예외 화면(NotificationScreen.tsx)을 확인할 수 있다.
+const MOCK_SCENARIO: MockScenario = 'WITH_ITEMS'
+
 const MIN_DELAY_MS = 300
 const MAX_DELAY_MS = 800
 
@@ -54,7 +59,7 @@ export function getAlerts(): Promise<AlertItem[]> {
 
   return new Promise((resolve) => {
     setTimeout(() => {
-      resolve(MOCK_ITEMS)
+      resolve(MOCK_SCENARIO === 'EMPTY' ? [] : MOCK_ITEMS)
     }, delay)
   })
 }
