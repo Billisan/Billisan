@@ -7,6 +7,11 @@ interface GetRentalHistoryParams {
   size?: number
 }
 
+type MockScenario = 'WITH_ITEMS' | 'EMPTY'
+
+// 수동 테스트 시나리오 — 'EMPTY'로 바꾸면 이용 내역이 아예 없는 예외 화면(HistoryScreen.tsx)을 확인할 수 있다.
+const MOCK_SCENARIO: MockScenario = 'EMPTY'
+
 const MIN_DELAY_MS = 300
 const MAX_DELAY_MS = 800
 
@@ -85,7 +90,8 @@ const MOCK_ITEMS: RentalHistoryItem[] = [
 // 페이지네이션 UI 자체는 이번 Phase 범위 밖이라 nextCursor는 항상 null(app-screen-flow.md §2.6).
 export function getRentalHistory({ status = 'ALL' }: GetRentalHistoryParams = {}): Promise<RentalHistoryResponse> {
   const delay = MIN_DELAY_MS + Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS)
-  const items = status === 'ALL' ? MOCK_ITEMS : MOCK_ITEMS.filter((item) => item.status === status)
+  const source = MOCK_SCENARIO === 'EMPTY' ? [] : MOCK_ITEMS
+  const items = status === 'ALL' ? source : source.filter((item) => item.status === status)
 
   return new Promise((resolve) => {
     setTimeout(() => {

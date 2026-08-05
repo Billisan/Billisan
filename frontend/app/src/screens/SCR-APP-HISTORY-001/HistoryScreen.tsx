@@ -1,3 +1,6 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons'
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs'
+import { useNavigation } from '@react-navigation/native'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
@@ -8,6 +11,7 @@ import { ErrorBanner } from '../../components/common/ErrorBanner'
 import { LoadingScreen } from '../../components/common/LoadingScreen'
 import { AppHeader } from '../../components/layout/AppHeader'
 import { Screen } from '../../components/layout/Screen'
+import type { TabParamList } from '../../navigation/TabNavigator'
 import type { HistoryStatusFilter, RentalHistoryItem } from '../../types/history'
 import { HistoryMonthGroup } from './HistoryMonthGroup'
 
@@ -58,6 +62,7 @@ function groupByMonth(items: RentalHistoryItem[]): MonthGroup[] {
 }
 
 export function HistoryScreen() {
+  const navigation = useNavigation<BottomTabNavigationProp<TabParamList>>()
   const [filter, setFilter] = useState<HistoryStatusFilter>('ALL')
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
@@ -120,8 +125,20 @@ export function HistoryScreen() {
           />
         }
       >
-        {items.length === 0 && (
-          <Text className="mt-10 text-center text-sm text-text-secondary">
+        {/* 전체 필터인데도 0건이면 지금까지 대여 이력 자체가 없는 것 — 다른 필터의 빈 상태보다
+            눈에 띄는 예외 화면으로 안내한다. */}
+        {filter === 'ALL' && items.length === 0 && (
+          <View className="mt-16 items-center gap-2 px-6">
+            <Text className="text-lg font-bold text-text">아직 이용 내역이 없어요</Text>
+            <Text className="text-center text-base text-text-secondary mb-6">
+              우산을 대여하면 여기에서 이용 내역을 확인할 수 있어요
+            </Text>
+            <Button label="대여소 찾기" onPress={() => navigation.navigate('Map')} />
+          </View>
+        )}
+
+        {filter !== 'ALL' && items.length === 0 && (
+          <Text className="mt-10 text-center text-base text-text-secondary">
             {EMPTY_MESSAGE[filter]}
           </Text>
         )}
