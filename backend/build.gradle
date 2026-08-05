@@ -51,6 +51,17 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
+// CI 컨테이너(eclipse-temurin, 기본 UTC)와 개발자 로컬 OS 로케일이 Asia/Seoul이 아닌
+// 경우에도 항상 같은 결과를 내도록 명시적으로 고정한다 — JDBC URL의
+// serverTimezone=Asia/Seoul과 짝을 맞추는 값(Dockerfile의 동일 설정과 같은 이유, EC2에서
+// 실측 확인된 버그). CI(ci.yml)의 docker run이 TZ를 안 정해서 지금까지 계속 UTC로
+// 돌아가고 있었다 — device_operation류 시각 제약을 직접 건드리는 테스트가 아직 없어서
+// 안 드러났을 뿐이다.
 tasks.named('test') {
 	useJUnitPlatform()
+	jvmArgs '-Duser.timezone=Asia/Seoul'
+}
+
+tasks.named('bootRun') {
+	jvmArgs '-Duser.timezone=Asia/Seoul'
 }
