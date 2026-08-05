@@ -81,7 +81,7 @@ public class RentalCheckoutService {
         DeviceOperation deviceOperation =
                 deviceOperationRepository.save(DeviceOperation.request(stationId, slot.getSlotId(), OperationType.UNLOCK));
 
-        return toResult(rental, slot, deviceOperation);
+        return toResult(rental, user, slot, deviceOperation);
     }
 
     private UserAccount requireUser(UUID userRef) {
@@ -89,10 +89,12 @@ public class RentalCheckoutService {
                 .orElseThrow(() -> new UserNotFoundException("userRef로 사용자를 찾을 수 없습니다: " + userRef));
     }
 
-    private RentalCheckoutResponse toResult(Rental rental, Slot slot, DeviceOperation deviceOperation) {
+    private RentalCheckoutResponse toResult(Rental rental, UserAccount user, Slot slot, DeviceOperation deviceOperation) {
         return new RentalCheckoutResponse(
                 rental.getRentalId(),
                 rental.getStatus().name(),
+                user.getUserId(),
+                user.getName(),
                 slot.getSlotId(),
                 slot.getSlotNumber(),
                 new DeviceOperationView(

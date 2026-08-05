@@ -62,7 +62,7 @@ public class ReturnAttemptService {
             throw new IdempotencyConflictException("동시에 재전송된 requestId입니다: " + requestId);
         }
 
-        return toResult(returnAttempt);
+        return toResult(returnAttempt, user);
     }
 
     private UserAccount requireUser(UUID userRef) {
@@ -70,11 +70,13 @@ public class ReturnAttemptService {
                 .orElseThrow(() -> new UserNotFoundException("userRef로 사용자를 찾을 수 없습니다: " + userRef));
     }
 
-    private ReturnAttemptResponse toResult(ReturnAttempt returnAttempt) {
+    private ReturnAttemptResponse toResult(ReturnAttempt returnAttempt, UserAccount user) {
         return new ReturnAttemptResponse(
                 returnAttempt.getReturnAttemptId(),
                 returnAttempt.getRentalId(),
                 returnAttempt.getStatus().name(),
+                user.getUserId(),
+                user.getName(),
                 returnAttempt.getReturnSlotId());
     }
 }
