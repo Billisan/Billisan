@@ -1,15 +1,17 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
+import type { NavigatorScreenParams } from '@react-navigation/native'
 import { HistoryScreen } from '../screens/SCR-APP-HISTORY-001/HistoryScreen'
 import { HomeScreen } from '../screens/SCR-APP-HOME-001/HomeScreen'
 import { MapScreen } from '../screens/SCR-APP-STATION-001/MapScreen'
+import type { MyPageStackParamList } from './MyPageStackNavigator'
 import { MyPageStackNavigator } from './MyPageStackNavigator'
 
 export type TabParamList = {
   Home: undefined
   Map: undefined
   History: undefined
-  MyPage: undefined
+  MyPage: NavigatorScreenParams<MyPageStackParamList>
 }
 
 const Tab = createBottomTabNavigator<TabParamList>()

@@ -1,4 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons'
+import { useNavigation } from '@react-navigation/native'
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useQuery } from '@tanstack/react-query'
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
 import { getHomeSummary } from '../../api/homeApi'
@@ -8,6 +10,7 @@ import { ErrorBanner } from '../../components/common/ErrorBanner'
 import { LoadingScreen } from '../../components/common/LoadingScreen'
 import { AppHeader } from '../../components/layout/AppHeader'
 import { Screen } from '../../components/layout/Screen'
+import type { RootStackParamList } from '../../navigation/RootStackNavigator'
 
 const RAIN_RECOMMEND_THRESHOLD = 50
 
@@ -30,6 +33,7 @@ function weatherIconName(precipitationProbability: number): MaterialCommunityIco
 }
 
 export function HomeScreen() {
+  const rootNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const homeQuery = useQuery({ queryKey: ['home'], queryFn: getHomeSummary })
   // 홈 요약과 날씨는 독립된 쿼리로 분리한다 — 날씨 실패가 대여·정산 표시 전체를 막지 않아야 한다
   // (PROJECT_GUIDE.md §4.2 "Partial Success" 원칙).
@@ -151,9 +155,8 @@ export function HomeScreen() {
         <View className="h-64 rounded-2xl bg-white" />
       </ScrollView>
 
-      {/* 챗봇(SCR-APP-CHATBOT-001) 실제 연결은 Phase 4에서 진행 — 지금은 자리만 배치. */}
       <Pressable
-        onPress={() => {}}
+        onPress={() => rootNavigation.navigate('Chatbot')}
         className="absolute bottom-8 right-6 rounded-full bg-secondary px-5 py-3 active:opacity-80"
       >
         <Text className="text-sm font-bold text-text">챗봇</Text>
