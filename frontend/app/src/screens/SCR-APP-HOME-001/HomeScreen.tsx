@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
 import { getHomeSummary } from '../../api/homeApi'
 import { getShortTermWeather } from '../../api/weatherApi'
+import ChatbotIcon from '../../assets/chatbot.svg'
 import { Button } from '../../components/common/Button'
 import { ErrorBanner } from '../../components/common/ErrorBanner'
 import { LoadingScreen } from '../../components/common/LoadingScreen'
@@ -157,9 +158,9 @@ export function HomeScreen() {
 
       <Pressable
         onPress={() => rootNavigation.navigate('Chatbot')}
-        className="absolute bottom-8 right-6 rounded-full bg-secondary px-5 py-3 active:opacity-80"
+        className="absolute bottom-8 right-6 active:opacity-80"
       >
-        <Text className="text-sm font-bold text-text">챗봇</Text>
+        <ChatbotIcon width={68} height={68} />
       </Pressable>
     </Screen>
   )
