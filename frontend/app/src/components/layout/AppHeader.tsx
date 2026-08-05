@@ -29,7 +29,11 @@ export function AppHeader({ schoolName, alertCount, onPressAlert }: AppHeaderPro
       <View className="flex-1 items-end">
         <Pressable onPress={onPressAlert} disabled={!onPressAlert} className="relative active:opacity-70">
           <MaterialCommunityIcons name="bell-outline" size={24} color="#1E2A38" />
-          {alertCount > 0 && <View className="absolute right-0 top-0 h-2.5 w-2.5 rounded-full bg-primary" />}
+          {alertCount > 0 && (
+            <View className="absolute -right-2 -top-2 h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1">
+              <Text className="text-xs font-bold text-text">{alertCount > 9 ? '9+' : alertCount}</Text>
+            </View>
+          )}
         </Pressable>
       </View>
     </View>

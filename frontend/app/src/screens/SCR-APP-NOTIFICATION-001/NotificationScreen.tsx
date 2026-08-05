@@ -60,7 +60,9 @@ function groupByDay(items: AlertItem[]): DayGroup[] {
 
       group = {
         key,
-        label: isToday ? '오늘' : `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`,
+        label: isToday
+          ? '오늘'
+          : `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`,
         items: [],
       }
       groupByKey.set(key, group)
@@ -138,9 +140,12 @@ export function NotificationScreen() {
     <Screen background="white">
       <ScrollView
         className="flex-1"
-        contentContainerClassName="gap-3 px-6 py-6"
+        contentContainerClassName="gap-6 px-6 pb-6"
         refreshControl={
-          <RefreshControl refreshing={alertsQuery.isRefetching} onRefresh={() => alertsQuery.refetch()} />
+          <RefreshControl
+            refreshing={alertsQuery.isRefetching}
+            onRefresh={() => alertsQuery.refetch()}
+          />
         }
       >
         {items.length === 0 && (
@@ -153,7 +158,7 @@ export function NotificationScreen() {
         )}
 
         {dayGroups.map((group) => (
-          <View key={group.key} className="gap-3">
+          <View key={group.key} className="gap-4">
             <Text className="text-sm font-bold text-text-secondary">{group.label}</Text>
 
             {group.items.map((item) => {
@@ -168,7 +173,7 @@ export function NotificationScreen() {
                         markRead(item.alertKey)
                         swipeableMethods.close()
                       }}
-                      className="ml-2 items-center justify-center rounded-2xl bg-primary px-5 active:opacity-80"
+                      className="ml-3 items-center justify-center rounded-2xl bg-primary px-5 active:opacity-80"
                     >
                       <Text className="text-sm font-bold text-text">읽음</Text>
                     </Pressable>
@@ -176,17 +181,19 @@ export function NotificationScreen() {
                 >
                   <Pressable
                     onPress={() => handlePress(item)}
-                    className={`relative rounded-2xl p-4 active:opacity-80 ${
-                      isRead ? 'bg-white' : 'bg-secondary'
+                    className={`relative gap-4 rounded-2xl p-4 active:opacity-80 ${
+                      isRead ? 'bg-white border border-border' : 'bg-secondary'
                     }`}
                   >
                     {!isRead && (
-                      <View className="absolute right-3 top-3 h-2 w-2 rounded-full bg-primary" />
+                      <View className="absolute right-4 top-4 h-2 w-2 rounded-full bg-primary" />
                     )}
-                    <View className="gap-1 pr-4">
-                      <Text className="text-sm font-bold text-text">{item.title}</Text>
-                      <Text className="text-sm text-text-secondary">{item.message}</Text>
-                      <Text className="text-xs text-text-secondary">{formatRelativeTime(item.occurredAt)}</Text>
+                    <View className="gap-1 pl-2 pr-3">
+                      <Text className="text-lg font-bold text-text">{item.title}</Text>
+                      <Text className="text-base text-text">{item.message}</Text>
+                      <Text className="text-sm text-text-secondary">
+                        {formatRelativeTime(item.occurredAt)}
+                      </Text>
                     </View>
                   </Pressable>
                 </Swipeable>
