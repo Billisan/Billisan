@@ -22,6 +22,7 @@ import {
     decisionHint,
     decisionText,
     deriveSlotDisplayStatus,
+    displayItemCondition,
     formatSlotLabel,
     formatUpdatedAt,
     ITEM_CONDITION_TONE,
@@ -117,6 +118,8 @@ export function SlotDetailPage() {
     // 'SL-03-01' 은 station_code + slot_number 로 만드는 표시 라벨입니다. DB 컬럼이 아닙니다.
     const slotLabel = formatSlotLabel(slot.slotNumber);
     const display = deriveSlotDisplayStatus(slot);
+    // 우산이 없는 슬롯은 품질을 단정하지 않습니다 (`displayItemCondition` 주석 참고).
+    const displayedCondition = displayItemCondition(slot);
     // 상세 응답의 latestInspection / latestReturnAttempt 를 그대로 씁니다 (12-R B-4).
     const inspection = slot.latestInspection;
     const history = buildSlotHistory(slot);
@@ -195,7 +198,7 @@ export function SlotDetailPage() {
                  * **`occupancyStatus`(점유)는 뺐습니다.** 같은 이유가 이 축에는 서지 않았습니다.
                  * 배지가 `이용 가능`이면 점유는 반드시 `OCCUPIED`, `빈 슬롯`이면 반드시 `EMPTY`
                  * 라서 파생 조건상 되읽을 수 있고, 그 밖의 경우도 바로 아래 우산 상태 줄이
-                 * 대신 말해 줍니다(빈 슬롯이면 `itemCondition` 이 `null` 이라 `—`).
+                 * 대신 말해 줍니다.
                  *
                  * 잃는 것은 `점유 확인 불가`(센서가 우산 유무를 못 읽음) 하나뿐입니다. 그 경우
                  * 4축이 어느 조합에도 안 맞아 요약 배지가 `UNKNOWN` 으로 떨어지므로, 이상이
@@ -217,12 +220,13 @@ export function SlotDetailPage() {
                          * 갈리는 축**이라 훑을 때 색으로 먼저 걸려야 합니다. 잠금은 사실
                          * 진술이라 글자로 충분합니다.
                          *
-                         * 빈 슬롯이면 `itemCondition` 이 null 입니다 — 없는 값을 지어내지
-                         * 않고, 배지도 안 답니다(색은 상태가 있다는 뜻입니다).
+                         * **우산이 없으면 상태를 말하지 않습니다** — 규칙과 근거는
+                         * `displayItemCondition` 주석에 있습니다. 요약 배지가 「빈 슬롯」인데
+                         * 이 줄만 「정상」이 되는 어긋남을 막습니다.
                          */}
-                        {slot.itemCondition ? (
-                            <Badge tone={ITEM_CONDITION_TONE[slot.itemCondition]}>
-                                {ITEM_CONDITION_LABEL[slot.itemCondition]}
+                        {displayedCondition ? (
+                            <Badge tone={ITEM_CONDITION_TONE[displayedCondition]}>
+                                {ITEM_CONDITION_LABEL[displayedCondition]}
                             </Badge>
                         ) : (
                             <span className="text-[13px] font-semibold text-brand-muted">—</span>
