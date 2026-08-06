@@ -2,6 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useMutation } from '@tanstack/react-query'
+import * as Crypto from 'expo-crypto'
 import { useState } from 'react'
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import Animated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated'
@@ -90,7 +91,7 @@ export function ChatbotScreen() {
     setMessages((prev) => [...prev, { id: `user-${requestSeq}`, role: 'user', text: trimmed }])
     setInput('')
     setErrorState(null)
-    mutation.mutate({ requestId: `mock-request-${requestSeq}`, message: trimmed })
+    mutation.mutate({ requestId: Crypto.randomUUID(), message: trimmed })
   }
 
   const handleRetry = () => {
@@ -100,7 +101,7 @@ export function ChatbotScreen() {
     }
     requestSeq += 1
     setErrorState(null)
-    mutation.mutate({ requestId: `mock-request-${requestSeq}`, message: lastUserMessage.text })
+    mutation.mutate({ requestId: Crypto.randomUUID(), message: lastUserMessage.text })
   }
 
   const goToInquiry = () => {

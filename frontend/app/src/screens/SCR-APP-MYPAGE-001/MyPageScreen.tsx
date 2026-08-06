@@ -129,7 +129,6 @@ export function MyPageScreen() {
           </View>
           <View>
             <Text className="text-lg font-bold text-text">{profile.displayName}님</Text>
-            <Text className="text-sm text-text-secondary">{profile.studentNumber}</Text>
           </View>
         </View>
 
