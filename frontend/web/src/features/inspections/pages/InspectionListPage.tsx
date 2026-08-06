@@ -24,6 +24,7 @@ import { InspectLink } from '@/features/stations/components/InspectLink';
 import { DataTable, TBody, TableCard, Td, Th, THead, Tr } from '@/shared/components/DataTable';
 import { FilterSelect, type FilterOption } from '@/shared/components/FilterSelect';
 import { PageBar } from '@/shared/components/PageBar';
+import { todayInKst } from '@/shared/lib/datetime';
 import { shortId } from '@/shared/lib/shortId';
 import { mockSyncedAt, syncedAtLabel } from '@/shared/lib/syncedAt';
 import { EmptyState, ErrorState, LoadingState } from '@/shared/components/PageState';
@@ -95,16 +96,18 @@ const PERIOD_OPTIONS: readonly FilterOption<string>[] = [
  * 기간 선택 → `from` 날짜.
  *
  * 기준일이 모드에 따라 다릅니다 — 목업은 데이터가 목업 기준 시각(07-24)에 고정돼 있어
- * 거기서 거꾸로 세야 하고, 실 API 는 오늘부터 셉니다. 서버가 시각을 UTC 로 기록하는 것이
- * 실측돼서(팀 확인 중) 실모드 기준일도 UTC 로 만듭니다 — 문자열 비교 대상이 같은 축이어야
- * 경계일이 안 밀립니다.
+ * 거기서 거꾸로 세야 하고, 실 API 는 오늘부터 셉니다.
+ *
+ * **실모드 기준일을 UTC 에서 KST 로 바꿨습니다.** 예전에는 "서버가 UTC 로 기록한다"는
+ * 관측(팀 확인 중이던 값)을 근거로 `new Date().toISOString()` 을 썼습니다. 그런데
+ * `BILL-154` 가 MySQL 세션 시간대를 `+09:00` 으로 고정하면서 서버가 KST 로
+ * 확정됐습니다. 비교 대상이 KST 인데 기준일만 UTC 면 **00:00~09:00 사이에 하루가
+ * 밀려** 「최근 7일」이 8일치를 잡습니다.
  */
 function fromDateOf(period: string): string {
     if (period === 'ALL') return '';
 
-    const base = env.useMockData
-        ? INSPECTIONS_SYNCED_AT.slice(0, 10)
-        : new Date().toISOString().slice(0, 10);
+    const base = env.useMockData ? INSPECTIONS_SYNCED_AT.slice(0, 10) : todayInKst();
     const [y, m, d] = base.split('-').map(Number);
     const at = new Date(Date.UTC(y, m - 1, d - Number(period)));
     const pad = (value: number) => String(value).padStart(2, '0');

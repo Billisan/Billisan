@@ -193,16 +193,31 @@ export type SlotOccupancyStatus = 'EMPTY' | 'OCCUPIED' | 'UNKNOWN';
 export type LockStatus = 'LOCKED' | 'UNLOCKED' | 'UNKNOWN' | 'ERROR';
 
 /**
- * 응답의 품질 상태. **`EMPTY` 가 없습니다** — 빈 슬롯은 `null` 로 옵니다 (12-R B-4).
- * 예전에 "ERD 는 EMPTY, API 는 null" 로 열어 뒀던 충돌이 API 쪽으로 확정됐습니다.
+ * 슬롯의 품질 상태.
+ *
+ * ⚠️ **`EMPTY` 와 `null` 이 둘 다 옵니다. 둘 다 「빈 슬롯」입니다.**
+ *
+ * 12-R B-4 는 "빈 슬롯은 `null`" 이라고 했고 우리는 그 말만 믿고 `EMPTY` 를 타입에서
+ * 뺐습니다. 그런데 백엔드 구현은 다릅니다 — 응답 DTO 가 변환 없이 컬럼을 그대로
+ * 내보내고(`getItemCondition() == null ? null : ....name()`), 시연 시드 SQL 은 빈 슬롯에
+ * **문자열 `'EMPTY'`** 를 넣습니다(`30-rental-return-preconditions.sql`).
+ *
+ * 그러면 `"EMPTY"` 가 응답에 실려 오는데 타입에 없으니 `ITEM_CONDITION_TONE['EMPTY']`
+ * 가 `undefined` 가 되어 **배지가 색 없이** 그려집니다. 목업에서는 절대 안 나타나고
+ * 실 API 에서만 드러나는 종류입니다.
+ *
+ * 그래서 **둘 다 받습니다.** 어느 쪽이 오든 화면은 같게 그립니다.
+ * TODO: 백엔드가 `null` 로 통일하면 `EMPTY` 를 빼세요 — 그전까지는 남겨 둡니다.
  */
-export type SlotItemCondition = 'NORMAL' | 'DAMAGED' | 'REPAIRABLE' | 'UNKNOWN';
+export type SlotItemCondition = 'EMPTY' | 'NORMAL' | 'DAMAGED' | 'REPAIRABLE' | 'UNKNOWN';
 
 /**
  * `ADMIN-SLOT-STATUS-001` 요청의 `targetItemCondition`.
- * 요청에는 `EMPTY` 가 **포함**됩니다. 응답 enum 과 달라서 타입을 나눠 둡니다.
+ *
+ * 응답 타입과 값 집합이 같아졌지만 **별칭을 남깁니다** — 요청과 응답은 서로 다른 계약이라
+ * 한쪽이 바뀌어도 다른 쪽이 따라가면 안 됩니다.
  */
-export type SlotTargetItemCondition = 'EMPTY' | SlotItemCondition;
+export type SlotTargetItemCondition = SlotItemCondition;
 
 /**
  * `ADMIN-SLOT-001` 의 `items[]` 한 줄. **응답에 있는 필드가 전부입니다.**
@@ -500,6 +515,14 @@ export const SLOT_SERVICE_TONE: Record<SlotServiceStatus, BadgeTone> = {
  * 판정하지 않은 자리이고, 그게 `ADMIN_REVIEW`(판정 대기)와 같은 결입니다.
  */
 export const ITEM_CONDITION_TONE: Record<SlotItemCondition, BadgeTone> = {
+    /**
+     * 빈 슬롯 — 파생 배지의 `EMPTY` 와 **같은 회색**입니다.
+     *
+     * 서버가 `null` 대신 `"EMPTY"` 를 보낼 때 쓰입니다(시연 시드가 그렇습니다).
+     * 색이 없으면 배지가 밋밋하게 그려져, 목록의 「빈 슬롯」과 상세의 「우산 상태」가
+     * 같은 상태인데 달라 보입니다.
+     */
+    EMPTY: 'slate',
     NORMAL: 'green',
     DAMAGED: 'red',
     /*

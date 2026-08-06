@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 
 import { Panel } from '@/features/dashboard/components/Panel';
 import { PanelState } from '@/features/dashboard/components/PanelState';
-import { useSettlements } from '@/features/history/hooks/useHistory';
 import { useInspectionList } from '@/features/inspections/hooks/useInspections';
 import { cn } from '@/lib/utils';
 
@@ -17,6 +16,12 @@ import { cn } from '@/lib/utils';
  *
  * 그래서 목록이 실제로 보여 주는 것과 **같은 조회에서 셉니다.** 눌러서 들어간 화면의
  * 건수와 어긋나지 않습니다.
+ *
+ * **「미정산 처리」를 뺐습니다.** 정산 조회 API 가 관리자 계약에 없어서 뒤에 목업밖에
+ * 없었습니다(`historyApi` 는 실 API 분기조차 없습니다). 실 API 를 붙이면 검수 건수는
+ * 진짜인데 미정산만 지어낸 값이고, 나란히 놓이면 둘 다 진짜로 읽힙니다. 위에서 "틀린
+ * 숫자는 없는 숫자보다 나쁘다"고 한 것과 같은 이유입니다.
+ * 되살리려면 정산 API 가 계약에 들어온 뒤에 하세요 — 목업으로는 되살리지 마세요.
  *
  * TODO: 운영 집계 API(`WEB-API-CAND-001 · P1`)가 확정되면 그 값으로 바꾸세요. 지금
  *       방식은 목록을 받아 세는 것이라, 서버가 cursor 로 잘라 주기 시작하면 첫 쪽만
@@ -36,39 +41,21 @@ function CountBadge({ value }: { value: number | null }) {
 export function QuickActionsCard({ className }: { className?: string }) {
     // 검수 목록과 같은 조건(미처리)으로 셉니다.
     const inspections = useInspectionList({ reviewStatus: 'PENDING', size: 100 });
-    const settlements = useSettlements();
 
     const pendingInspections = inspections.data ? inspections.data.items.length : null;
-    const pendingSettlements = settlements.data
-        ? settlements.data.filter((item) => item.status === 'PENDING').length
-        : null;
 
     /*
      * 조회가 실패하면 숫자 자리에 `—` 가 영원히 남습니다. 불러오는 중과 구분이 안 되고,
      * 눌러 들어가 봐야 뭐가 잘못됐는지 알게 됩니다. 이 영역만 다시 시도할 수 있게
      * 바꿔 끼웁니다 (화면흐름 §16).
      */
-    const failed = inspections.isError || settlements.isError;
+    const failed = inspections.isError;
     const retry = () => {
         if (inspections.isError) void inspections.refetch();
-        if (settlements.isError) void settlements.refetch();
     };
 
     const actions = [
         { label: '파손 검수 대기', count: pendingInspections, to: '/inspections?review=PENDING' },
-        /*
-         * 예전 목적지는 `/settlements` 였는데 빈 자리 화면이었습니다. 정산 관리는
-         * `WEB-API-CAND-005 · P1` 미계약이고 화면흐름 §11.2 의 수동 처리도
-         * `DEFERRED_NOT_CONTRACTED` 라 만들 근거가 없습니다.
-         *
-         * 대신 **이미 있는 정산 이력**의 미정산 필터로 보냅니다. 관리자가 실제로 하려던
-         * 일(미정산이 뭔지 보기)은 그 화면에서 됩니다.
-         */
-        {
-            label: '미정산 처리',
-            count: pendingSettlements,
-            to: '/history/settlements?status=PENDING',
-        },
     ];
 
     if (failed) {

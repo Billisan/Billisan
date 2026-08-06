@@ -6,6 +6,11 @@ import type { SlotSummary } from '@/features/stations/types';
 import { errorCodeOf } from '@/lib/api-error';
 import { qk } from '@/shared/api/queryKeys';
 import { toast } from '@/shared/components/toast/toastStore';
+import {
+    commonAdminErrorOf,
+    fallbackAdminErrorOf,
+    type AdminErrorMessage,
+} from '@/shared/lib/adminError';
 
 /**
  * 재고·슬롯 조회 훅.
@@ -64,6 +69,31 @@ export function useSlotDetail(slotId: string | undefined) {
 }
 
 /**
+ * 슬롯 상태 변경 실패 안내.
+ *
+ * 공통 오류(400·404·403)는 `shared/lib/adminError` 가 다룹니다 — 검수 판정과 같은
+ * 뜻이라 두 곳에 따로 적으면 문구가 갈라집니다. 여기서는 **이 화면에만 있는 것**만
+ * 처리합니다.
+ */
+function slotStatusErrorMessage(error: unknown): AdminErrorMessage {
+    switch (errorCodeOf(error)) {
+        /* 409 — 다른 관리자가 먼저 바꿨습니다. 자동 재적용은 금지입니다(12-R B-6). */
+        case 'SLOT_STATUS_CONFLICT':
+        case 'CONCURRENT_MODIFICATION':
+            return {
+                title: '다른 관리자가 먼저 상태를 변경했습니다',
+                detail: '최신 상태를 다시 확인한 뒤 진행하세요.',
+            };
+
+        default:
+            return (
+                commonAdminErrorOf(error) ??
+                fallbackAdminErrorOf(error, '슬롯 상태를 변경하지 못했습니다')
+            );
+    }
+}
+
+/**
  * ADMIN-SLOT-STATUS-001.
  *
  * 성공하면 슬롯·재고 캐시를 통째로 무효화합니다. 낙관적 갱신(optimistic update)은 쓰지 않습니다 —
@@ -89,25 +119,8 @@ export function useChangeSlotStatus() {
          * 다른 관리자가 먼저 바꾼 상태라 자동 재적용하면 안 되고, 최신 상태를 다시 봐야 합니다.
          */
         onError: (error) => {
-            const code = errorCodeOf(error);
-            /*
-             * **충돌 코드는 `SLOT_STATUS_CONFLICT` 입니다.**
-             *
-             * 검수 판정은 `CONCURRENT_MODIFICATION`, 슬롯 상태 변경은
-             * `SLOT_STATUS_CONFLICT` 로 서버가 갈라 씁니다(백엔드 GlobalExceptionHandler).
-             * 여기서 `CONCURRENT_MODIFICATION` 만 보고 있어서, 실제 충돌이 나면 안내 대신
-             * 원시 코드가 그대로 떴습니다 — 관리자가 뭘 해야 하는지 모릅니다.
-             * 둘 다 받아 두면 서버가 어느 쪽을 주든 같은 안내가 나갑니다.
-             */
-            const conflict = code === 'SLOT_STATUS_CONFLICT' || code === 'CONCURRENT_MODIFICATION';
-            toast.error(
-                conflict
-                    ? '다른 관리자가 먼저 상태를 변경했습니다'
-                    : '슬롯 상태를 변경하지 못했습니다',
-                conflict
-                    ? '최신 상태를 다시 확인한 뒤 진행하세요.'
-                    : `${error.message}${code ? ` (${code})` : ''}`,
-            );
+            const { title, detail } = slotStatusErrorMessage(error);
+            toast.error(title, detail);
             // 서버가 이미 바뀌었을 수 있으니 권위 상태를 다시 읽습니다.
             queryClient.invalidateQueries({ queryKey: qk.slots.all });
         },

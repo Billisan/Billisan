@@ -93,7 +93,9 @@ describe('토큰 보관 금지', () => {
     it('브라우저 영속 저장소에 토큰을 쓰지 않는다', () => {
         /*
          * 12-R B-2·B-3: "응답 후 로그·브라우저 영속 저장 금지".
-         * 새로고침 뒤 신원은 `ADMIN-AUTH-003 GET /auth/me` 로 되살립니다.
+         *
+         * 그래서 **새로고침하면 로그아웃**입니다. 신원을 되살릴 `GET /auth/me` 가
+         * 서버에도 스웨거에도 없습니다 — `authEndpoints.test.ts` 참조.
          */
         localStorage.clear();
         sessionStorage.clear();

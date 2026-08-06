@@ -31,11 +31,25 @@ export default defineConfig({
     },
     server: {
         port: 5173,
-        // 백엔드 공통 응답 규격(/api)에 맞춘 개발용 프록시.
-        // VITE_API_BASE_URL 을 절대 URL로 쓰면 이 프록시는 사용되지 않습니다.
+        /*
+         * 백엔드 공통 응답 규격(/api)에 맞춘 개발용 프록시.
+         *
+         * **실 API 검증도 이 프록시로 하세요.** `VITE_API_BASE_URL` 에 절대 URL 을 넣으면
+         * 프록시를 건너뛰고 브라우저가 서버로 직접 나갑니다. 그러면 주소가 번들에 구워져
+         * **dev 서버를 꺼도 열려 있는 탭이 계속 그 서버로 요청합니다.** 실제로 그 일이
+         * 있었습니다 — 서버를 껐는데도 팀 서버 로그에 우리 요청이 계속 찍혔습니다.
+         *
+         * 프록시로 두면 브라우저가 아는 주소는 `localhost:5173` 뿐입니다. dev 서버가
+         * 죽는 순간 요청은 연결 거부로 끝나고 **팀 서버까지 닿지 못합니다.** CORS 도
+         * 아예 발생하지 않습니다 — 브라우저 입장에선 같은 오리진입니다.
+         *
+         * 접두사가 `VITE_` 가 아닙니다. 그래야 이 주소가 클라이언트 번들에 안 들어갑니다.
+         *
+         *   DEV_API_PROXY_TARGET=http://<host>:8080 npm run dev
+         */
         proxy: {
             '/api': {
-                target: 'http://localhost:8080',
+                target: process.env.DEV_API_PROXY_TARGET ?? 'http://localhost:8080',
                 changeOrigin: true,
             },
         },
