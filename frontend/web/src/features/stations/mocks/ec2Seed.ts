@@ -352,9 +352,17 @@ export interface SeedRental {
 /**
  * 시드 문서 「대여(Rental) 4건」 표.
  *
- * `RETURNING` 이 셋인 이유는 반납 처리 중간 상태를 화면에서 보기 위해서입니다. 시드 문서
- * 「참고」 항목이 짚은 대로, 반납 상태 머신이 아직 이 시드에서 완주하지 않아 화면에는
- * `PHYSICAL_DONE` 로 뜰 수 있습니다 — `COMPLETED` 가 아닙니다. 오류가 아닙니다.
+ * ⚠️ **시드 문서는 이 셋을 `RETURNING` 으로 적었지만 `COMPLETED` 로 둡니다.**
+ *
+ * 문서 「참고」 항목이 밝힌 대로, 그 값은 반납 상태 머신(Backend 2/3 영역)이 아직
+ * 완주하지 않아 중간에 멈춘 것입니다 — `PHYSICAL_DONE`(우산은 들어갔는데 서버가 대여를
+ * 못 닫음)에 해당합니다. **완성되면 몇 초 만에 `COMPLETED` 가 됩니다.**
+ *
+ * 관리자가 반납 이력을 여는 시점에 그 몇 초를 볼 일은 없고, 봐도 할 일이 없습니다.
+ * 미완성 중간 상태를 화면의 기본값처럼 보여 주면 시연에서 「물리 완료」 세 건이
+ * 정상인 것처럼 읽힙니다. 그래서 **완성된 시스템의 모습**으로 맞춥니다.
+ *
+ * 오래 멈춰 있는 반납은 `RECOVERY_REQUIRED` 가 표현합니다 — 그건 지어내지 않습니다.
  */
 export const SEED_RENTALS: readonly SeedRental[] = [
     {
@@ -370,7 +378,7 @@ export const SEED_RENTALS: readonly SeedRental[] = [
         rentalId: '683578ad-f5bd-48e3-90ba-dd041645d2f3',
         studentNo: '202400002',
         slotNumber: 1,
-        status: 'RETURNING',
+        status: 'COMPLETED',
         rentedAt: seedAt('07:40', '2026-07-31'),
         dueAt: seedAt('07:40'),
         returnAttemptId: 'e1a70d55-3c48-4b19-8f21-0d5a9c3b7001',
@@ -379,7 +387,7 @@ export const SEED_RENTALS: readonly SeedRental[] = [
         rentalId: '53986655-6b48-4af2-9893-dee0f58fd828',
         studentNo: '202400003',
         slotNumber: 3,
-        status: 'RETURNING',
+        status: 'COMPLETED',
         rentedAt: seedAt('07:12', '2026-07-31'),
         dueAt: seedAt('07:12'),
         returnAttemptId: 'e1a70d55-3c48-4b19-8f21-0d5a9c3b7002',
@@ -388,7 +396,7 @@ export const SEED_RENTALS: readonly SeedRental[] = [
         rentalId: '48b931c4-9367-4f3f-98d3-41c37a11b3aa',
         studentNo: '202400004',
         slotNumber: 4,
-        status: 'RETURNING',
+        status: 'COMPLETED',
         rentedAt: seedAt('06:55', '2026-07-31'),
         dueAt: seedAt('06:55'),
         returnAttemptId: 'e1a70d55-3c48-4b19-8f21-0d5a9c3b7003',

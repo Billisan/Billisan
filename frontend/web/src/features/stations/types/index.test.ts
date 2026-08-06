@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+    ITEM_CONDITION_TONE,
     SLOT_DISPLAY_TONE,
     SLOT_SERVICE_TONE,
     deriveSlotDisplayStatus,
@@ -305,5 +306,42 @@ describe('슬롯 표시 색', () => {
         for (const status of ['DAMAGED', 'ADMIN_REVIEW', 'OUT_OF_SERVICE', 'UNKNOWN'] as const) {
             expect(SLOT_DISPLAY_TONE[status], status).not.toBe('slate');
         }
+    });
+});
+
+describe('빈 슬롯 품질값 — 서버가 null 대신 "EMPTY" 를 보내도 견딘다', () => {
+    /*
+     * 12-R B-4 는 "빈 슬롯은 `null`" 이라 했지만 **백엔드 구현은 다릅니다.**
+     * 응답 DTO 가 컬럼을 변환 없이 내보내고, 시연 시드 SQL 은 빈 슬롯에 문자열
+     * `'EMPTY'` 를 넣습니다. 그래서 실 API 에서는 `"EMPTY"` 가 옵니다.
+     *
+     * 타입에 없으면 `ITEM_CONDITION_TONE['EMPTY']` 가 `undefined` 가 되어 배지가
+     * 색 없이 그려집니다. 목업에서는 절대 안 나타나는 종류라 테스트로 잠급니다.
+     */
+    it('색이 정의돼 있다 — 배지가 밋밋하게 그려지지 않는다', () => {
+        expect(ITEM_CONDITION_TONE.EMPTY).toBeDefined();
+        // 파생 배지의 「빈 슬롯」과 같은 회색이어야 두 화면이 같은 상태로 읽힙니다.
+        expect(ITEM_CONDITION_TONE.EMPTY).toBe(SLOT_DISPLAY_TONE.EMPTY);
+    });
+
+    it('점유가 비어 있으면 품질값과 무관하게 「빈 슬롯」이다', () => {
+        // 서버가 null 을 주든 "EMPTY" 를 주든 화면은 같아야 합니다.
+        expect(deriveSlotDisplayStatus(slot({ occupancyStatus: 'EMPTY', itemCondition: null }))).toBe(
+            'EMPTY',
+        );
+        expect(
+            deriveSlotDisplayStatus(slot({ occupancyStatus: 'EMPTY', itemCondition: 'EMPTY' })),
+        ).toBe('EMPTY');
+    });
+
+    it('우산이 있다는데 품질이 EMPTY 면 확정하지 않는다', () => {
+        /*
+         * 센서는 「있다」, 품질은 「비었다」 — 모순입니다. 관리자가 방금 「빈 슬롯」으로
+         * 바꿨는데 센서가 아직 못 따라온 경우에도 이렇게 됩니다(서버는 상태 변경 때
+         * 점유를 건드리지 않습니다). 「대여 가능」으로 새면 안 되므로 UNKNOWN 입니다.
+         */
+        expect(
+            deriveSlotDisplayStatus(slot({ occupancyStatus: 'OCCUPIED', itemCondition: 'EMPTY' })),
+        ).toBe('UNKNOWN');
     });
 });

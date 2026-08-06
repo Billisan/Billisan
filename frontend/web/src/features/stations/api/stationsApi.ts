@@ -62,9 +62,8 @@ export interface SlotListResponse {
  * **`latestReturnAttempt` 는 '지금 나가 있는 대여'가 아니라 '최근 반납 시도'입니다.**
  * 그래서 대여 상태가 `ACTIVE`(아직 안 돌아옴)면 반납 시도가 없어 `null` 입니다.
  *
- * 반납 상태를 `COMPLETED` 로 박지 않습니다. 시드 문서 「참고」가 짚은 대로 반납 상태
- * 머신이 이 시드에서 완주하지 않아 실제로는 `PHYSICAL_DONE`(물리 완료·서버 반영 전)
- * 로 뜹니다. 목업이 `COMPLETED` 라고 하면 실 API 로 갈아탄 순간 배지가 달라집니다.
+ * 반납 상태는 대여 상태에서 파생합니다. 시드 대여가 `COMPLETED` 라 반납도 `COMPLETED`
+ * 입니다 — 반납 상태 머신이 완주한 뒤의 모습입니다 (`ec2Seed.ts` 참고).
  */
 function toDetail(station: Station, slot: SlotSummary): SlotDetail {
     const inspection = seedInspectionOfSlot(slot.slotNumber);
@@ -140,31 +139,108 @@ function composeStation(seed: StationSeedEntry, inventory: InventorySummary): St
     };
 }
 
+/**
+ * 명부에 없는 대여소를 위한 표시 정보.
+ *
+ * 서버에서 발견했지만 우리 명부에 이름이 없는 대여소입니다. 이름을 지어내지 않고
+ * **축약 ID 를 그대로 보여 줍니다** — 관리자가 로그·백엔드와 대조할 수 있는 값이고,
+ * 「알 수 없는 대여소」 같은 문구보다 실무에 쓸모가 있습니다.
+ *
+ * 좌표는 ERD 에 컬럼이 없어 어차피 화면 배치값입니다. ID 를 해시해 흩뿌려서 지도에서
+ * 겹치지 않게만 합니다.
+ */
+function fallbackSeedOf(stationId: string): StationSeedEntry {
+    let hash = 0;
+    for (let i = 0; i < stationId.length; i += 1) {
+        hash = (hash * 31 + stationId.charCodeAt(i)) >>> 0;
+    }
+    return {
+        stationId,
+        name: `${stationId.slice(0, 8)}…`,
+        position: { x: 12 + (hash % 76), y: 12 + ((hash >>> 8) % 76) },
+    };
+}
+
+function seedEntryOf(stationId: string): StationSeedEntry {
+    return REAL_STATIONS.find((entry) => entry.stationId === stationId) ?? fallbackSeedOf(stationId);
+}
+
+/**
+ * **서버에 실재하는 대여소 id 를 모읍니다.**
+ *
+ * 대여소 목록 API 가 없어서 예전에는 `stationSeed.ts` 에 UUID 를 박아 두고 그것만
+ * 조회했습니다. 그러면 **DB 가 다시 시드되어 UUID 가 바뀌는 순간 화면이 통째로
+ * 404** 입니다 — 실제로 V19 픽스처가 `22000000…` 로 바뀌면서 그 상황이 됩니다.
+ *
+ * 그래서 명부는 **후보**로만 쓰고, `ADMIN-INSPECTION-001` 응답의 `stationId` 로
+ * 서버에 실재하는 대여소를 함께 발견합니다. 그 API 는 계약에 있고 응답 필수 필드라
+ * 백엔드에 아무것도 요청하지 않아도 됩니다.
+ *
+ * **한계는 알고 씁니다**: 검수가 한 건도 없는 대여소는 발견되지 않습니다. 그런 곳은
+ * 명부에 있어야 보입니다. 그래서 명부를 지우지 않고 합집합으로 둡니다.
+ * TODO: 대여소 목록 API 가 생기면 이 함수를 그 호출로 바꾸세요.
+ */
+async function discoverStationIds(): Promise<string[]> {
+    const seeded = REAL_STATIONS.map((entry) => entry.stationId);
+    try {
+        // inspectionsApi 를 부르지 않습니다 — 그쪽이 이 모듈을 import 해서 순환이 됩니다.
+        const { data } = await http.get<{ items: Array<{ stationId: string }> }>('/inspections', {
+            params: { size: 100 },
+        });
+        return [...new Set([...seeded, ...data.items.map((item) => item.stationId)])];
+    } catch {
+        // 검수 조회가 실패해도 명부만으로 진행합니다. 목록이 비는 것보다 낫습니다.
+        return seeded;
+    }
+}
+
 export const stationsApi = {
     /**
      * 대여소 목록.
      *
-     * **P0 계약에 없는 API 입니다.** 관리자 10개에 대여소 목록이 없어서, 실 모드는
-     * 시드 명부(stationSeed.ts)의 대여소마다 재고 집계를 받아 조립합니다.
+     * **P0 계약에 없는 API 입니다.** 관리자 8개에 대여소 목록이 없어서, 실 모드는
+     * 발견한 대여소마다 재고 집계를 받아 조립합니다.
+     *
+     * **한 곳이 실패해도 나머지는 보여 줍니다.** 예전에는 `Promise.all` 이라 대여소
+     * 하나가 404 면 목록 전체가 오류 화면이 됐습니다. 명부에 낡은 UUID 가 하나만
+     * 섞여 있어도 멀쩡한 대여소가 전부 안 보이는 구조였습니다.
+     *
      * TODO: 대여소 목록 API 가 계약에 들어오면 여기서 http 를 호출하세요.
      */
     list: async (): Promise<Station[]> => {
         if (!env.useMockData) {
-            return Promise.all(
-                REAL_STATIONS.map(async (seed) =>
-                    composeStation(seed, await stationsApi.inventory(seed.stationId)),
-                ),
+            const ids = await discoverStationIds();
+            const settled = await Promise.allSettled(
+                ids.map(async (id) => composeStation(seedEntryOf(id), await stationsApi.inventory(id))),
             );
+            return settled
+                .filter(
+                    (result): result is PromiseFulfilledResult<Station> =>
+                        result.status === 'fulfilled',
+                )
+                .map((result) => result.value);
         }
         return delay(listStations());
     },
 
-    /** 대여소 하나. 목록과 같은 방식입니다. */
+    /**
+     * 대여소 하나.
+     *
+     * 명부에 없어도 **서버에 물어봅니다** — 검수에서 발견한 대여소는 명부에 없지만
+     * 실재하고, 그 상세로 이동할 수 있어야 합니다. 서버가 404 면 `null` 을 돌려
+     * 화면이 「없음」으로 가릅니다 (오류 화면이 아니라).
+     */
     detail: async (stationId: string): Promise<Station | null> => {
         if (!env.useMockData) {
-            const seed = REAL_STATIONS.find((entry) => entry.stationId === stationId);
-            if (!seed) return null;
-            return composeStation(seed, await stationsApi.inventory(stationId));
+            try {
+                return composeStation(
+                    seedEntryOf(stationId),
+                    await stationsApi.inventory(stationId),
+                );
+            } catch (error) {
+                if (errorStatusOf(error) === 404) return null;
+                throw error;
+            }
         }
         return delay(findStation(stationId) ?? null);
     },

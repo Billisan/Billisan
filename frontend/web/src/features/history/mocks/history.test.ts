@@ -245,8 +245,8 @@ describe('반납 상태 자체의 정합성', () => {
     it('정산이 붙은 반납은 파손 검수가 끝난 건이다', () => {
         /*
          * **예전 단언은 틀렸습니다.** "반납이 `COMPLETED` 가 아니면 정산이 없다" 로
-         * 적혀 있었는데, EC2 시드가 반증합니다 — 최학생의 반납은 `PHYSICAL_DONE`
-         * (물리 완료·서버 반영 전)인데 파손 정산 `da4f6574…` 가 이미 붙어 있습니다.
+         * 적혀 있었는데, 반납이 끝나기 전에 관리자가 먼저 판정할 수 있습니다 —
+         * 최학생 건이 그 경우고 파손 정산 `da4f6574…` 가 붙어 있습니다.
          *
          * 정산을 만드는 건 반납 완료가 아니라 **관리자의 파손 판정**입니다
          * (`ADMIN-INSPECTION-003`: 검수·슬롯·정산이 한 트랜잭션). 반납 상태 머신이
@@ -279,7 +279,7 @@ describe('반납 상태 자체의 정합성', () => {
      * 목업이 이력을 지어내던 시절, 반납 상태 열이 상수가 되지 않도록 `PROCESSING`·
      * `COMPLETED`·`RECOVERY_REQUIRED`… 를 골고루 섞어 뒀는지 검사하던 테스트입니다.
      *
-     * EC2 시드에는 반납이 3건뿐이고 전부 `PHYSICAL_DONE` 입니다. 지어낼 수 없습니다 —
+     * EC2 시드에는 반납이 3건뿐이고 전부 `COMPLETED` 입니다. 지어낼 수 없습니다 —
      * 목업을 실제 데이터에 맞추기로 한 이상 다양성은 서버가 만들어야 합니다.
      *
      * **잃은 것을 분명히 적어 둡니다**: 반납 상태 배지·필터가 다섯 값에서 제대로 그려지는지
@@ -441,8 +441,8 @@ describe('대여와 반납의 개수·매칭 관계', () => {
         }
     });
 
-    it('반납중 대여는 반납 시도를 가리킨다', () => {
-        for (const rental of MOCK_RENTALS.filter((item) => item.status === 'RETURNING')) {
+    it('반납이 끝난 대여는 반납 시도를 가리킨다', () => {
+        for (const rental of MOCK_RENTALS.filter((item) => item.status === 'COMPLETED')) {
             expect(rental.returnAttemptId, `대여 ${rental.rentalId}`).not.toBeNull();
         }
     });
