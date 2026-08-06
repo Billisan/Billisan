@@ -21,7 +21,7 @@ vi.mock('@/config/env', () => ({
 }));
 
 import { REAL_STATIONS } from '@/features/stations/api/stationSeed';
-import { stationsApi } from '@/features/stations/api/stationsApi';
+import { __resetAbsentStations, stationsApi } from '@/features/stations/api/stationsApi';
 import { http } from '@/lib/axios';
 import { ApiRequestError } from '@/lib/api-error';
 
@@ -77,6 +77,8 @@ function mockRealMode(get: (url: string) => Promise<unknown>) {
 
 afterEach(() => {
     vi.restoreAllMocks();
+    // 「없는 대여소」 기억은 모듈 전역이라 안 비우면 다음 테스트로 새어 나갑니다.
+    __resetAbsentStations();
 });
 
 describe('대여소 목록 — 한 곳이 실패해도 나머지는 살린다', () => {
@@ -96,6 +98,53 @@ describe('대여소 목록 — 한 곳이 실패해도 나머지는 살린다', 
 
         const stations = await stationsApi.list();
         expect(stations.map((s) => s.stationId)).toEqual([DISCOVERED]);
+    });
+
+    it('404 를 받은 대여소는 다음 조회에서 다시 묻지 않는다', async () => {
+        /*
+         * 명부에 시드 출처가 셋이라 후보가 세 개인데 실서버엔 하나뿐입니다(실측).
+         * 매번 다 찌르면 목록을 열 때마다 백엔드 로그에 404 가 두 줄씩 쌓입니다.
+         * 화면을 몇 번만 오가도 수십 줄이라, 팀 서버 로그를 더럽히지 않게 기억합니다.
+         */
+        const asked: string[] = [];
+        mockRealMode((url) => {
+            if (url.includes('/inspections')) {
+                return Promise.resolve({ data: { items: [{ stationId: DISCOVERED }] } });
+            }
+            asked.push(url);
+            if (!url.includes(DISCOVERED)) return notFound();
+            return Promise.resolve(inventoryOf(DISCOVERED));
+        });
+
+        await stationsApi.list();
+        const firstRound = asked.length;
+        expect(firstRound, '첫 조회는 명부 전체를 찔러 봅니다').toBeGreaterThan(1);
+
+        asked.length = 0;
+        await stationsApi.list();
+
+        expect(asked, '404 났던 대여소를 다시 물었습니다').toHaveLength(1);
+        expect(asked[0]).toContain(DISCOVERED);
+    });
+
+    it('500 은 기억하지 않는다 — 잠깐 죽은 것을 없는 대여소로 굳히지 않는다', async () => {
+        /*
+         * 404 만 "없다"입니다. 서버가 잠깐 죽었을 때 후보에서 빼 버리면, 복구된 뒤에도
+         * 새로고침 전까지 그 대여소가 안 보입니다.
+         */
+        const asked: string[] = [];
+        mockRealMode((url) => {
+            if (url.includes('/inspections')) return Promise.resolve({ data: { items: [] } });
+            asked.push(url);
+            return Promise.reject(new ApiRequestError({ message: '서버 오류', statusCode: 500 }));
+        });
+
+        await stationsApi.list();
+        const firstRound = asked.length;
+        asked.length = 0;
+        await stationsApi.list();
+
+        expect(asked, '500 이후에도 같은 수만큼 다시 물어야 합니다').toHaveLength(firstRound);
     });
 
     it('전부 실패하면 오류가 아니라 빈 목록이다 — 화면이 EmptyState 로 갈립니다', async () => {

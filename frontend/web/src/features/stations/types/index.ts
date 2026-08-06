@@ -341,6 +341,30 @@ export function deriveSlotDisplayStatus(slot: SlotStateAxes): SlotDisplayStatus 
     return 'UNKNOWN';
 }
 
+/**
+ * 화면에 적을 우산 상태. **우산이 없으면 `null`** 입니다.
+ *
+ * 서버는 대여가 나갈 때 점유·잠금 두 축만 갱신하고 `itemCondition` 은 그대로 둡니다
+ * (`Slot.applyObservedPhysicalState` — 물리 센서 관측값이라 관리자 판단 축은 건드리지
+ * 않는다). 그래서 **우산이 빠져나간 슬롯에 `NORMAL` 이 남습니다.** 실서버에서 실제로
+ * 그 상태를 확인했습니다(점유 `EMPTY` + 품질 `NORMAL`).
+ *
+ * 그대로 그리면 같은 화면이 서로 다른 말을 합니다 — 요약 배지는 「빈 슬롯」인데
+ * 상세 줄은 「정상」. 없는 우산을 정상이라고 단정하는 셈입니다.
+ *
+ * `itemCondition` 자체가 `null` 로 오는 경우와 결과를 같게 둡니다. 화면은 둘을 구분할
+ * 이유가 없고, 구분하면 관리자가 익힐 규칙만 하나 늘어납니다.
+ *
+ * **원값이 필요한 자리는 이 함수를 쓰지 마세요.** 검수 상세는 「우산 유무」와 「우산
+ * 상태」를 나란히 놓아 어긋남 자체를 보여 주는 화면이라 원값이 맞습니다.
+ */
+export function displayItemCondition(
+    slot: Pick<SlotStateAxes, 'occupancyStatus' | 'itemCondition'>,
+): SlotItemCondition | null {
+    if (slot.occupancyStatus === 'EMPTY') return null;
+    return slot.itemCondition;
+}
+
 /** 파생 상태 → 배지에 찍을 한글 (ERD §2.4.1 "관리자 웹의 배지·표는 한글 명칭 우선") */
 export function slotStatusText(status: SlotDisplayStatus): string {
     return SLOT_DISPLAY_LABEL[status];

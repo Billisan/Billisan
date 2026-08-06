@@ -5,6 +5,7 @@ import {
     SLOT_DISPLAY_TONE,
     SLOT_SERVICE_TONE,
     deriveSlotDisplayStatus,
+    displayItemCondition,
     formatSlotLabel,
     formatUpdatedAt,
     getStationStatus,
@@ -343,5 +344,58 @@ describe('빈 슬롯 품질값 — 서버가 null 대신 "EMPTY" 를 보내도 �
         expect(
             deriveSlotDisplayStatus(slot({ occupancyStatus: 'OCCUPIED', itemCondition: 'EMPTY' })),
         ).toBe('UNKNOWN');
+    });
+});
+
+describe('displayItemCondition — 없는 우산의 상태를 단정하지 않는다', () => {
+    /*
+     * 실서버 실측: 대여가 나간 슬롯이 점유 `EMPTY` + 품질 `NORMAL` 로 남습니다.
+     * 서버가 대여 완료 시 점유·잠금 두 축만 갱신하기 때문입니다
+     * (`Slot.applyObservedPhysicalState`).
+     *
+     * 그대로 그리면 슬롯 상세에서 요약 배지는 「빈 슬롯」인데 우산 상태 줄은 「정상」이
+     * 됩니다. 같은 화면이 서로 다른 말을 합니다.
+     */
+    it('점유가 비었으면 품질이 남아 있어도 null 이다', () => {
+        expect(
+            displayItemCondition({ occupancyStatus: 'EMPTY', itemCondition: 'NORMAL' }),
+        ).toBeNull();
+        expect(
+            displayItemCondition({ occupancyStatus: 'EMPTY', itemCondition: 'DAMAGED' }),
+        ).toBeNull();
+    });
+
+    it('우산이 있으면 품질을 그대로 쓴다', () => {
+        expect(displayItemCondition({ occupancyStatus: 'OCCUPIED', itemCondition: 'NORMAL' })).toBe(
+            'NORMAL',
+        );
+        expect(
+            displayItemCondition({ occupancyStatus: 'OCCUPIED', itemCondition: 'REPAIRABLE' }),
+        ).toBe('REPAIRABLE');
+    });
+
+    it('점유를 못 읽었으면 품질을 지우지 않는다', () => {
+        /*
+         * `UNKNOWN` 은 "우산이 없다"가 아니라 "센서가 못 읽었다"입니다. 관리자가 마지막으로
+         * 확인한 품질이 판단에 필요한 자리라 남깁니다.
+         */
+        expect(displayItemCondition({ occupancyStatus: 'UNKNOWN', itemCondition: 'DAMAGED' })).toBe(
+            'DAMAGED',
+        );
+    });
+
+    it('요약 배지와 어긋나지 않는다', () => {
+        /*
+         * 배지가 「빈 슬롯」인데 품질 줄이 값을 갖는 조합이 없어야 합니다.
+         * 이 성질이 깨지면 화면이 다시 두 말을 하기 시작합니다.
+         */
+        const axes = { serviceStatus: 'AVAILABLE', lockStatus: 'LOCKED' } as const;
+        for (const itemCondition of ['NORMAL', 'EMPTY', 'DAMAGED', 'REPAIRABLE', 'UNKNOWN'] as const) {
+            const slot = { ...axes, occupancyStatus: 'EMPTY' as const, itemCondition };
+            expect(deriveSlotDisplayStatus(slot)).not.toBe('AVAILABLE');
+            if (deriveSlotDisplayStatus(slot) === 'EMPTY') {
+                expect(displayItemCondition(slot), itemCondition).toBeNull();
+            }
+        }
     });
 });
