@@ -138,11 +138,19 @@ public class DeviceTerminalEventService {
                         "장치 명령에 연결된 슬롯을 찾을 수 없습니다(데이터 정합성 문제): " + deviceOperation.getSlotId()));
 
         if (request.eventType() == EventType.OPERATION_COMPLETED) {
-            slot.applyObservedPhysicalState(
-                    request.evidence().after().occupancyStatus(),
-                    request.evidence().after().lockStatus());
+            Slot.OccupancyStatus observedOccupancyStatus = request.evidence().after().occupancyStatus();
+            slot.applyObservedPhysicalState(observedOccupancyStatus, request.evidence().after().lockStatus());
             returnAttempt.markPhysicalDone(now);
-            applyInspectionOutcome(returnAttempt, now);
+            if (observedOccupancyStatus == Slot.OccupancyStatus.OCCUPIED) {
+                applyInspectionOutcome(returnAttempt, now);
+            } else {
+                // 반납 LOCK 성공(SUCCEEDED)으로 보고됐지만 슬롯에 우산이 감지되지 않음 —
+                // 반납이 실제로는 안 됐을 가능성이 높다(EC2 실측으로 확인된 재발급 버그).
+                // 자동 완료 대신 사람이 확인하도록 RECOVERY_REQUIRED로 보내고 슬롯도
+                // 대여/반납 후보에서 뺀다.
+                returnAttempt.requireRecovery();
+                slot.isolateForReview();
+            }
             recordOutcome(deviceOperation, request, DeviceOperation.Status.SUCCEEDED,
                     DeviceOperation.TerminalEventType.OPERATION_COMPLETED, now);
         } else {
