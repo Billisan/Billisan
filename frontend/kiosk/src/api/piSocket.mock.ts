@@ -54,6 +54,9 @@ const MOCK_AUTH_SCENARIO: keyof typeof AUTH_SCENARIOS = 'ELIGIBLE'
 // TEMP: 실 wire 스펙(FaceAuthResult)엔 없는 필드 — 팀 결정(2026-08-03)으로 실명 확인 화면을
 // 테스트하기 위해 Mock에서만 임시로 채운다.
 const MOCK_DISPLAY_NAME = '홍길동'
+// TEMP: displayName과 동일한 사유(팀 결정 2026-08-06) — 실명 확인 화면에 학번도 함께 표시하기
+// 위해 Mock에서만 임시로 채운다.
+const MOCK_STUDENT_ID = '202600005'
 
 // --- KSK-RENT-001 시나리오 ---
 const MOCK_RENT_SCENARIO: 'SUCCESS' | 'FAILED' = 'SUCCESS'
@@ -107,6 +110,7 @@ export async function startFaceAuth(
     userMessageCode: null,
     retryable: !scenario.authenticated,
     displayName: scenario.authenticated ? MOCK_DISPLAY_NAME : null,
+    studentId: scenario.authenticated ? MOCK_STUDENT_ID : null,
   })
 }
 

@@ -73,6 +73,10 @@ export interface FaceAuthResult {
   // 얹었다 — 실제 Pi가 이 필드를 보내줄지, 필드명이 무엇일지는 아직 명세서에 반영 전이라
   // 실 서버 연동 시 undefined로 온다(Mock에서만 값 채움).
   displayName?: string | null
+  // TEMP: 09-screen-flow.md §1은 학번 표시도 명시적으로 금지하지만, 팀 결정(2026-08-06)으로
+  // displayName과 같은 확인 단계에 학번을 함께 보여주기로 했다 — displayName과 동일한 사유로
+  // 실 wire 스펙에는 없고 실 서버 연동 시 undefined로 온다(Mock에서만 값 채움).
+  studentId?: string | null
 }
 
 // --- KSK-RENT-001 ---

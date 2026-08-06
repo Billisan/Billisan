@@ -30,4 +30,7 @@ export interface KioskStageMessage {
   // 팀 결정(2026-08-03)으로 AuthSuccessScreen에 실명 확인 단계를 추가하기로 하면서
   // AUTH_SUCCEEDED stage에 한해 displayName을 임시로 실어 보낸다. 명세서는 아직 갱신 전.
   displayName?: string | null
+  // TEMP 예외: 팀 결정(2026-08-06)으로 같은 실명 확인 단계에 학번도 함께 보여주기로 했다.
+  // displayName과 동일하게 AUTH_SUCCEEDED stage에 한해서만 실어 보낸다.
+  studentId?: string | null
 }

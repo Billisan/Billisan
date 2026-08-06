@@ -43,7 +43,7 @@ export interface Translations {
     faceNotMatchedTitle: string
     faceNotMatchedTips: string[]
     authSuccessText: string
-    confirmQuestion: (name: string | null) => string
+    confirmQuestion: (name: string | null, studentId: string | null) => string
     confirmSubtitle: string
     confirmYes: (flow: 'RENT' | 'RETURN') => string
     confirmNo: string
@@ -145,8 +145,12 @@ const ko: Translations = {
       '문제가 계속되면 관리자에게 문의해주세요.',
     ],
     authSuccessText: '인증되었습니다',
-    confirmQuestion: (name: string | null) =>
-      name ? `${name}님이 맞으신가요?` : '본인이 맞으신가요?',
+    confirmQuestion: (name: string | null, studentId: string | null) =>
+      name
+        ? studentId
+          ? `${name}님(${studentId})이 맞으신가요?`
+          : `${name}님이 맞으신가요?`
+        : '본인이 맞으신가요?',
     confirmSubtitle: '인식된 정보가 본인 정보와 일치하는지 확인해주세요',
     confirmYes: (flow: 'RENT' | 'RETURN') =>
       `예, 우산 ${flow === 'RETURN' ? '반납' : '대여'} 계속하기`,
@@ -274,8 +278,12 @@ const en: Translations = {
       'Contact an administrator if this continues.',
     ],
     authSuccessText: 'Verified',
-    confirmQuestion: (name: string | null) =>
-      name ? `Is this ${name}?` : 'Is this you?',
+    confirmQuestion: (name: string | null, studentId: string | null) =>
+      name
+        ? studentId
+          ? `Is this ${name} (${studentId})?`
+          : `Is this ${name}?`
+        : 'Is this you?',
     confirmSubtitle: 'Please confirm the recognized information matches you',
     confirmYes: (flow: 'RENT' | 'RETURN') =>
       `Yes, continue with ${flow === 'RETURN' ? 'return' : 'rental'}`,
