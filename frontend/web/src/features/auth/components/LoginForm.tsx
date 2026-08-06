@@ -35,13 +35,39 @@ function loginErrorMessage(error: unknown): string {
             return '관리자 계정이 아닙니다.';
         case 'ADMIN_SESSION_EXPIRED':
             return '세션이 만료되었습니다. 다시 로그인해 주세요.';
+        /* 400 — 우리 화면이 계약을 어겼습니다. 비밀번호를 고쳐도 소용없습니다. */
+        case 'INVALID_REQUEST':
+            return '로그인 요청 형식이 올바르지 않습니다. 개발팀에 알려 주세요.';
         default:
             break;
     }
 
-    if (errorStatusOf(error) === 429) {
+    const status = errorStatusOf(error);
+
+    /*
+     * **응답이 아예 없는 경우입니다** — 서버 다운 · CORS 차단 · 타임아웃 · DNS 실패.
+     * 인터셉터가 `statusCode: 0` 으로 만들고 메시지는 이미 한글로 바꿔 두었습니다
+     * (`offlineMessageOf`).
+     *
+     * 예전에는 이 경우가 맨 아래 문구로 떨어져 **「아이디 또는 비밀번호가 올바르지
+     * 않습니다」** 라고 말했습니다. 서버가 꺼져 있는데 관리자에게 비밀번호를 의심하게
+     * 만드는 겁니다 — 429 를 따로 가르는 이유와 정확히 같은 실수입니다. 실 API 연결
+     * 첫날 CORS 나 배포 문제로 막히면 가장 먼저 마주칠 화면이라 특히 위험합니다.
+     */
+    if (status === 0) {
+        return error instanceof Error && error.message
+            ? error.message
+            : '서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+    }
+
+    if (status === 429) {
         // 남은 시간은 서버가 `Retry-After` 로 줄 수 있지만 계약에 없어 숫자를 지어내지 않습니다.
         return '로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.';
+    }
+
+    /* 5xx — 서버 잘못입니다. 자격을 의심하게 두면 안 됩니다. */
+    if (status !== undefined && status >= 500) {
+        return '서버에 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
     }
 
     return '아이디 또는 비밀번호가 올바르지 않습니다';

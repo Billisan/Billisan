@@ -46,6 +46,29 @@ function isAuthEntryPoint(url: string | undefined): boolean {
     return Boolean(url && (url.includes('/auth/login') || url.includes('/auth/me')));
 }
 
+/**
+ * **서버가 응답을 주지 못했을 때**의 한글 안내.
+ *
+ * 세 경우를 갈라 말합니다 — 관리자가 할 일이 다르기 때문입니다.
+ *   요청 취소   화면을 옮기거나 조건을 바꿔 이전 요청이 버려진 것. 오류가 아닙니다.
+ *   타임아웃    서버가 살아는 있는데 느립니다. 다시 눌러 볼 만합니다.
+ *   연결 실패   서버가 꺼졌거나 망이 끊겼습니다. 눌러도 소용없고 백엔드에 알려야 합니다.
+ *
+ * axios 의 영문 문구(`Network Error`·`timeout of 10000ms exceeded`)를 그대로 쓰면
+ * 셋이 구분되지도 않고, 관리자가 자기 잘못으로 읽습니다.
+ */
+function offlineMessageOf(error: AxiosError<unknown>): string {
+    if (error.code === 'ERR_CANCELED') return '요청이 취소되었습니다.';
+    if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+        return '서버 응답이 너무 늦습니다. 잠시 후 다시 시도해 주세요.';
+    }
+    // 응답 자체가 없으면(`error.response` 부재) 서버에 닿지 못한 것입니다.
+    if (!error.response) return '서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+
+    // 응답은 왔는데 본문에 메시지가 없는 경우 — 상태코드는 화면이 따로 보여 줍니다.
+    return '요청 처리 중 오류가 발생했습니다.';
+}
+
 http.interceptors.request.use((config) => {
     const token = getAccessToken();
     if (token) {
@@ -79,8 +102,21 @@ http.interceptors.response.use(
 
         return Promise.reject(
             new ApiRequestError({
-                // 서버 메시지를 그대로 씁니다. 내부 SQL·Stack Trace 는 서버가 담지 않기로 돼 있습니다(D-2).
-                message: message || error.message || '요청 처리 중 오류가 발생했습니다.',
+                /*
+                 * **서버 메시지가 있으면 그대로, 없으면 우리가 한글로 말합니다.**
+                 *
+                 * 예전에는 `message || error.message` 였습니다. 서버가 응답을 아예 주지
+                 * 않으면(꺼짐·네트워크 끊김·타임아웃) 서버 메시지가 없으니 axios 의 것이
+                 * 나오는데, 그게 영문 기술 문구입니다.
+                 *   `Network Error`
+                 *   `timeout of 10000ms exceeded`
+                 * 관리자 화면에 그대로 떠서 "내가 뭘 잘못했나" 로 읽힙니다. 실제로는
+                 * **서버 쪽 문제**라 조치가 정반대입니다(기다리거나 백엔드에 알리기).
+                 *
+                 * 서버가 준 메시지는 손대지 않습니다 — 한글이고, 그쪽이 더 정확합니다
+                 * (예: 500 은 「일시적인 오류가 발생했습니다.」를 직접 보내 줍니다).
+                 */
+                message: message || offlineMessageOf(error),
                 statusCode: status,
                 code,
                 path: url,

@@ -7,6 +7,11 @@ import {
 } from '@/features/inspections/api/inspectionsApi';
 import type { InspectionDecisionInput } from '@/features/inspections/types';
 import { errorCodeOf } from '@/lib/api-error';
+import {
+    commonAdminErrorOf,
+    fallbackAdminErrorOf,
+    type AdminErrorMessage,
+} from '@/shared/lib/adminError';
 import { qk } from '@/shared/api/queryKeys';
 import { toast } from '@/shared/components/toast/toastStore';
 
@@ -70,6 +75,48 @@ export function useInspection(inspectionId: string | undefined) {
 }
 
 /**
+ * 검수 판정 실패 안내.
+ *
+ * 판정은 **되돌릴 수 없습니다** — 한 번 `DECIDED` 가 되면 서버가
+ * `INSPECTION_ALREADY_DECIDED` 로 막고, 함께 생긴 파손 정산을 지우는 API 도 없습니다.
+ * 그래서 실패했을 때 "다시 눌러 보세요" 로 뭉뚱그리면 안 됩니다. 이미 저장된 건지,
+ * 내가 다시 눌러도 되는 건지가 분명해야 합니다.
+ *
+ * **`INVALID_INSPECTION_DECISION` 을 지웠습니다.** 서버가 보내지 않는 코드였습니다
+ * (`GlobalExceptionHandler` 전수 확인). 허용 밖 판정값은 `INVALID_REQUEST` 로 옵니다.
+ */
+function decisionErrorMessage(error: unknown): AdminErrorMessage {
+    switch (errorCodeOf(error)) {
+        /* 409 — 다른 관리자가 먼저 손댔습니다. 자동 재적용 금지(12-R B-5). */
+        case 'CONCURRENT_MODIFICATION':
+            return {
+                title: '다른 관리자가 먼저 처리했습니다',
+                detail: '최신 상태를 다시 확인한 뒤 진행하세요.',
+            };
+
+        /*
+         * 409 — 이미 끝난 검수. **재시도가 아니라 확인이 필요합니다.**
+         * 내가 두 번 누른 것일 수도, 다른 사람이 먼저 판정한 것일 수도 있습니다.
+         */
+        case 'INSPECTION_ALREADY_DECIDED':
+            return {
+                title: '이미 판정이 끝난 검수입니다',
+                detail: '목록을 새로고침해 판정 결과를 확인해 주세요.',
+            };
+
+        /*
+         * `ADMIN_REASON_REQUIRED`(422)는 여기 없습니다 — 슬롯 상태 변경도 같은 예외를
+         * 던져서 `shared/lib/adminError` 로 올렸습니다. 두 곳에 적어 두면 문구가 갈라집니다.
+         */
+        default:
+            return (
+                commonAdminErrorOf(error) ??
+                fallbackAdminErrorOf(error, '판정을 저장하지 못했습니다')
+            );
+    }
+}
+
+/**
  * ADMIN-INSPECTION-003.
  *
  * 판정은 검수·슬롯·정산을 한 트랜잭션으로 바꿉니다. 그래서 성공 뒤 세 캐시를 다 무효화하고
@@ -100,17 +147,8 @@ export function useDecideInspection() {
             queryClient.invalidateQueries({ queryKey: qk.stations.all });
         },
         onError: (error) => {
-            const code = errorCodeOf(error);
-            const known: Record<string, string> = {
-                CONCURRENT_MODIFICATION: '다른 관리자가 먼저 처리했습니다',
-                INSPECTION_ALREADY_DECIDED: '이미 판정이 끝난 검수입니다',
-                ADMIN_REASON_REQUIRED: '사유 코드가 필요합니다',
-                INVALID_INSPECTION_DECISION: '허용되지 않은 판정입니다',
-            };
-            toast.error(
-                (code && known[code]) || '판정을 저장하지 못했습니다',
-                `${error.message}${code ? ` (${code})` : ''}`,
-            );
+            const { title, detail } = decisionErrorMessage(error);
+            toast.error(title, detail);
             queryClient.invalidateQueries({ queryKey: qk.inspections.all });
         },
     });
