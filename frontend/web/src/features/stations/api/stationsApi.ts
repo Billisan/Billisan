@@ -180,8 +180,35 @@ function seedEntryOf(stationId: string): StationSeedEntry {
  * 명부에 있어야 보입니다. 그래서 명부를 지우지 않고 합집합으로 둡니다.
  * TODO: 대여소 목록 API 가 생기면 이 함수를 그 호출로 바꾸세요.
  */
+/**
+ * 서버에 없다고 확인된 명부 대여소.
+ *
+ * **404 를 받은 곳은 이 세션 동안 다시 묻지 않습니다.**
+ *
+ * 명부에는 시드 출처가 셋이라 후보가 세 개인데, 실서버에 실재하는 것은 하나뿐입니다
+ * (실측). 나머지 둘은 목록을 열 때마다 `404 STATION_NOT_FOUND` 를 받는데, 그게 그대로
+ * 백엔드 팀 서버 로그에 쌓입니다. 화면을 몇 번만 오가도 수십 줄이 됩니다.
+ *
+ * 새로고침하면 초기화됩니다 — DB 가 다시 시드돼 없던 대여소가 생기는 경우를 위해
+ * 영구 저장하지 않습니다.
+ */
+const absentStationIds = new Set<string>();
+
+/**
+ * 위 기억을 비웁니다. **테스트 전용입니다.**
+ *
+ * 모듈 전역이라 테스트끼리 상태가 새어 나갑니다 — 한 테스트가 404 를 만들면 다음
+ * 테스트에서 그 대여소를 아예 안 찌릅니다. 화면에서 부를 일은 없습니다(새로고침이
+ * 곧 초기화입니다).
+ */
+export function __resetAbsentStations() {
+    absentStationIds.clear();
+}
+
 async function discoverStationIds(): Promise<string[]> {
-    const seeded = REAL_STATIONS.map((entry) => entry.stationId);
+    const seeded = REAL_STATIONS.map((entry) => entry.stationId).filter(
+        (id) => !absentStationIds.has(id),
+    );
     try {
         // inspectionsApi 를 부르지 않습니다 — 그쪽이 이 모듈을 import 해서 순환이 됩니다.
         const { data } = await http.get<{ items: Array<{ stationId: string }> }>('/inspections', {
@@ -211,7 +238,20 @@ export const stationsApi = {
         if (!env.useMockData) {
             const ids = await discoverStationIds();
             const settled = await Promise.allSettled(
-                ids.map(async (id) => composeStation(seedEntryOf(id), await stationsApi.inventory(id))),
+                ids.map(async (id) => {
+                    try {
+                        return composeStation(seedEntryOf(id), await stationsApi.inventory(id));
+                    } catch (error) {
+                        /*
+                         * 404 는 "그 대여소가 없다"입니다. 다음 조회부터 후보에서 빼
+                         * 같은 404 를 반복해 만들지 않습니다 (`absentStationIds` 주석 참고).
+                         * 그 밖의 실패(500·타임아웃)는 서버 사정이라 후보를 유지합니다 —
+                         * 잠깐 죽은 것을 "없는 대여소"로 굳히면 복구돼도 안 보입니다.
+                         */
+                        if (errorStatusOf(error) === 404) absentStationIds.add(id);
+                        throw error;
+                    }
+                }),
             );
             return settled
                 .filter(
