@@ -81,6 +81,7 @@ export function AuthScreen({
           studentId={studentId}
           onConfirm={confirmIdentity}
           onReject={() => retry(mode, onAuthenticated, onEligibilityBlocked)}
+          onBack={onBack}
         />
       )
 

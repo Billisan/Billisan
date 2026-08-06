@@ -63,18 +63,18 @@ export function CameraCaptureScreen({
 }: CameraCaptureScreenProps) {
   return (
     <KioskLayout onBack={onBack} currentStep={currentStep} flow={flow} fullBleed>
-      <div className="flex w-full flex-1 flex-col">
-        <CountdownBadge
+      <CountdownBadge
           key={`${timeoutSeconds}-${String(resetSignal)}`}
           timeoutSeconds={timeoutSeconds}
           onTimeout={onBack}
         />
-
-        <div className="relative min-h-0 w-full flex-1 bg-black">
+      <div className="flex flex-1 flex-col w-full">
+        <div className="relative flex-1 bg-black">
+           
           <img
             src={streamUrl}
             alt="카메라 스트림"
-            className="h-full w-full object-contain"
+            className="absolute inset-0 h-full w-full object-cover"
           />
           {guide}
         </div>

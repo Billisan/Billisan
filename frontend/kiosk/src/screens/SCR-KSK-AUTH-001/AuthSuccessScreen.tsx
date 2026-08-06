@@ -12,6 +12,7 @@ interface AuthSuccessScreenProps {
   studentId: string | null;
   onConfirm: () => void;
   onReject: () => void;
+  onBack?: () => void;
 }
 
 type SuccessPhase = "ICON_ONLY" | "TEXT_SHOWN" | "CONFIRM";
@@ -34,6 +35,7 @@ export function AuthSuccessScreen({
   studentId,
   onConfirm,
   onReject,
+  onBack,
 }: AuthSuccessScreenProps) {
   const t = useTranslation();
   const [phase, setPhase] = useState<SuccessPhase>("ICON_ONLY");
@@ -59,7 +61,7 @@ export function AuthSuccessScreen({
   const confirmQuestion = t.auth.confirmQuestion(displayName, studentId);
 
   return (
-    <KioskLayout currentStep={2} flow={flow}>
+    <KioskLayout onBack={onBack} currentStep={2} flow={flow}>
       {/* justify-center로 실제 뷰포트 높이 기준 정중앙에서 시작하고, CONFIRM 단계에서만
           추가로 translateY만큼 위로 슬라이드한다 — 값 자체는 PROVISIONAL_UI_VALUE. */}
       <div className="flex h-full min-h-0 w-full flex-1 flex-col items-center justify-center">
@@ -88,7 +90,7 @@ export function AuthSuccessScreen({
             </h2>
           )}
           {isConfirmPhase && (
-            <div className="animate-rise-in flex w-102 flex-col items-center gap-8">
+            <div className="animate-rise-in flex flex-col items-center gap-6">
               <div className="flex flex-col items-center gap-4 text-center">
                 <h2 className="text-3xl font-bold text-black">
                   {confirmQuestion.before}
@@ -101,11 +103,11 @@ export function AuthSuccessScreen({
                   {t.auth.confirmSubtitle}
                 </p>
               </div>
-              <div className="mt-10 flex w-full flex-col gap-6">
-                <Button onClick={onConfirm} className="w-full">
+              <div className="mt-20 flex w-full flex-row gap-6">
+                <Button onClick={onConfirm} className="flex-1 w-106">
                   {t.auth.confirmYes(flow ?? "RENT")}
                 </Button>
-                <Button variant="outline" onClick={onReject} className="w-full">
+                <Button variant="outline" onClick={onReject} className="flex-1 w-106">
                   {t.auth.confirmNo}
                 </Button>
               </div>
