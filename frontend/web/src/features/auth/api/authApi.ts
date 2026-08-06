@@ -80,10 +80,20 @@ export const authApi = {
     },
 
     /**
-     * ADMIN-AUTH-003 — 새로고침 뒤 세션 복원에 씁니다.
+     * 새로고침 뒤 세션 복원.
      *
-     * Bearer 토큰은 메모리에만 있어서 새로고침하면 사라집니다. 이 호출이 성공하려면
-     * 백엔드가 httpOnly 세션 쿠키를 함께 내려 줘야 합니다 (axios `withCredentials: true`).
+     * **실 API 모드에서는 서버에 묻지 않습니다.** 예전에는 `GET /auth/me` 를 불렀는데,
+     * 그 엔드포인트가 **존재하지 않습니다** — 서버(`AdminAuthController`)에 `/login`
+     * 하나뿐이고, 스웨거 스냅샷의 admin 경로 8개에도 없습니다. 부를 때마다
+     * `404 NOT_FOUND` 이고, 그 요청이 백엔드 팀 로그에 그대로 쌓입니다.
+     *
+     * 그래서 관리자 웹은 **새로고침하면 로그아웃**입니다. 토큰이 메모리에만 있고
+     * (브라우저 영속 저장 금지 · API명세 B-2) 복원할 창구가 없으니, 그게 지금 계약에서
+     * 가능한 유일한 동작입니다. 네트워크를 왕복해 404 를 받고 같은 결론에 이르는 것보다
+     * 즉시 로그인 화면으로 보내는 편이 빠르고 조용합니다.
+     *
+     * TODO: 백엔드에 `GET /admin/auth/me`(+ httpOnly 세션 쿠키)가 생기면 여기서
+     *       `http.get('/auth/me')` 로 되돌리세요. 호출부는 그대로 두면 됩니다.
      */
     me: async (): Promise<MeResponse> => {
         if (env.mockAuth) {
@@ -93,18 +103,23 @@ export const authApi = {
             return restored;
         }
 
-        const { data } = await http.get<MeResponse>('/auth/me');
-        return data;
+        throw new Error('ADMIN_SESSION_EXPIRED');
     },
 
-    /** ADMIN-AUTH-002 — 멱등입니다. */
+    /**
+     * 로그아웃 — 멱등입니다.
+     *
+     * **실 API 모드에서도 서버를 부르지 않습니다.** `POST /auth/logout` 역시 존재하지
+     * 않습니다(`me` 와 같은 근거). 게다가 관리자 인증은 상태 없는 JWT 라 서버에 지울
+     * 세션이 없습니다 — 토큰을 버리는 것이 로그아웃의 전부입니다.
+     *
+     * 예전에는 이 호출이 매번 404 를 받아, 로그아웃할 때마다 「서버 로그아웃이 끝나지
+     * 않았습니다」 경고가 떴습니다(`AppHeader`). 실제로는 정상 로그아웃인데요.
+     *
+     * TODO: 서버가 토큰 블랙리스트를 두게 되면 그때 실제 호출로 바꾸세요.
+     */
     logout: async (): Promise<LogoutResponse> => {
-        if (env.mockAuth) {
-            clearMockSession();
-            return { loggedOut: true };
-        }
-
-        const { data } = await http.post<LogoutResponse>('/auth/logout');
-        return data;
+        clearMockSession();
+        return { loggedOut: true };
     },
 };

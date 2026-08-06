@@ -7,14 +7,18 @@ import { useAuthStore } from '@/features/auth/stores/authStore';
 import { qk } from '@/shared/api/queryKeys';
 
 /**
- * 새로고침 뒤 세션 복원 — `ADMIN-AUTH-003 GET /api/v1/admin/auth/me`.
+ * 새로고침 뒤 세션 복원.
  *
  * Bearer 토큰은 브라우저 영속 저장소에 둘 수 없어서(API명세 B-2) 메모리에만 있고,
- * 새로고침하면 사라집니다. 그래서 부팅할 때 서버에 "나 누구야?"를 한 번 물어봅니다.
- * 이 호출이 성공하려면 백엔드가 **httpOnly 세션 쿠키**를 함께 내려 줘야 합니다
- * (axios 는 `withCredentials: true`).
+ * 새로고침하면 사라집니다.
  *
- * 목업 모드에서는 서버가 없어서 `authApi.me()` 가 sessionStorage 에 남긴 신원을 읽습니다
+ * **실 API 모드에서는 복원할 방법이 없습니다.** 세션 복원 엔드포인트
+ * (`GET /admin/auth/me`)가 서버에도 스웨거에도 없습니다 — admin 경로는 8개뿐이고
+ * 인증은 `POST /admin/auth/login` 하나입니다. 그래서 `authApi.me()` 가 네트워크를
+ * 타지 않고 곧바로 실패하고, 화면은 로그인으로 갑니다. 예전에는 여기서 실제로
+ * 요청을 보내 매번 404 를 받았습니다.
+ *
+ * 목업 모드에서는 `authApi.me()` 가 sessionStorage 에 남긴 신원을 읽습니다
  * (`mocks/mockSession.ts`). 어느 쪽이든 화면 입장에서는 같은 호출입니다.
  *
  * 실패는 정상 흐름입니다 — 그냥 로그인 안 한 상태라는 뜻이라 조용히 넘어갑니다.
@@ -45,11 +49,10 @@ export function useSessionRestore(): boolean {
      * 그러면 새로고침할 때마다 복원을 아예 시도하지 않아서 무조건 로그인 화면으로
      * 튕겼습니다. 목업 모드의 `authApi.me()` 는 sessionStorage 에서 세션을 되살립니다.
      *
-     * 실 API 모드에서 이 호출이 성공하려면 백엔드가 httpOnly 세션 쿠키를 함께 내려 줘야
-     * 합니다. 계약에 쿠키 얘기는 없고 `ADMIN-AUTH-003` 은 `Authorization` 을 필수로
-     * 적어 두었는데, 그 토큰은 새로고침하면 메모리에서 사라집니다. 쿠키가 없으면 여기서
-     * 401 이 나고 로그인 화면으로 갑니다 — 그게 계약대로의 동작입니다.
-     * 요청 한 번 값이라, 백엔드가 나중에 쿠키를 붙이면 그때부터 복원이 그냥 됩니다.
+     * 실 API 모드에서는 `authApi.me()` 가 네트워크 없이 즉시 실패합니다 — 복원 창구가
+     * 없어서입니다. 쿼리는 그대로 돌리되 한 프레임 만에 끝나고 로그인 화면으로 갑니다.
+     * 분기를 여기 두지 않는 이유는, 백엔드가 나중에 `/auth/me` 를 만들면 `authApi` 한
+     * 곳만 되돌리면 되게 하기 위해서입니다.
      */
     const enabled = !env.authBypass && !admin;
 
