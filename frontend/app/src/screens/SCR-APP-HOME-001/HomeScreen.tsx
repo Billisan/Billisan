@@ -2,6 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
 import { getHomeSummary } from '../../api/homeApi'
 import { getShortTermWeather } from '../../api/weatherApi'
@@ -12,6 +13,7 @@ import { LoadingScreen } from '../../components/common/LoadingScreen'
 import { AppHeader } from '../../components/layout/AppHeader'
 import { Screen } from '../../components/layout/Screen'
 import type { RootStackParamList } from '../../navigation/RootStackNavigator'
+import type { WeatherCondition } from '../../types/weather'
 
 const RAIN_RECOMMEND_THRESHOLD = 50
 
@@ -25,16 +27,26 @@ function formatHour(forecastAt: string) {
   return `${new Date(forecastAt).getHours()}시`
 }
 
-// 사용자 확인(2026-08-04) — 아이콘은 WEATHER-001의 condition이 아니라 강수확률 구간으로 정한다.
-// 0~29%: 구름 / 30~59%: 구름+빗방울 / 60% 이상: 비
-function weatherIconName(precipitationProbability: number): MaterialCommunityIconName {
-  if (precipitationProbability >= 60) return 'weather-rainy'
-  if (precipitationProbability >= 30) return 'weather-partly-rainy'
-  return 'weather-cloudy'
+// 사용자 확인(2026-08-06) — 2026-08-04에 확정했던 "강수확률 구간" 방침을 뒤집고, WEATHER-001의
+// condition 필드를 그대로 아이콘에 매핑한다.
+function weatherIconName(condition: WeatherCondition): MaterialCommunityIconName {
+  switch (condition) {
+    case 'CLEAR':
+      return 'weather-sunny'
+    case 'CLOUDY':
+      return 'weather-cloudy'
+    case 'RAIN':
+      return 'weather-rainy'
+    case 'SNOW':
+      return 'weather-snowy'
+    default:
+      return 'help-circle-outline'
+  }
 }
 
 export function HomeScreen() {
   const rootNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
+  const [isForecastInfoOpen, setIsForecastInfoOpen] = useState(false)
   const homeQuery = useQuery({ queryKey: ['home'], queryFn: getHomeSummary })
   // 홈 요약과 날씨는 독립된 쿼리로 분리한다 — 날씨 실패가 대여·정산 표시 전체를 막지 않아야 한다
   // (PROJECT_GUIDE.md §4.2 "Partial Success" 원칙).
@@ -79,8 +91,8 @@ export function HomeScreen() {
           />
         }
       >
-        <View className="gap-1">
-          <Text className="text-sm font-medium text-text-secondary">
+        <View className="gap-2">
+          <Text className="text-base font-medium text-text-secondary">
             안녕하세요, {user.displayName}님!
           </Text>
           <Text className="text-2xl font-bold leading-8 text-text">
@@ -88,15 +100,27 @@ export function HomeScreen() {
           </Text>
         </View>
 
-        {/* WEATHER-001(§5.12) Mock 위젯 — DEC-SF-003 미확정이라 provider는 "UNDECIDED", 실제
-            외부 공급자 호출 없음(2026-08-04 사용자 확인, 목업 레이아웃 그대로 구현). */}
-        <View className="gap-3 rounded-2xl bg-white p-5">
+        {/* WEATHER-001(§5.12) 위젯 — 2026-08-06 실제 연동으로 전환(DEC-SF-003 RESOLVED, 캠퍼스 고정
+            좌표). provider 값은 서버가 주는 그대로("UNDECIDED"일 수 있음), 화면에는 표시하지 않는다. */}
+        <View className="gap-4 rounded-2xl bg-white p-5">
           <View className="flex-row items-center justify-between">
             <View>
               <Text className="text-base font-bold text-text">초단기 강수 예보</Text>
-              <Text className="text-xs text-text-secondary">현재부터 6시간 이내 예보</Text>
             </View>
-            <MaterialCommunityIcons name="information-outline" size={18} color="#5C6B7A" />
+            <View>
+              <Pressable
+                onPress={() => setIsForecastInfoOpen((prev) => !prev)}
+                hitSlop={8}
+                className="active:opacity-70"
+              >
+                <MaterialCommunityIcons name="information-outline" size={18} color="#5C6B7A" />
+              </Pressable>
+              {isForecastInfoOpen && (
+                <View className="absolute right-6 -top-2 z-10 w-44 rounded-lg bg-primary p-2">
+                  <Text className="text-xs leading-4 text-black">현재부터 6시간 이내 예보입니다!</Text>
+                </View>
+              )}
+            </View>
           </View>
 
           {weatherQuery.isPending && (
@@ -114,7 +138,7 @@ export function HomeScreen() {
                     {index === 0 ? '지금' : formatHour(item.forecastAt)}
                   </Text>
                   <MaterialCommunityIcons
-                    name={weatherIconName(item.precipitationProbability)}
+                    name={weatherIconName(item.condition)}
                     size={22}
                     color="#1E2A38"
                   />
