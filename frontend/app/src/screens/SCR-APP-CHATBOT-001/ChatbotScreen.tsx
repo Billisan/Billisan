@@ -125,7 +125,7 @@ export function ChatbotScreen() {
   }
 
   return (
-    <Screen background="white">
+    <Screen background="white" edges={['right', 'bottom', 'left']}>
       <Animated.View style={[{ flex: 1 }, keyboardAvoidingStyle]}>
         <ScrollView className="flex-1" contentContainerClassName="gap-4 px-6 py-6">
           <View className="self-center rounded-full bg-background px-3 py-1">

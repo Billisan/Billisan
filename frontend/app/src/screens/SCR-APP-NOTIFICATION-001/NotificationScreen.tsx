@@ -124,7 +124,7 @@ export function NotificationScreen() {
 
   if (alertsQuery.isError || !alertsQuery.data) {
     return (
-      <Screen background="white">
+      <Screen background="white" edges={['right', 'bottom', 'left']}>
         <View className="mt-10 gap-4 px-6">
           <ErrorBanner message="알림을 불러오지 못했어요" />
           <Button label="다시 시도" onPress={() => alertsQuery.refetch()} />
@@ -137,7 +137,7 @@ export function NotificationScreen() {
   const dayGroups = groupByDay(items)
 
   return (
-    <Screen background="white">
+    <Screen background="white" edges={['right', 'bottom', 'left']}>
       <ScrollView
         className="flex-1"
         contentContainerClassName="gap-6 px-6 pb-6"
