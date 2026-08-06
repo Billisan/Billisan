@@ -17,12 +17,16 @@ import dev.billisan.rental.repository.RentalRepository;
 import dev.billisan.returns.domain.ReturnAttempt;
 import dev.billisan.returns.repository.ReturnAttemptRepository;
 import dev.billisan.slot.domain.Slot;
+import dev.billisan.slot.domain.Slot.ItemCondition;
+import dev.billisan.slot.domain.Slot.OccupancyStatus;
+import dev.billisan.slot.domain.Slot.ServiceStatus;
 import dev.billisan.slot.repository.SlotRepository;
 import dev.billisan.user.domain.UserAccount;
 import dev.billisan.user.repository.UserAccountRepository;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -80,7 +84,7 @@ public class DeviceTerminalEventService {
         if (deviceOperation.isTerminal()) {
             return new DeviceTerminalEventResponse(
                     request.eventId(), request.commandId(), deviceOperation.getStatus().name(),
-                    rental.getStatus().name(), "CONSISTENT", now);
+                    rental.getStatus().name(), "CONSISTENT", now, buildInventory(deviceOperation.getStationId()));
         }
 
         Slot slot = slotRepository.findById(rental.getCheckoutSlotId())
@@ -110,7 +114,7 @@ public class DeviceTerminalEventService {
 
         return new DeviceTerminalEventResponse(
                 request.eventId(), request.commandId(), deviceOperation.getStatus().name(),
-                rental.getStatus().name(), "CONSISTENT", now);
+                rental.getStatus().name(), "CONSISTENT", now, buildInventory(deviceOperation.getStationId()));
     }
 
     private DeviceTerminalEventResponse recordReturnLockEvent(DeviceTerminalEventRequest request) {
@@ -127,7 +131,7 @@ public class DeviceTerminalEventService {
         if (deviceOperation.isTerminal()) {
             return new DeviceTerminalEventResponse(
                     request.eventId(), request.commandId(), deviceOperation.getStatus().name(),
-                    returnAttempt.getStatus().name(), "CONSISTENT", now);
+                    returnAttempt.getStatus().name(), "CONSISTENT", now, buildInventory(deviceOperation.getStationId()));
         }
 
         // deviceOperation이 물고 있는 slotId를 쓴다 — returnAttempt.returnSlotId가 아니다.
@@ -169,7 +173,7 @@ public class DeviceTerminalEventService {
 
         return new DeviceTerminalEventResponse(
                 request.eventId(), request.commandId(), deviceOperation.getStatus().name(),
-                returnAttempt.getStatus().name(), "CONSISTENT", now);
+                returnAttempt.getStatus().name(), "CONSISTENT", now, buildInventory(deviceOperation.getStationId()));
     }
 
     /**
@@ -227,6 +231,20 @@ public class DeviceTerminalEventService {
      */
     private LocalDateTime toKstLocalDateTime(Instant instant) {
         return instant == null ? null : instant.atZone(KST).toLocalDateTime();
+    }
+
+    /**
+     * EDGE-DEVICE-001 응답용 재고 스냅샷. Slot 갱신은 같은 트랜잭션·영속성 컨텍스트 안에서
+     * 일어나므로, 이 카운트 쿼리 직전에 Hibernate가 변경분을 자동 flush해 방금 반영된 값을
+     * 그대로 읽는다(대여 성공 → 차감분 반영, 반납 성공 → 반영분 포함).
+     */
+    private DeviceTerminalEventResponse.Inventory buildInventory(UUID stationId) {
+        int rentable = (int) slotRepository.countByStationIdAndServiceStatusAndOccupancyStatusAndItemCondition(
+                stationId, ServiceStatus.AVAILABLE, OccupancyStatus.OCCUPIED, ItemCondition.NORMAL);
+        int emptyReturn = (int) slotRepository.countByStationIdAndServiceStatusAndOccupancyStatus(
+                stationId, ServiceStatus.AVAILABLE, OccupancyStatus.EMPTY);
+        int total = (int) slotRepository.countByStationId(stationId);
+        return new DeviceTerminalEventResponse.Inventory(rentable, emptyReturn, total);
     }
 
     private String writeEvidenceJson(DeviceTerminalEventRequest.Evidence evidence) {
