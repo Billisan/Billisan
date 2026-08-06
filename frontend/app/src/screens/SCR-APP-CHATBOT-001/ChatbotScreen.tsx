@@ -132,7 +132,7 @@ export function ChatbotScreen() {
             <Text className="text-xs text-text-secondary">{formatTimeLabel(sessionStartedAt)}</Text>
           </View>
 
-          <View className="max-w-[85%] self-start rounded-2xl rounded-tl-none bg-background px-4 py-3">
+          <View className="max-w-[85%] self-start rounded-3xl rounded-tl-none bg-background px-4 py-3">
             <Text className="text-lg text-text">{GREETING_MESSAGE}</Text>
           </View>
 
