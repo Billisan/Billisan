@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="912" height="1300" viewBox="0 0 912 1300">
+<defs>
+<filter id="softShadow" x="-50%" y="-50%" width="200%" height="200%">
+<feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#000000" flood-opacity="0.12"/>
+</filter>
+</defs>
+<rect x="0" y="0" width="912" height="1300" fill="#F7F4EC"/>
+<g id="dWrtI" transform="translate(0,0)">
+<path id="u9CmV4" transform="translate(-40,-20)" d="M0 20l170 0c-25 180 30 320-10 480-35 160 25 320-10 480-35 160 20 300-15 360l-135 0z" fill="#DCE6D2"/>
+<ellipse id="SNFEM" transform="translate(20,520)" cx="50.0" cy="35.0" rx="50.0" ry="35.0" fill="#A9D3DE"/>
+<path id="MqWxW" transform="translate(0,0)" d="M190 20c-30 180 20 320-20 480-30 160 30 320-15 480-35 160 15 280-55 360" fill="none" stroke="#A9D3DE" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="tS9dQ" transform="translate(0,0)" d="M190 20c-30 180 20 320-20 480-30 160 30 320-15 480-35 160 15 280-55 360" fill="none" stroke="#C3E4EA" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="NvCBh" transform="translate(540,660)" d="M55 0 L175 0 A55 55 0 0 1 230 55 L230 125 A55 55 0 0 1 175 180 L55 180 A55 55 0 0 1 0 125 L0 55 A55 55 0 0 1 55 0 Z" fill="#DCEAEF"/>
+<path id="X9vbT" transform="translate(555,675)" d="M45 0 L155 0 A45 45 0 0 1 200 45 L200 105 A45 45 0 0 1 155 150 L45 150 A45 45 0 0 1 0 105 L0 45 A45 45 0 0 1 45 0 Z" fill="none" stroke="#C7DEE6" stroke-width="3"/>
+<ellipse id="nXW82" transform="translate(640,335)" cx="65.0" cy="45.0" rx="65.0" ry="45.0" fill="#A9D3DE"/>
+</g>
+<g id="v6njv" transform="translate(0,0)">
+<path id="QHbWt" transform="translate(0,0)" d="M860 20c0 480 0 880 0 1160 0 40-160 70-420 80" fill="none" stroke="#E3C77E" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
+<path id="DBhkN" transform="translate(0,0)" d="M600 660c-7.7-28.6-34.7-64.6-60-80m-200-160c33.1-33.1 73.6-96.1 90-140m-90 250c20.6 38.7 38.6 106.2 40 150m60 60c28.3 5.5 73.3 1 100-10m-160 70c21.7 37.1 35.2 102.3 30 145m120 65c44.5-5.5 116.5-1 160 10m45-220c2.9 44.1 23.1 111.6 45 150m-60-288c11.9-1.3 29.9-7.6 40-14m60-138c11-46.3 15.5-122.8 10-170m-20-135c-11.5-9.7-20.5-29.9-20-45m-240 120c-5.5 44.5-1 116.5 10 160m-100 805c61.3-58.7 151.3-163.6 200-233" fill="none" stroke="#E3DCC5" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="p5kkEG" transform="translate(0,0)" d="M600 660c-7.7-28.6-34.7-64.6-60-80m-200-160c33.1-33.1 73.6-96.1 90-140m-90 250c20.6 38.7 38.6 106.2 40 150m60 60c28.3 5.5 73.3 1 100-10m-160 70c21.7 37.1 35.2 102.3 30 145m120 65c44.5-5.5 116.5-1 160 10m45-220c2.9 44.1 23.1 111.6 45 150m-60-288c11.9-1.3 29.9-7.6 40-14m60-138c11-46.3 15.5-122.8 10-170m-20-135c-11.5-9.7-20.5-29.9-20-45m-240 120c-5.5 44.5-1 116.5 10 160m-100 805c61.3-58.7 151.3-163.6 200-233" fill="none" stroke="#FFFFFF" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<g id="JR64A" transform="translate(0,0)">
+<path id="lQHTp" transform="translate(660,20)" d="M8 0 L162 0 A8 8 0 0 1 170 8 L170 108 A32 32 0 0 1 138 140 L8 140 A8 8 0 0 1 0 132 L0 8 A8 8 0 0 1 8 0 Z" fill="#B9D0DE" stroke="#00000014" stroke-width="1.5" filter="url(#softShadow)"/>
+<path id="uxETC" transform="translate(370,130)" d="M0 0l210 0 0 150-60 0 0-100-90 0 0 100-60 0z" fill="#B9D0DE" stroke="#00000014" stroke-width="1.5" stroke-linecap="butt" stroke-linejoin="miter" filter="url(#softShadow)"/>
+<ellipse id="NS6sF" transform="translate(760,200)" cx="70.0" cy="70.0" rx="70.0" ry="70.0" fill="#B9D0DE" stroke="#00000014" stroke-width="1.5" filter="url(#softShadow)"/>
+<path id="p6cSc" transform="translate(450,440)" d="M20 0 L174 0 A6 6 0 0 1 180 6 L180 120 A20 20 0 0 1 160 140 L6 140 A6 6 0 0 1 0 134 L0 20 A20 20 0 0 1 20 0 Z" fill="#B9D0DE" stroke="#00000014" stroke-width="1.5" filter="url(#softShadow)"/>
+<path id="x78yD" transform="translate(680,510)" d="M30 0 L150 0 A10 10 0 0 1 160 10 L160 110 A30 30 0 0 1 130 140 L10 140 A10 10 0 0 1 0 130 L0 30 A30 30 0 0 1 30 0 Z" fill="#B9D0DE" stroke="#00000014" stroke-width="1.5" filter="url(#softShadow)"/>
+<ellipse id="gCBGv" transform="translate(320,680)" cx="60.0" cy="60.0" rx="60.0" ry="60.0" fill="#B9D0DE" stroke="#00000014" stroke-width="1.5" filter="url(#softShadow)"/>
+<path id="jx3gg" transform="translate(540,910) rotate(90)" d="M0 0l60 0 0 90 80 0 0-90 60 0 0 140-200 0z" fill="#B9D0DE" stroke="#00000014" stroke-width="1.5" stroke-linecap="butt" stroke-linejoin="miter" filter="url(#softShadow)"/>
+<path id="HiBSF" transform="translate(690,950)" d="M32 0 L172 0 A8 8 0 0 1 180 8 L180 132 A8 8 0 0 1 172 140 L8 140 A8 8 0 0 1 0 132 L0 32 A32 32 0 0 1 32 0 Z" fill="#B9D0DE" stroke="#00000014" stroke-width="1.5" filter="url(#softShadow)"/>
+<path id="i6SrvE" transform="translate(270,420)" d="M0 0l140 0 0 60-70 0 0 50-70 0z" fill="#B9D0DE" stroke="#00000014" stroke-width="1.5" stroke-linecap="butt" stroke-linejoin="miter" filter="url(#softShadow)"/>
+</g>
+<g id="PLaEA" transform="translate(0,0)">
+<path id="s8XK7" transform="translate(16,89.6)" d="M2 0 L4 0 A2 2 0 0 1 6 2 L6 10 A2 2 0 0 1 4 12 L2 12 A2 2 0 0 1 0 10 L0 2 A2 2 0 0 1 2 0 Z" fill="#8A6E52"/>
+<ellipse id="ckLA0" transform="translate(4,65)" cx="15.0" cy="15.0" rx="15.0" ry="15.0" fill="#8FB587"/>
+<path id="YrCD4" transform="translate(78,71.2)" d="M2 0 L4 0 A2 2 0 0 1 6 2 L6 10 A2 2 0 0 1 4 12 L2 12 A2 2 0 0 1 0 10 L0 2 A2 2 0 0 1 2 0 Z" fill="#8A6E52"/>
+<ellipse id="ZlWwV" transform="translate(63.5,42.5)" cx="17.5" cy="17.5" rx="17.5" ry="17.5" fill="#7CA873"/>
+<path id="c8iku" transform="translate(34,192.8)" d="M2 0 L4 0 A2 2 0 0 1 6 2 L6 10 A2 2 0 0 1 4 12 L2 12 A2 2 0 0 1 0 10 L0 2 A2 2 0 0 1 2 0 Z" fill="#8A6E52"/>
+<ellipse id="XuMec" transform="translate(17,160)" cx="20.0" cy="20.0" rx="20.0" ry="20.0" fill="#8FB587"/>
+<path id="NHw4d" transform="translate(102,179.6)" d="M2 0 L4 0 A2 2 0 0 1 6 2 L6 10 A2 2 0 0 1 4 12 L2 12 A2 2 0 0 1 0 10 L0 2 A2 2 0 0 1 2 0 Z" fill="#8A6E52"/>
+<ellipse id="hUD1K" transform="translate(90,155)" cx="15.0" cy="15.0" rx="15.0" ry="15.0" fill="#7CA873"/>
+<path id="SSWi4" transform="translate(22,301.2)" d="M2 0 L4 0 A2 2 0 0 1 6 2 L6 10 A2 2 0 0 1 4 12 L2 12 A2 2 0 0 1 0 10 L0 2 A2 2 0 0 1 2 0 Z" fill="#8A6E52"/>
+<ellipse id="UoeNO" transform="translate(7.5,272.5)" cx="17.5" cy="17.5" rx="17.5" ry="17.5" fill="#8FB587"/>
+<path id="t3zz6" transform="translate(90,332.8)" d="M2 0 L4 0 A2 2 0 0 1 6 2 L6 10 A2 2 0 0 1 4 12 L2 12 A2 2 0 0 1 0 10 L0 2 A2 2 0 0 1 2 0 Z" fill="#8A6E52"/>
+<ellipse id="l5Sh3" transform="translate(73,300)" cx="20.0" cy="20.0" rx="20.0" ry="20.0" fill="#7CA873"/>
+<path id="bDO5c" transform="translate(9,429.6)" d="M2 0 L4 0 A2 2 0 0 1 6 2 L6 10 A2 2 0 0 1 4 12 L2 12 A2 2 0 0 1 0 10 L0 2 A2 2 0 0 1 2 0 Z" fill="#8A6E52"/>
+<ellipse id="lqAbV" transform="translate(-3,405)" cx="15.0" cy="15.0" rx="15.0" ry="15.0" fill="#8FB587"/>
+<path id="SfOTt" transform="translate(78,461.2)" d="M2 0 L4 0 A2 2 0 0 1 6 2 L6 10 A2 2 0 0 1 4 12 L2 12 A2 2 0 0 1 0 10 L0 2 A2 2 0 0 1 2 0 Z" fill="#8A6E52"/>
+<ellipse id="Dq2WS" transform="translate(63.5,432.5)" cx="17.5" cy="17.5" rx="17.5" ry="17.5" fill="#7CA873"/>
+<path id="tk3mb" transform="translate(115,632.8)" d="M2 0 L4 0 A2 2 0 0 1 6 2 L6 10 A2 2 0 0 1 4 12 L2 12 A2 2 0 0 1 0 10 L0 2 A2 2 0 0 1 2 0 Z" fill="#8A6E52"/>
+<ellipse id="ukI18" transform="translate(98,600)" cx="20.0" cy="20.0" rx="20.0" ry="20.0" fill="#8FB587"/>
+<path id="kZ9FP" transform="translate(16,659.6)" d="M2 0 L4 0 A2 2 0 0 1 6 2 L6 10 A2 2 0 0 1 4 12 L2 12 A2 2 0 0 1 0 10 L0 2 A2 2 0 0 1 2 0 Z" fill="#8A6E52"/>
+<ellipse id="izBbj" transform="translate(4,635)" cx="15.0" cy="15.0" rx="15.0" ry="15.0" fill="#7CA873"/>
+<path id="ZjEGI" transform="translate(90,761.2)" d="M2 0 L4 0 A2 2 0 0 1 6 2 L6 10 A2 2 0 0 1 4 12 L2 12 A2 2 0 0 1 0 10 L0 2 A2 2 0 0 1 2 0 Z" fill="#8A6E52"/>
+<ellipse id="Hprek" transform="translate(75.5,732.5)" cx="17.5" cy="17.5" rx="17.5" ry="17.5" fill="#8FB587"/>
+<path id="ekUw5" transform="translate(22,812.8)" d="M2 0 L4 0 A2 2 0 0 1 6 2 L6 10 A2 2 0 0 1 4 12 L2 12 A2 2 0 0 1 0 10 L0 2 A2 2 0 0 1 2 0 Z" fill="#8A6E52"/>
+<ellipse id="gMLnW" transform="translate(5,780)" cx="20.0" cy="20.0" rx="20.0" ry="20.0" fill="#7CA873"/>
+<path id="x84ed" transform="translate(102,909.6)" d="M2 0 L4 0 A2 2 0 0 1 6 2 L6 10 A2 2 0 0 1 4 12 L2 12 A2 2 0 0 1 0 10 L0 2 A2 2 0 0 1 2 0 Z" fill="#8A6E52"/>
+<ellipse id="ZIEAV" transform="translate(90,885)" cx="15.0" cy="15.0" rx="15.0" ry="15.0" fill="#8FB587"/>
+<path id="E7i9Yc" transform="translate(34,961.2)" d="M2 0 L4 0 A2 2 0 0 1 6 2 L6 10 A2 2 0 0 1 4 12 L2 12 A2 2 0 0 1 0 10 L0 2 A2 2 0 0 1 2 0 Z" fill="#8A6E52"/>
+<ellipse id="y2QsP" transform="translate(19.5,932.5)" cx="17.5" cy="17.5" rx="17.5" ry="17.5" fill="#7CA873"/>
+<path id="CGDO8" transform="translate(109,1062.8)" d="M2 0 L4 0 A2 2 0 0 1 6 2 L6 10 A2 2 0 0 1 4 12 L2 12 A2 2 0 0 1 0 10 L0 2 A2 2 0 0 1 2 0 Z" fill="#8A6E52"/>
+<ellipse id="lg1sm" transform="translate(92,1030)" cx="20.0" cy="20.0" rx="20.0" ry="20.0" fill="#8FB587"/>
+<path id="P9ARI" transform="translate(16,1109.6)" d="M2 0 L4 0 A2 2 0 0 1 6 2 L6 10 A2 2 0 0 1 4 12 L2 12 A2 2 0 0 1 0 10 L0 2 A2 2 0 0 1 2 0 Z" fill="#8A6E52"/>
+<ellipse id="UASJv" transform="translate(4,1085)" cx="15.0" cy="15.0" rx="15.0" ry="15.0" fill="#7CA873"/>
+<path id="Df6PE" transform="translate(84,1191.2)" d="M2 0 L4 0 A2 2 0 0 1 6 2 L6 10 A2 2 0 0 1 4 12 L2 12 A2 2 0 0 1 0 10 L0 2 A2 2 0 0 1 2 0 Z" fill="#8A6E52"/>
+<ellipse id="YRdUL" transform="translate(69.5,1162.5)" cx="17.5" cy="17.5" rx="17.5" ry="17.5" fill="#8FB587"/>
+<path id="QTus6" transform="translate(40,1262.8)" d="M2 0 L4 0 A2 2 0 0 1 6 2 L6 10 A2 2 0 0 1 4 12 L2 12 A2 2 0 0 1 0 10 L0 2 A2 2 0 0 1 2 0 Z" fill="#8A6E52"/>
+<ellipse id="vdtv6" transform="translate(23,1230)" cx="20.0" cy="20.0" rx="20.0" ry="20.0" fill="#7CA873"/>
+<path id="tSxIC" transform="translate(115,469.6)" d="M2 0 L4 0 A2 2 0 0 1 6 2 L6 10 A2 2 0 0 1 4 12 L2 12 A2 2 0 0 1 0 10 L0 2 A2 2 0 0 1 2 0 Z" fill="#8A6E52"/>
+<ellipse id="ZtRcA" transform="translate(103,445)" cx="15.0" cy="15.0" rx="15.0" ry="15.0" fill="#8FB587"/>
+<path id="hYU3a" transform="translate(59,1011.2)" d="M2 0 L4 0 A2 2 0 0 1 6 2 L6 10 A2 2 0 0 1 4 12 L2 12 A2 2 0 0 1 0 10 L0 2 A2 2 0 0 1 2 0 Z" fill="#8A6E52"/>
+<ellipse id="n1Fdxg" transform="translate(44.5,982.5)" cx="17.5" cy="17.5" rx="17.5" ry="17.5" fill="#7CA873"/>
+<path id="pejCZ" transform="translate(180,1000)" d="M0.0 70.0 A100.0 70.0 0 1 0 200.0 70.0 A100.0 70.0 0 1 0 0.0 70.0 Z M44.99999999999999 70.0 A55.00000000000001 38.5 0 1 0 155.0 70.0 A55.00000000000001 38.5 0 1 0 44.99999999999999 70.0 Z" fill="#D8C79C" fill-rule="evenodd"/>
+<ellipse id="BUaAD" transform="translate(202,1018)" cx="78.0" cy="52.0" rx="78.0" ry="52.0" fill="#D2E2C6"/>
+<path id="UpWxm" transform="translate(600,1180)" d="M8 0 L62 0 A8 8 0 0 1 70 8 L70 32 A8 8 0 0 1 62 40 L8 40 A8 8 0 0 1 0 32 L0 8 A8 8 0 0 1 8 0 Z" fill="#D8D5CC"/>
+<path id="GcZTL" transform="translate(860,700)" d="M8 0 L42 0 A8 8 0 0 1 50 8 L50 62 A8 8 0 0 1 42 70 L8 70 A8 8 0 0 1 0 62 L0 8 A8 8 0 0 1 8 0 Z" fill="#D8D5CC"/>
+<path id="ZXnJI" transform="translate(605,672)" d="M3 0 L29 0 A3 3 0 0 1 32 3 L32 6 A3 3 0 0 1 29 9 L3 9 A3 3 0 0 1 0 6 L0 3 A3 3 0 0 1 3 0 Z" fill="#A9805F"/>
+<path id="YGnHF" transform="translate(700,672)" d="M3 0 L29 0 A3 3 0 0 1 32 3 L32 6 A3 3 0 0 1 29 9 L3 9 A3 3 0 0 1 0 6 L0 3 A3 3 0 0 1 3 0 Z" fill="#A9805F"/>
+<path id="a7QEv" transform="translate(605,816)" d="M3 0 L29 0 A3 3 0 0 1 32 3 L32 6 A3 3 0 0 1 29 9 L3 9 A3 3 0 0 1 0 6 L0 3 A3 3 0 0 1 3 0 Z" fill="#A9805F"/>
+<path id="fgP3x" transform="translate(700,816)" d="M3 0 L29 0 A3 3 0 0 1 32 3 L32 6 A3 3 0 0 1 29 9 L3 9 A3 3 0 0 1 0 6 L0 3 A3 3 0 0 1 3 0 Z" fill="#A9805F"/>
+<path id="Xitis" transform="translate(867,90.24)" d="M2 0 L4 0 A2 2 0 0 1 6 2 L6 10 A2 2 0 0 1 4 12 L2 12 A2 2 0 0 1 0 10 L0 2 A2 2 0 0 1 2 0 Z" fill="#8A6E52"/>
+<ellipse id="vFPoh" transform="translate(854,64)" cx="16.0" cy="16.0" rx="16.0" ry="16.0" fill="#8FB587"/>
+<path id="U0GEV7" transform="translate(877,440.24)" d="M2 0 L4 0 A2 2 0 0 1 6 2 L6 10 A2 2 0 0 1 4 12 L2 12 A2 2 0 0 1 0 10 L0 2 A2 2 0 0 1 2 0 Z" fill="#8A6E52"/>
+<ellipse id="Q3YLPH" transform="translate(864,414)" cx="16.0" cy="16.0" rx="16.0" ry="16.0" fill="#7CA873"/>
+<path id="qw8DL" transform="translate(877,710.24)" d="M2 0 L4 0 A2 2 0 0 1 6 2 L6 10 A2 2 0 0 1 4 12 L2 12 A2 2 0 0 1 0 10 L0 2 A2 2 0 0 1 2 0 Z" fill="#8A6E52"/>
+<ellipse id="BDSs0" transform="translate(864,684)" cx="16.0" cy="16.0" rx="16.0" ry="16.0" fill="#8FB587"/>
+<path id="yJmaX" transform="translate(887,1020.24)" d="M2 0 L4 0 A2 2 0 0 1 6 2 L6 10 A2 2 0 0 1 4 12 L2 12 A2 2 0 0 1 0 10 L0 2 A2 2 0 0 1 2 0 Z" fill="#8A6E52"/>
+<ellipse id="i6VAMz" transform="translate(874,994)" cx="16.0" cy="16.0" rx="16.0" ry="16.0" fill="#7CA873"/>
+<path id="UxKYR" transform="translate(337,840.24)" d="M2 0 L4 0 A2 2 0 0 1 6 2 L6 10 A2 2 0 0 1 4 12 L2 12 A2 2 0 0 1 0 10 L0 2 A2 2 0 0 1 2 0 Z" fill="#8A6E52"/>
+<ellipse id="IrgXd" transform="translate(324,814)" cx="16.0" cy="16.0" rx="16.0" ry="16.0" fill="#8FB587"/>
+<path id="mqhm8" transform="translate(497,610.24)" d="M2 0 L4 0 A2 2 0 0 1 6 2 L6 10 A2 2 0 0 1 4 12 L2 12 A2 2 0 0 1 0 10 L0 2 A2 2 0 0 1 2 0 Z" fill="#8A6E52"/>
+<ellipse id="QSIiH" transform="translate(484,584)" cx="16.0" cy="16.0" rx="16.0" ry="16.0" fill="#7CA873"/>
+</g>
+<g id="p1L3R" transform="translate(0,0)">
+<g transform="translate(660,20)">
+<rect x="61.980000000000004" y="56.0" width="46.04" height="28" rx="8" fill="#FFFFFFF2"/>
+<text x="85.0" y="70.0" font-family="Noto Sans KR, sans-serif" font-size="14" font-weight="600" fill="#3A362E" text-anchor="middle" dominant-baseline="central">기숙사</text>
+</g>
+<g transform="translate(370,130)">
+<rect x="73.3" y="12.0" width="63.4" height="28" rx="8" fill="#FFFFFFF2"/>
+<text x="105.0" y="26.0" font-family="Noto Sans KR, sans-serif" font-size="14" font-weight="600" fill="#3A362E" text-anchor="middle" dominant-baseline="central">중앙도서관</text>
+</g>
+<g transform="translate(760,200)">
+<rect x="33.96" y="56.0" width="72.08" height="28" rx="8" fill="#FFFFFFF2"/>
+<text x="70.0" y="70.0" font-family="Noto Sans KR, sans-serif" font-size="14" font-weight="600" fill="#3A362E" text-anchor="middle" dominant-baseline="central">AI 연구관</text>
+</g>
+<g transform="translate(450,440)">
+<rect x="66.98" y="56.0" width="46.04" height="28" rx="8" fill="#FFFFFFF2"/>
+<text x="90.0" y="70.0" font-family="Noto Sans KR, sans-serif" font-size="14" font-weight="600" fill="#3A362E" text-anchor="middle" dominant-baseline="central">공학관</text>
+</g>
+<g transform="translate(680,510)">
+<rect x="52.64" y="56.0" width="54.72" height="28" rx="8" fill="#FFFFFFF2"/>
+<text x="80.0" y="70.0" font-family="Noto Sans KR, sans-serif" font-size="14" font-weight="600" fill="#3A362E" text-anchor="middle" dominant-baseline="central">학생회관</text>
+</g>
+<g transform="translate(320,680)">
+<rect x="32.64" y="46.0" width="54.72" height="28" rx="8" fill="#FFFFFFF2"/>
+<text x="60.0" y="60.0" font-family="Noto Sans KR, sans-serif" font-size="14" font-weight="600" fill="#3A362E" text-anchor="middle" dominant-baseline="central">학생식당</text>
+</g>
+<g transform="translate(370,940)">
+<rect x="76.98" y="56.0" width="46.04" height="28" rx="8" fill="#FFFFFFF2"/>
+<text x="100.0" y="70.0" font-family="Noto Sans KR, sans-serif" font-size="14" font-weight="600" fill="#3A362E" text-anchor="middle" dominant-baseline="central">강의동</text>
+</g>
+<g transform="translate(690,950)">
+<rect x="66.98" y="56.0" width="46.04" height="28" rx="8" fill="#FFFFFFF2"/>
+<text x="90.0" y="70.0" font-family="Noto Sans KR, sans-serif" font-size="14" font-weight="600" fill="#3A362E" text-anchor="middle" dominant-baseline="central">체육관</text>
+</g>
+<g transform="translate(540,660)">
+<rect x="87.64" y="12.0" width="54.72" height="28" rx="8" fill="#FFFFFFF2"/>
+<text x="115.0" y="26.0" font-family="Noto Sans KR, sans-serif" font-size="14" font-weight="600" fill="#3A362E" text-anchor="middle" dominant-baseline="central">중앙광장</text>
+</g>
+<g transform="translate(400,1215)">
+<rect x="41.32" y="16.0" width="37.36" height="28" rx="8" fill="#2F8FA6"/>
+<text x="60.0" y="30.0" font-family="Noto Sans KR, sans-serif" font-size="14" font-weight="600" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">정문</text>
+</g>
+<g transform="translate(838,5)">
+<rect x="23.18" y="7.5" width="33.64" height="25" rx="8" fill="#FFFFFFF2" stroke="#2F8FA6" stroke-width="1.5"/>
+<text x="40.0" y="20.0" font-family="Noto Sans KR, sans-serif" font-size="11" font-weight="600" fill="#2F8FA6" text-anchor="middle" dominant-baseline="central">북문</text>
+</g>
+<g transform="translate(830,690)">
+<rect x="18.18" y="7.5" width="33.64" height="25" rx="8" fill="#FFFFFFF2" stroke="#2F8FA6" stroke-width="1.5"/>
+<text x="35.0" y="20.0" font-family="Noto Sans KR, sans-serif" font-size="11" font-weight="600" fill="#2F8FA6" text-anchor="middle" dominant-baseline="central">동문</text>
+</g>
+<g transform="translate(180,1000)">
+<rect x="77.91" y="56.5" width="44.18" height="27" rx="8" fill="#FFFFFFF2"/>
+<text x="100.0" y="70.0" font-family="Noto Sans KR, sans-serif" font-size="13" font-weight="600" fill="#3A362E" text-anchor="middle" dominant-baseline="central">운동장</text>
+</g>
+<g transform="translate(270,420)">
+<rect x="46.980000000000004" y="41.0" width="46.04" height="28" rx="8" fill="#FFFFFFF2"/>
+<text x="70.0" y="55.0" font-family="Noto Sans KR, sans-serif" font-size="14" font-weight="600" fill="#3A362E" text-anchor="middle" dominant-baseline="central">인문관</text>
+</g>
+<g transform="translate(640,335)">
+<rect x="46.32" y="31.0" width="37.36" height="28" rx="8" fill="#FFFFFFF2"/>
+<text x="65.0" y="45.0" font-family="Noto Sans KR, sans-serif" font-size="14" font-weight="600" fill="#3A362E" text-anchor="middle" dominant-baseline="central">호수</text>
+</g>
+</g>
+</svg>
