@@ -2,7 +2,6 @@ import { Bell } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { useSettlements } from '@/features/history/hooks/useHistory';
 import { useInspectionList } from '@/features/inspections/hooks/useInspections';
 import { cn } from '@/lib/utils';
 
@@ -15,10 +14,15 @@ import { cn } from '@/lib/utils';
  * 그래서 알림 목록을 지어내지 않습니다 — 근거 없는 데이터를 화면에 올리면 관리자가
  * 그걸 믿고 판단합니다.
  *
- * 대신 **이미 계약에 있는 값**으로 채웁니다. 관리자가 지금 손대야 하는 건 둘입니다.
+ * 대신 **이미 계약에 있는 값**으로 채웁니다.
  *   파손 검수 미처리 — `ADMIN-INSPECTION-001` 의 `reviewStatus=PENDING`
- *   미정산          — 정산 이력의 `status=PENDING`
  * 대시보드의 처리 대기 카드와 **같은 조회**를 씁니다. 두 곳 숫자가 어긋나지 않습니다.
+ *
+ * **「미정산」을 뺐습니다.** 정산 조회 API 가 관리자 계약에 없어서 뒤에 목업밖에
+ * 없었습니다(`historyApi` 는 실 API 분기조차 없습니다). 실 API 를 붙이면 검수는 진짜
+ * 숫자인데 미정산만 지어낸 값이라, 나란히 놓이면 둘 다 진짜로 읽힙니다. 그 상태로
+ * 누르면 목업 정산 목록이 열립니다.
+ * 되살리려면 정산 API 가 계약에 들어온 뒤에 하세요 — 목업으로는 되살리지 마세요.
  *
  * 빨간 점은 실제로 처리할 게 있을 때만 찍습니다. 예전에는 늘 찍혀 있고 눌러도 아무 일이
  * 없었습니다 — 늘 켜진 알림은 정보가 아니라 소음입니다.
@@ -40,7 +44,6 @@ export function NotificationBell() {
 
     // 대시보드 처리 대기 카드와 같은 조건입니다.
     const inspections = useInspectionList({ reviewStatus: 'PENDING', size: 100 });
-    const settlements = useSettlements();
 
     const items: Item[] = [
         {
@@ -49,15 +52,6 @@ export function NotificationBell() {
             to: '/inspections?review=PENDING',
             hint: '관리자 판정이 필요합니다',
             failed: inspections.isError,
-        },
-        {
-            label: '미정산',
-            count: settlements.data
-                ? settlements.data.filter((item) => item.status === 'PENDING').length
-                : null,
-            to: '/history/settlements?status=PENDING',
-            hint: '납부가 끝나지 않은 정산입니다',
-            failed: settlements.isError,
         },
     ];
 

@@ -1,7 +1,6 @@
 import {
     GridIcon,
     HomeIcon,
-    ListIcon,
     ShieldCheckIcon,
     UmbrellaIcon,
     type NavIcon,
@@ -29,7 +28,24 @@ export const NAV_ITEMS: NavItem[] = [
     { label: '대시보드', to: '/', icon: HomeIcon },
     { label: '대여소 관리', to: '/stations', icon: GridIcon },
     { label: '우산 재고', to: '/umbrellas', icon: UmbrellaIcon },
-    { label: '이력', to: '/history/rentals', match: '/history', icon: ListIcon },
+    /*
+     * `이력`(대여·반납·정산) 은 **사이드바에서만 내렸습니다. 코드는 지우지 않았습니다.**
+     *
+     * 뒤에 목업밖에 없기 때문입니다. 관리자 API 8개에 대여·반납·정산이 없고
+     * (`historyApi` 는 `env.useMockData` 분기조차 없이 무조건 목업을 돌려줍니다),
+     * 화면 카탈로그상 전부 P1 입니다. 실 API 를 붙이면 재고·슬롯·검수는 진짜 데이터인데
+     * 이 세 화면만 지어낸 값이 되고, **화면에는 그걸 알리는 표시가 없습니다.**
+     * 시연에서 정산 이력을 열면 존재하지 않는 정산 건이 진짜처럼 보입니다.
+     *
+     * 되살리려면 이 줄만 다시 넣으세요 (라우트는 그대로 열려 있습니다):
+     *   { label: '이력', to: '/history/rentals', match: '/history', icon: ListIcon },
+     * (`ListIcon` 도 위 import 에 다시 추가해야 합니다)
+     *
+     * `features/history` 폴더는 그대로 둡니다 — 슬롯 상세가 `types.ts` 의
+     * `RETURN_STATUS_LABEL`·`RETURN_STATUS_TONE` 을 쓰고 있어서입니다. 그쪽은 목업이
+     * 아니라 **실 응답**(`SlotDetailResponse.latestReturnAttempt.status`)을 표시하는
+     * 라벨이라, 지우면 실 API 화면이 깨집니다.
+     */
     /*
      * 배지(대기 건수)를 뗐습니다.
      *
