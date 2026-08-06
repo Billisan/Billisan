@@ -47,7 +47,7 @@ export function startKioskStageStream(
 
       onStage({
         stage: KIOSK_STAGE.AUTH_SUCCEEDED,
-        displayName: result.displayName,
+        displayName: result.userName,
         studentId: result.studentId,
       })
 

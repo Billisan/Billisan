@@ -43,7 +43,11 @@ export interface Translations {
     faceNotMatchedTitle: string
     faceNotMatchedTips: string[]
     authSuccessText: string
-    confirmQuestion: (name: string | null, studentId: string | null) => string
+    // studentId만 별도 폰트 크기(text-xl)로 렌더링하기 위해 문자열 대신 조각으로 반환한다.
+    confirmQuestion: (
+      name: string | null,
+      studentId: string | null,
+    ) => { before: string; studentId: string | null; after: string }
     confirmSubtitle: string
     confirmYes: (flow: 'RENT' | 'RETURN') => string
     confirmNo: string
@@ -148,9 +152,9 @@ const ko: Translations = {
     confirmQuestion: (name: string | null, studentId: string | null) =>
       name
         ? studentId
-          ? `${name}님(${studentId})이 맞으신가요?`
-          : `${name}님이 맞으신가요?`
-        : '본인이 맞으신가요?',
+          ? { before: `${name}님(`, studentId, after: ')이 맞으신가요?' }
+          : { before: `${name}님이 맞으신가요?`, studentId: null, after: '' }
+        : { before: '본인이 맞으신가요?', studentId: null, after: '' },
     confirmSubtitle: '인식된 정보가 본인 정보와 일치하는지 확인해주세요',
     confirmYes: (flow: 'RENT' | 'RETURN') =>
       `예, 우산 ${flow === 'RETURN' ? '반납' : '대여'} 계속하기`,
@@ -281,9 +285,9 @@ const en: Translations = {
     confirmQuestion: (name: string | null, studentId: string | null) =>
       name
         ? studentId
-          ? `Is this ${name} (${studentId})?`
-          : `Is this ${name}?`
-        : 'Is this you?',
+          ? { before: `Is this ${name} (`, studentId, after: ')?' }
+          : { before: `Is this ${name}?`, studentId: null, after: '' }
+        : { before: 'Is this you?', studentId: null, after: '' },
     confirmSubtitle: 'Please confirm the recognized information matches you',
     confirmYes: (flow: 'RENT' | 'RETURN') =>
       `Yes, continue with ${flow === 'RETURN' ? 'return' : 'rental'}`,

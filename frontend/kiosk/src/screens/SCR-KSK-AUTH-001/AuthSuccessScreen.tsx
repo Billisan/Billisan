@@ -56,6 +56,7 @@ export function AuthSuccessScreen({
   }, [phase]);
 
   const isConfirmPhase = phase === "CONFIRM";
+  const confirmQuestion = t.auth.confirmQuestion(displayName, studentId);
 
   return (
     <KioskLayout currentStep={2} flow={flow}>
@@ -90,7 +91,11 @@ export function AuthSuccessScreen({
             <div className="animate-rise-in flex w-102 flex-col items-center gap-8">
               <div className="flex flex-col items-center gap-4 text-center">
                 <h2 className="text-3xl font-bold text-black">
-                  {t.auth.confirmQuestion(displayName, studentId)}
+                  {confirmQuestion.before}
+                  {confirmQuestion.studentId && (
+                    <span className="text-xl">{confirmQuestion.studentId}</span>
+                  )}
+                  {confirmQuestion.after}
                 </h2>
                 <p className="text-tertiary-text text-xl">
                   {t.auth.confirmSubtitle}
