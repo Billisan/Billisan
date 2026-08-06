@@ -1,13 +1,9 @@
-import { useState } from 'react'
-import type { LayoutChangeEvent } from 'react-native'
 import { View } from 'react-native'
 import { GestureDetector } from 'react-native-gesture-handler'
 import Animated from 'react-native-reanimated'
-import CampusMapSvg from '../../assets/campus-map.svg'
+import CampusMapSvg from '../../assets/campus-map-background.svg'
 import type { Station } from '../../types/station'
 import { useCampusMapGesture } from './hooks/useCampusMapGesture'
-import { toContainedMapPoint } from './mapGeometry'
-import { StationMarker } from './StationMarker'
 
 interface CampusMapProps {
   stations: Station[]
@@ -28,18 +24,12 @@ const MARKER_LABEL_OFFSET = 32
 // scale/translate를 따라가지만 화면상 크기는 확대/축소와 무관하게 고정된다(카카오맵/네이버맵과
 // 동일한 방식, 2026-08-06 사용자 확인). 좌표는 0~1 비율이라 onLayout으로 측정한 실제 픽셀
 // 크기(mapSize) 기준으로 변환한다.
-export function CampusMap({ stations, selectedStationId, onSelectStation }: CampusMapProps) {
-  const [mapSize, setMapSize] = useState({ width: 0, height: 0 })
+export function CampusMap({ stations }: CampusMapProps) {
   const initialFocusStation = stations.find((station) => station.name === INITIAL_FOCUS_STATION_NAME)
   const {
     composedGesture,
     animatedStyle,
     onContainerLayout,
-    scale,
-    translateX,
-    translateY,
-    containerWidth,
-    containerHeight,
   } = useCampusMapGesture({
     stations,
     initialFocusScaleMultiplier: INITIAL_FOCUS_SCALE,
@@ -48,40 +38,13 @@ export function CampusMap({ stations, selectedStationId, onSelectStation }: Camp
       : undefined,
   })
 
-  const handleLayout = (event: LayoutChangeEvent) => {
-    const { width, height } = event.nativeEvent.layout
-    setMapSize({ width, height })
-    onContainerLayout(event)
-  }
-
   return (
-    <View className="flex-1 overflow-hidden bg-[#C9C9C9]" onLayout={handleLayout}>
+    <View className="flex-1 overflow-hidden bg-[#9E9E9E]" onLayout={onContainerLayout}>
       <GestureDetector gesture={composedGesture}>
         <Animated.View style={[{ flex: 1 }, animatedStyle]}>
           <CampusMapSvg width="100%" height="100%" preserveAspectRatio="xMidYMid meet" />
         </Animated.View>
       </GestureDetector>
-      {mapSize.width > 0 &&
-        mapSize.height > 0 &&
-        stations.map((station) => {
-          const mapPoint = toContainedMapPoint(mapSize.width, mapSize.height, station.x, station.y)
-
-          return (
-            <StationMarker
-              key={station.id}
-              station={station}
-              mapX={mapPoint.x}
-              mapY={mapPoint.y - MARKER_LABEL_OFFSET}
-              scale={scale}
-              translateX={translateX}
-              translateY={translateY}
-              containerWidth={containerWidth}
-              containerHeight={containerHeight}
-              selected={selectedStationId === station.id}
-              onPress={() => onSelectStation(station.id)}
-            />
-          )
-        })}
     </View>
   )
 }

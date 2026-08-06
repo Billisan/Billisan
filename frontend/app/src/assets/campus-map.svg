@@ -10,7 +10,6 @@
 <ellipse id="SNFEM" transform="translate(20,520)" cx="50.0" cy="35.0" rx="50.0" ry="35.0" fill="#A9D3DE"/>
 <path id="MqWxW" transform="translate(0,0)" d="M190 20c-30 180 20 320-20 480-30 160 30 320-15 480-35 160 15 280-55 360" fill="none" stroke="#A9D3DE" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
 <path id="tS9dQ" transform="translate(0,0)" d="M190 20c-30 180 20 320-20 480-30 160 30 320-15 480-35 160 15 280-55 360" fill="none" stroke="#C3E4EA" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
-<path id="h6qFK" transform="translate(-60,1180) rotate(8) scale(2.6,2.2)" d="M50 4c24 0 46 20 46 46 0 26-22 46-46 46-24 0-46-20-46-46 0-26 22-46 46-46z" fill="#A9D3DE"/>
 <path id="NvCBh" transform="translate(540,660)" d="M55 0 L175 0 A55 55 0 0 1 230 55 L230 125 A55 55 0 0 1 175 180 L55 180 A55 55 0 0 1 0 125 L0 55 A55 55 0 0 1 55 0 Z" fill="#DCEAEF"/>
 <path id="X9vbT" transform="translate(555,675)" d="M45 0 L155 0 A45 45 0 0 1 200 45 L200 105 A45 45 0 0 1 155 150 L45 150 A45 45 0 0 1 0 105 L0 45 A45 45 0 0 1 45 0 Z" fill="none" stroke="#C7DEE6" stroke-width="3"/>
 <ellipse id="nXW82" transform="translate(640,335)" cx="65.0" cy="45.0" rx="65.0" ry="45.0" fill="#A9D3DE"/>
