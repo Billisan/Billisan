@@ -1,3 +1,4 @@
+import faceGuideImage from '../../assets/face-guide.png'
 import { GuideContent } from '../../components/common/GuideContent'
 import { EyeIcon } from '../../components/icons/EyeIcon'
 import { UserIcon } from '../../components/icons/UserIcon'
@@ -28,7 +29,13 @@ export function FaceAuthGuideScreen({
         title={flow === 'RETURN' ? t.auth.guideTitleReturn : t.auth.guideTitleRent}
         subtitle={t.auth.guideSubtitle}
         guideBox={
-          <div className="border-disabled h-56 w-104 rounded-2xl border-2 border-dashed" />
+          <div className="border-disabled h-56 w-104 overflow-hidden rounded-2xl border-2 border-dashed">
+            <img
+              src={faceGuideImage}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          </div>
         }
         steps={faceGuideSteps}
         actionLabel={t.auth.readyButton}
