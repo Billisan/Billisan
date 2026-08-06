@@ -37,6 +37,14 @@ public interface SlotRepository extends JpaRepository<Slot, UUID> {
 
     long countByStationIdAndItemCondition(UUID stationId, ItemCondition itemCondition);
 
+    /** EDGE-DEVICE-001 inventory.emptyReturnSlotCount — 반납 가능한 빈 슬롯 수. */
+    long countByStationIdAndServiceStatusAndOccupancyStatus(
+            UUID stationId, ServiceStatus serviceStatus, OccupancyStatus occupancyStatus);
+
+    /** EDGE-DEVICE-001 inventory.rentableSlotCount — 우산이 들어있어 대여 가능한 슬롯 수. */
+    long countByStationIdAndServiceStatusAndOccupancyStatusAndItemCondition(
+            UUID stationId, ServiceStatus serviceStatus, OccupancyStatus occupancyStatus, ItemCondition itemCondition);
+
     /**
      * "대여 가능한 우산이 있는 슬롯" — CLAUDE.md 신규 대여 조건(AVAILABLE+OCCUPIED+NORMAL+
      * LOCKED)과 동일 기준. ⚠️ 재확인 필요: DB 담당의 재고 집계 쿼리가 이 조건에
