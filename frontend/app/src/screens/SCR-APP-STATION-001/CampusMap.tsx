@@ -55,7 +55,7 @@ export function CampusMap({ stations, selectedStationId, onSelectStation }: Camp
   }
 
   return (
-    <View className="flex-1 overflow-hidden bg-background" onLayout={handleLayout}>
+    <View className="flex-1 overflow-hidden bg-[#C9C9C9]" onLayout={handleLayout}>
       <GestureDetector gesture={composedGesture}>
         <Animated.View style={[{ flex: 1 }, animatedStyle]}>
           <CampusMapSvg width="100%" height="100%" preserveAspectRatio="xMidYMid meet" />
