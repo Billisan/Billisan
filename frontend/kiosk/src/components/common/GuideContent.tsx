@@ -42,10 +42,10 @@ export function GuideContent({
               <p className="text-lg text-black">{text}</p>
             </div>
           ))}
-
-          {footer}
         </div>
       </div>
+
+      {footer}
 
       {actionLabel && onAction && (
         <button

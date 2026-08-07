@@ -123,3 +123,19 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/* 모든 버튼 공통 클릭·터치 피드백 — 살짝 확대 + 브랜드 컬러 테두리 번짐(box-shadow ring).
+   실기기 터치스크린에서 :active가 안 먹어서 main.tsx의 Pointer Events가 붙여주는
+   is-pressed 클래스로 제어한다(:active도 데스크톱 마우스용으로 함께 남겨둔다). */
+button:not(:disabled) {
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 0.15s ease-out,
+    box-shadow 0.15s ease-out;
+}
+
+button:not(:disabled):active,
+button:not(:disabled).is-pressed {
+  transform: scale(0.92);
+  box-shadow: 0 0 0 10px rgba(207, 176, 2, 0.35);
+}
