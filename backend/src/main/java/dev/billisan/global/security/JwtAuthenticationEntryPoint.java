@@ -20,6 +20,8 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         this.objectMapper = objectMapper;
     }
 
+    private static final String ADMIN_PATH_PREFIX = "/api/v1/admin/";
+
     @Override
     public void commence(
             HttpServletRequest request,
@@ -30,7 +32,10 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         // 한글이 "?"로 되돌릴 수 없이 깨진다(실기 테스트로 발견) — getWriter() 전에 설정.
         response.setCharacterEncoding("UTF-8");
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        response.getWriter().write(objectMapper.writeValueAsString(
-                new ApiError("UNAUTHORIZED", "인증이 필요합니다.")));
+        
+        ApiError error = request.getRequestURI().startsWith(ADMIN_PATH_PREFIX)
+                ? new ApiError("ADMIN_SESSION_EXPIRED", "관리자 세션이 만료되었습니다.")
+                : new ApiError("UNAUTHORIZED", "인증이 필요합니다.");
+        response.getWriter().write(objectMapper.writeValueAsString(error));
     }
 }
