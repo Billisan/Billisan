@@ -42,10 +42,10 @@ jwt:
     idle-expiration-seconds: ${JWT_ADMIN_IDLE_EXPIRATION_SECONDS:1800}
     absolute-expiration-seconds: ${JWT_ADMIN_ABSOLUTE_EXPIRATION_SECONDS:28800}
 
-# 관리자 웹 CORS 허용 origin(콤마 구분). 실제 배포 시 Vercel 도메인 추가 필요.
+# 관리자 웹 CORS 허용 origin(콤마 구분).
 admin:
   cors:
-    allowed-origins: ${ADMIN_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+    allowed-origins: ${ADMIN_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,https://web-sigma-two-20.vercel.app}
 
 mqtt:
   broker-url: ${MQTT_BROKER_URL:tcp://localhost:1883}
