@@ -37,6 +37,7 @@ function delay<T>(value: T, ms = 180): Promise<T> {
  */
 export interface InventorySummary {
     stationId: string;
+    stationName: string;
     totalSlotCount: number;
     occupiedSlotCount: number;
     emptySlotCount: number;
@@ -296,6 +297,7 @@ export const stationsApi = {
         const slots = station ? buildSlots(station) : [];
         const summary: InventorySummary = {
             stationId,
+            stationName: station?.name ?? seedEntryOf(stationId).name,
             totalSlotCount: slots.length,
             occupiedSlotCount: 0,
             emptySlotCount: 0,
