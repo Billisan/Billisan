@@ -55,6 +55,12 @@ export function usePendingInspectionBySlot() {
     const bySlot = useMemo(() => {
         const map = new Map<string, string>();
         for (const item of query.data?.items ?? []) {
+            /*
+              * 슬롯을 못 찾은 검수는 건너뜁니다 — 서버가 `slotId` 에 `null` 을 넣습니다
+              * (검수 → 반납 시도 → 슬롯 경로가 끊긴 경우). 슬롯별 지도라 키가 없으면
+              * 넣을 자리가 없습니다.
+              */
+            if (!item.slotId) continue;
             // 같은 슬롯에 미처리가 여럿이면 목록 정렬(미처리 우선·최신순)의 첫 건을 씁니다.
             if (!map.has(item.slotId)) map.set(item.slotId, item.inspectionId);
         }

@@ -11,6 +11,7 @@ import {
 import { useDecideInspection, useInspection } from '@/features/inspections/hooks/useInspections';
 import type { InspectionDetail } from '@/features/inspections/types';
 import { SlotLockIcon } from '@/features/stations/components/SlotLockIcon';
+import { shortId } from '@/shared/lib/shortId';
 import { ITEM_CONDITION_TONE, SLOT_SERVICE_TONE } from '@/features/stations/types';
 import { Badge } from '@/shared/components/Badge';
 import {
@@ -331,11 +332,6 @@ function SlotStateCard({ detail }: { detail: InspectionDetail }) {
             </dl>
         </section>
     );
-}
-
-/** UUID 앞 8자. 화면에서 건을 구분하는 데는 충분하고, 전체 값은 상세 행에 남습니다. */
-function shortId(id: string): string {
-    return `${id.slice(0, 8)}…`;
 }
 
 function MetaRow({ label, children }: { label: string; children: ReactNode }) {

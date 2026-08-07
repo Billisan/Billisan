@@ -39,8 +39,18 @@ export interface InspectionListItem {
     inspectionId: string;
     /** 이 검수를 만든 반납 시도. 대여(RENTAL)가 아니라 반납(RETURN_ATTEMPT)입니다. */
     returnAttemptId: string;
-    stationId: string;
-    slotId: string;
+
+    /*
+     * ⚠️ **둘 다 `null` 이 올 수 있습니다.** 서버가 검수 → 반납 시도 → 슬롯 순으로 따라가
+     * 채우는 값인데, 반납 시도에 `returnSlotId` 가 없거나 그 슬롯 행이 없으면 `null` 을
+     * 넣습니다 (`InspectionAdminService` — `slot == null ? null : slot.getStationId()`).
+     *
+     * 실서버에서 실제로 발생했습니다. 타입이 `string` 이던 시절 `shortId(item.stationId)`
+     * 가 `null.slice()` 로 터져 **검수 목록 화면 전체가 흰 화면**이 됐습니다. 한 건만
+     * 그래도 `Array.map` 안이라 목록이 통째로 죽습니다.
+     */
+    stationId: string | null;
+    slotId: string | null;
 
     /*
      * ↓ 응답에 **없는** 필드입니다 (EC2 실측 2026-08-01: 필드셋에 미포함).

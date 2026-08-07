@@ -73,8 +73,9 @@ async function displayFieldsOf(
     try {
         const directory = await loadDirectory();
         return {
-            stationName: directory.stationNameById.get(item.stationId),
-            slotNumber: directory.slotNumberById.get(item.slotId),
+            // 서버가 못 채운 식별자는 `null` 입니다 — 그러면 이름·번호도 못 찾습니다.
+            stationName: item.stationId ? directory.stationNameById.get(item.stationId) : undefined,
+            slotNumber: item.slotId ? directory.slotNumberById.get(item.slotId) : undefined,
         };
     } catch {
         return {};
