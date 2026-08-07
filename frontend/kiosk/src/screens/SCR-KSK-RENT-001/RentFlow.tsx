@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { startRent } from '../../api/piSocket'
 import { useTranslation } from '../../i18n/useTranslation'
 import { useFaceAuthStore } from '../../store/faceAuthStore'
+import { useKioskMainStore } from '../../store/kioskMainStore'
 import type { RentResult } from '../../types/piProtocol'
 import { ErrorScreen } from '../common/ErrorScreen'
 import { LoadingScreen } from '../common/LoadingScreen'
@@ -37,6 +38,7 @@ export function RentFlow({ sessionId, onBack }: RentFlowProps) {
       .then((rentResult) => {
         if (cancelled) return
         if (rentResult.terminalStatus === 'SUCCEEDED') {
+          useKioskMainStore.getState().applyInventorySnapshot(rentResult.inventory)
           setResult(rentResult)
         } else {
           setFailed(true)

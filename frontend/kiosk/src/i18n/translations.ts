@@ -28,6 +28,8 @@ export interface Translations {
     returnTitle: string
     returnSubtitle: string
     touchHint: string
+    noStock: string
+    noCapacity: string
   }
   auth: {
     guideStep1: string
@@ -125,6 +127,8 @@ const ko: Translations = {
     returnTitle: '반납',
     returnSubtitle: '사용한 우산을 반납합니다',
     touchHint: '화면을 터치하여 메뉴를 선택해주세요',
+    noStock: '우산 재고 없음',
+    noCapacity: '우산함 여유 없음',
   },
   auth: {
     guideStep1: '① 얼굴이 가이드 라인 안에 들어오도록 맞춰주세요.',
@@ -258,6 +262,8 @@ const en: Translations = {
     returnTitle: 'Return',
     returnSubtitle: 'Return an umbrella you rented',
     touchHint: 'Touch the screen to select a menu',
+    noStock: 'No umbrellas available',
+    noCapacity: 'No empty slots available',
   },
   auth: {
     guideStep1: '① Position your face inside the guide line.',

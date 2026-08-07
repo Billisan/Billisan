@@ -86,6 +86,15 @@ export interface RentEvent {
   slotNumber: number | null
 }
 
+// TEMP: 임베디드팀이 대화로 전달한 스펙 문서(2026-08-07) 기준 필드 — userName/studentId와
+// 달리 아직 실 Pi 응답으로 실측 확인되지 않았다(PROVISIONAL). 스프링 미연동 시 null로 온다고
+// 문서에 명시돼 있어 옵셔널이 아니라 nullable로 둔다.
+export interface PiInventorySnapshot {
+  rentableSlotCount: number
+  emptyReturnSlotCount: number
+  totalSlotCount: number
+}
+
 export interface RentResult {
   sessionId: string
   rentalRequestId: string
@@ -96,6 +105,8 @@ export interface RentResult {
   slotNumber: number | null
   rentalSummary: { rentalId: string; rentedAt: string | null; dueAt: string | null } | null
   userMessageCode: string | null
+  // TEMP: PiInventorySnapshot 주석 참고 — PROVISIONAL, 실측 전.
+  inventory: PiInventorySnapshot | null
 }
 
 // --- KSK-RETURN-001 ---
@@ -129,6 +140,8 @@ export interface ReturnResult {
   status: string
   inspectionResult: 'NORMAL' | 'DAMAGED' | 'UNCERTAIN' | 'FAILED'
   userMessageCode: string | null
+  // TEMP: PiInventorySnapshot 주석 참고 — PROVISIONAL, 실측 전.
+  inventory: PiInventorySnapshot | null
 }
 
 // --- KSK-SESSION-002 ---

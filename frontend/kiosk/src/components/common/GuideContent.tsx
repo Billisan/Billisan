@@ -25,29 +25,26 @@ export function GuideContent({
   footer,
 }: GuideContentProps) {
   return (
-    <div className="flex h-full min-h-0 w-full flex-1 flex-col items-center justify-evenly">
-      <div className="flex w-full flex-col items-center gap-14">
-        <div className="w-full text-center">
-          <h2 className="text-3xl font-bold text-black mb-2">{title}</h2>
-          <p className="text-tertiary-text text-xl">{subtitle}</p>
-        </div>
+    <div className="flex h-full w-2/3 flex-1 flex-col items-center justify-evenly">
+      <div className="text-center">
+        <h2 className="mb-2 text-3xl font-bold text-black">{title}</h2>
+        <p className="text-tertiary-text text-xl">{subtitle}</p>
+      </div>
+      <div className="flex w-full items-center justify-center gap-4">
+        <div className="flex flex-1 flex-col items-center">{guideBox}</div>
 
-        {guideBox}
-
-        <div className="flex items-start justify-center gap-16">
+        <div className="flex flex-1 flex-col justify-evenly gap-10">
           {steps.map(({ icon: Icon, text }) => (
-            <div key={text} className="flex flex-col items-center gap-4">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#c2d9ff]">
+            <div key={text} className="flex items-center gap-4">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#c2d9ff]">
                 <Icon className="text-tertiary-text h-5 w-5" />
               </span>
-              <p className="max-w-48 text-center text-base text-black">
-                {text}
-              </p>
+              <p className="text-lg text-black">{text}</p>
             </div>
           ))}
-        </div>
 
-        {footer}
+          {footer}
+        </div>
       </div>
 
       {actionLabel && onAction && (

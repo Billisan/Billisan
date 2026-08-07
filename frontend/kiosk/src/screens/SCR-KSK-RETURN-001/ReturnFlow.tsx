@@ -4,6 +4,7 @@ import { startReturn } from '../../api/piSocket'
 import umbrellaIcon from '../../assets/ai-scan-umbrella.svg'
 import { UmbrellaGuideOverlay } from '../../components/common/UmbrellaGuideOverlay'
 import { useTranslation } from '../../i18n/useTranslation'
+import { useKioskMainStore } from '../../store/kioskMainStore'
 import type { ReturnEvent, ReturnResult } from '../../types/piProtocol'
 import { CameraCaptureScreen } from '../common/CameraCaptureScreen'
 import { ErrorScreen } from '../common/ErrorScreen'
@@ -74,6 +75,7 @@ export function ReturnFlow({ sessionId, onBack }: ReturnFlowProps) {
     if (!returnResult) return
 
     if (returnResult.terminalStatus === 'SUCCEEDED') {
+      useKioskMainStore.getState().applyInventorySnapshot(returnResult.inventory)
       setResult(returnResult)
       setReturnedAt(dayjs().toISOString())
       setStep('COMPLETED')
