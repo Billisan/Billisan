@@ -9,6 +9,10 @@ interface LoadingScreenProps {
   icon?: string;
   currentStep?: 1 | 2 | 3 | 4;
   flow?: StepFlow;
+  // 진행률 계산 기준 시각(ms, Date.now() 값). 얼굴 인증 로딩 → 대여 슬롯 배정 로딩처럼 문구가
+  // 이어지는 것처럼 보이는 두 화면 사이에 이 값을 그대로 넘기면, 컴포넌트가 다시 마운트돼도
+  // 진행률이 0%로 리셋되지 않고 이어서 올라간다. 생략 시 이 컴포넌트의 마운트 시각을 기준으로 삼는다.
+  startedAt?: number;
 }
 
 // 실제 진행률 신호는 없음(DEC-KSK-005 미정) — 로딩 체감 속도를 보여주기 위한 연출용 카운트업.
@@ -23,20 +27,24 @@ export function LoadingScreen({
   icon = userIcon,
   currentStep,
   flow,
+  startedAt,
 }: LoadingScreenProps) {
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    const startedAt = Date.now();
+    const referenceTime = startedAt ?? Date.now();
 
-    const timer = setInterval(() => {
-      const elapsed = Date.now() - startedAt;
+    const tick = () => {
+      const elapsed = Date.now() - referenceTime;
       const next = Math.round((elapsed / PROGRESS_DURATION_MS) * 100);
-      setProgress(Math.min(next, MAX_DISPLAY_PROGRESS));
-    }, PROGRESS_TICK_MS);
+      setProgress(Math.min(Math.max(next, 0), MAX_DISPLAY_PROGRESS));
+    };
+
+    tick();
+    const timer = setInterval(tick, PROGRESS_TICK_MS);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [startedAt]);
 
   return (
     <KioskLayout currentStep={currentStep} flow={flow}>

@@ -16,6 +16,9 @@ interface FaceAuthState {
   guidanceCode: string | null
   displayName: string | null
   studentId: string | null
+  // FACE_PROCESSING 진입 시각(Date.now()) — AuthScreen과 RentFlow의 로딩 화면이 문구상 하나로
+  // 이어지는 것처럼 보이므로, 두 화면이 같은 기준 시각으로 진행률을 계산해 리셋 없이 이어지게 한다.
+  processingStartedAt: number | null
   startCapture: (
     mode: KioskMode,
     onEligible: (sessionId: string) => void,
@@ -52,6 +55,7 @@ export const useFaceAuthStore = create<FaceAuthState>((set, get) => ({
   guidanceCode: null,
   displayName: null,
   studentId: null,
+  processingStartedAt: null,
 
   startCapture: (mode, onEligible, onBlocked) => {
     closeStream?.()
@@ -62,6 +66,7 @@ export const useFaceAuthStore = create<FaceAuthState>((set, get) => ({
       guidanceCode: null,
       displayName: null,
       studentId: null,
+      processingStartedAt: null,
     })
 
     let pendingEligibility: KioskStageMessage | null = null
@@ -84,7 +89,7 @@ export const useFaceAuthStore = create<FaceAuthState>((set, get) => ({
     }
 
     confirmIdentityRef = () => {
-      set({ variant: AUTH_SCREEN_VARIANT.FACE_PROCESSING })
+      set({ variant: AUTH_SCREEN_VARIANT.FACE_PROCESSING, processingStartedAt: Date.now() })
       pendingTimers.push(
         window.setTimeout(resolveEligibility, FACE_PROCESSING_DISPLAY_MS),
       )
@@ -138,6 +143,7 @@ export const useFaceAuthStore = create<FaceAuthState>((set, get) => ({
       guidanceCode: null,
       displayName: null,
       studentId: null,
+      processingStartedAt: null,
     })
   },
 }))

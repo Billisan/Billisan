@@ -24,6 +24,7 @@ interface RentFlowProps {
 export function RentFlow({ sessionId, onBack }: RentFlowProps) {
   const t = useTranslation()
   const displayName = useFaceAuthStore((state) => state.displayName)
+  const processingStartedAt = useFaceAuthStore((state) => state.processingStartedAt)
   const [slotNumber, setSlotNumber] = useState<number | null>(null)
   const [result, setResult] = useState<RentResult | null>(null)
   const [failed, setFailed] = useState(false)
@@ -93,12 +94,14 @@ export function RentFlow({ sessionId, onBack }: RentFlowProps) {
 
   // 슬롯 배정 전까지는 AuthScreen의 FACE_PROCESSING("환영합니다!") 화면이 그대로 이어지는 것처럼
   // 보이도록 동일한 문구를 쓴다 — 별도의 "대여를 준비하고 있어요" 로딩 화면을 두지 않는다.
+  // startedAt도 그 화면과 같은 기준 시각을 넘겨받아 진행률(%)이 0으로 리셋되지 않고 이어지게 한다.
   return (
     <LoadingScreen
       title={t.auth.welcome(displayName)}
       subtitle={t.common.pleaseWait}
       currentStep={3}
       flow="RENT"
+      startedAt={processingStartedAt ?? undefined}
     />
   )
 }

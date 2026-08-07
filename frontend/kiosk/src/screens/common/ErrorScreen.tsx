@@ -63,7 +63,7 @@ export function ErrorScreen({
         </div>
 
         <div
-          className={`flex w-2/3 items-center gap-4 ${
+          className={`flex w-1/2 items-center gap-4 ${
             secondaryActionLabel && onSecondaryAction ? 'flex-row' : 'flex-col'
           }`}
         >
