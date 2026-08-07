@@ -26,6 +26,7 @@ import dev.billisan.user.repository.UserAccountRepository;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -146,7 +147,7 @@ public class DeviceTerminalEventService {
             slot.applyObservedPhysicalState(observedOccupancyStatus, request.evidence().after().lockStatus());
             if (observedOccupancyStatus == Slot.OccupancyStatus.OCCUPIED) {
                 returnAttempt.markPhysicalDone(now);
-                applyInspectionOutcome(returnAttempt, now);
+                applyInspectionOutcome(returnAttempt, slot, now);
             } else {
                 // 반납 LOCK 성공(SUCCEEDED)으로 보고됐지만 슬롯에 우산이 감지되지 않음 —
                 // 반납이 실제로는 안 됐을 가능성이 높다(EC2 실측으로 확인된 재발급 버그).
@@ -179,19 +180,26 @@ public class DeviceTerminalEventService {
     /**
      * 검수 결과가 아직 없으면(순서가 꼬여 도착) 자동 완료시키지 않고 보수적으로
      * RECOVERY_REQUIRED로 보낸다 — 안전 쪽으로 판단(팀 확정).
+     *
+     * 두 분기 모두 슬롯의 itemCondition을 확정한다(EC2 실측으로 재현·확인한 버그 수정,
+     * BILL-XXX): 이전에는 이 메서드가 returnAttempt·rental·user만 갱신하고 슬롯은
+     * applyObservedPhysicalState()가 이미 바꾼 occupancy·lock 외엔 손대지 않아, 정상
+     * 반납은 itemCondition이 예전 값에 머물고, 파손·불확실 반납은 슬롯이 격리조차 안 되어
+     * AVAILABLE+OCCUPIED로 남아 대여 후보에 그대로 잡혔다.
      */
-    private void applyInspectionOutcome(ReturnAttempt returnAttempt, LocalDateTime now) {
-        boolean reviewRequired = damageInspectionRepository
-                .findFirstByReturnAttemptIdOrderByCreatedAtDesc(returnAttempt.getReturnAttemptId())
-                .map(DamageInspection::requiresReview)
-                .orElse(true);
+    private void applyInspectionOutcome(ReturnAttempt returnAttempt, Slot slot, LocalDateTime now) {
+        Optional<DamageInspection> inspection = damageInspectionRepository
+                .findFirstByReturnAttemptIdOrderByCreatedAtDesc(returnAttempt.getReturnAttemptId());
+        boolean reviewRequired = inspection.map(DamageInspection::requiresReview).orElse(true);
 
         if (reviewRequired) {
             returnAttempt.requireRecovery();
+            slot.isolateForReview(reviewRequiredItemCondition(inspection));
             return;
         }
 
         returnAttempt.complete(now);
+        slot.confirmNormalItemCondition();
 
         Rental rental = rentalRepository.findById(returnAttempt.getRentalId())
                 .orElseThrow(() -> new IllegalStateException(
@@ -202,6 +210,20 @@ public class DeviceTerminalEventService {
                 .orElseThrow(() -> new IllegalStateException(
                         "대여에 연결된 사용자를 찾을 수 없습니다(데이터 정합성 문제): " + rental.getUserId()));
         user.changeRentalEligibility(true);
+    }
+
+    /**
+     * AI가 DAMAGED로 명확히 판정했을 때만 그 값을 그대로 슬롯에 반영해 관리자에게 더
+     * 구체적인 정보를 준다({@code ADMIN_REVIEW+DAMAGED}는 {@code Slot.isValidAdminCombination}
+     * 이 허용하는 조합). UNCERTAIN, 검수 결과 자체가 없는 경우, {@code aiResult}가 null인
+     * FAILED는 {@code ItemCondition}에 대응 값이 없어 UNKNOWN으로 격리한다.
+     */
+    private ItemCondition reviewRequiredItemCondition(Optional<DamageInspection> inspection) {
+        return inspection
+                .map(DamageInspection::getAiResult)
+                .filter(aiResult -> aiResult == DamageInspection.AiResult.DAMAGED)
+                .map(aiResult -> ItemCondition.DAMAGED)
+                .orElse(ItemCondition.UNKNOWN);
     }
 
     private void recordOutcome(
