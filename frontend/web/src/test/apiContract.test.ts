@@ -156,11 +156,12 @@ describe('스펙 스냅샷', () => {
         );
     });
 
-    it('미구현 두 개는 아직 스펙에 없다 — 붙으면 이 테스트가 알려 준다', () => {
+    it('이 스냅샷엔 아직 없다 — 갱신되면 이 테스트가 알려 준다', () => {
         /*
-         * `/auth/me`·`/auth/logout` 은 다른 백엔드 파트와 얽혀 다음 주 보완 예정입니다.
-         * 지금은 `VITE_MOCK_AUTH=true` 로 막아 두었고, 스펙에 나타나면 여기가 깨지면서
-         * "이제 실 인증으로 갈아탈 수 있다" 를 알려 줍니다.
+         * `/auth/logout` 은 백엔드에 이미 구현됐지만(`AdminAuthController`), 이 파일은
+         * 2026-08-03 스냅샷이라 아직 반영이 안 됐습니다(`docs/README.md` — 갱신은 수동).
+         * `/auth/me` 는 세션 복원용이라 아직 백엔드에도 없습니다. 스냅샷을 다시 받았을 때
+         * 여기가 깨지면 각 경로의 실 구현 여부를 다시 확인하라는 신호입니다.
          */
         const paths = Object.keys(PATHS);
         expect(paths).not.toContain('/api/v1/admin/auth/me');

@@ -107,19 +107,20 @@ export const authApi = {
     },
 
     /**
-     * 로그아웃 — 멱등입니다.
+     * 로그아웃 — 멱등입니다. `ADMIN-AUTH-002`.
      *
-     * **실 API 모드에서도 서버를 부르지 않습니다.** `POST /auth/logout` 역시 존재하지
-     * 않습니다(`me` 와 같은 근거). 게다가 관리자 인증은 상태 없는 JWT 라 서버에 지울
-     * 세션이 없습니다 — 토큰을 버리는 것이 로그아웃의 전부입니다.
-     *
-     * 예전에는 이 호출이 매번 404 를 받아, 로그아웃할 때마다 「서버 로그아웃이 끝나지
-     * 않았습니다」 경고가 떴습니다(`AppHeader`). 실제로는 정상 로그아웃인데요.
-     *
-     * TODO: 서버가 토큰 블랙리스트를 두게 되면 그때 실제 호출로 바꾸세요.
+     * 관리자 인증은 상태 없는 JWT 라 서버에 지울 세션이 없다 — 이 호출은 응답 계약을
+     * 만족시키는 확인일 뿐이고, 실제 로그아웃은 클라이언트가 토큰을 버리는 것으로
+     * 완성된다(`AppHeader.handleLogout` 이 이어서 `clearAuth` 를 부른다). 그래도 서버
+     * 호출 자체는 실패해도 로컬 정리를 막지 않도록 `AppHeader` 쪽에서 순서를 잡는다.
      */
     logout: async (): Promise<LogoutResponse> => {
-        clearMockSession();
-        return { loggedOut: true };
+        if (env.mockAuth) {
+            clearMockSession();
+            return { loggedOut: true };
+        }
+
+        const { data } = await http.post<LogoutResponse>('/auth/logout');
+        return data;
     },
 };
