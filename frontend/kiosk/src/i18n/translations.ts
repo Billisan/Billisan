@@ -70,6 +70,7 @@ export interface Translations {
     failedTitle: string
     checkingUmbrella: string
     showUmbrella: string
+    umbrellaRecognized: string
     completeTitle: string
     returnedAtLabel: string
     resultNormal: string
@@ -182,6 +183,7 @@ const ko: Translations = {
     failedTitle: '반납을 완료하지 못했습니다',
     checkingUmbrella: '우산 상태를 확인하고 있어요',
     showUmbrella: '우산을 카메라에 잘 보이게 들어주세요',
+    umbrellaRecognized: '우산 인식이 완료되었습니다.',
     completeTitle: '반납 완료!',
     returnedAtLabel: '반납 시각',
     resultNormal: '반납이 완료되었습니다.',
@@ -198,7 +200,7 @@ const ko: Translations = {
     autoAdvance: '5초 후 자동으로 우산 인식 화면으로 이동합니다',
     uncertainNoticeTitle: '우산이 명확하게 인식되지 않았어요',
     uncertainNoticeSubtitle: '다시 촬영하시면 더 정확하게 확인할 수 있어요.',
-    damagedNoticeTitle: '우산에 파손이 의심돼요',
+    damagedNoticeTitle: '우산 파손이 의심돼요',
     damagedNoticeSubtitle:
       '다시 촬영해 확인하거나, 이대로 진행하면 관리자가 최종 확인합니다.',
     proceedAnyway: '이대로 진행하기',
@@ -317,6 +319,7 @@ const en: Translations = {
     failedTitle: 'Return Could Not Be Completed',
     checkingUmbrella: 'Checking umbrella condition',
     showUmbrella: 'Hold the umbrella clearly in front of the camera',
+    umbrellaRecognized: 'Umbrella recognized.',
     completeTitle: 'Return Complete!',
     returnedAtLabel: 'Returned At',
     resultNormal: 'Your return is complete.',

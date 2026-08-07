@@ -32,7 +32,7 @@ function CountdownBadge({ timeoutSeconds, onTimeout }: CountdownBadgeProps) {
   }, [secondsLeft, onTimeout])
 
   return (
-    <div className="mb-8 flex items-center justify-center gap-3 bg-white py-1">
+    <div className="absolute top-6 left-1/2 z-10 flex -translate-x-1/2 items-center justify-center gap-3 rounded-full bg-white/90 px-6 py-2 shadow-md">
       <img src={hourglassIcon} alt="" className="h-8 w-8" />
       <span className="text-xl font-bold text-black">
         {t.common.secondsRemaining(secondsLeft)}
@@ -63,18 +63,17 @@ export function CameraCaptureScreen({
 }: CameraCaptureScreenProps) {
   return (
     <KioskLayout onBack={onBack} currentStep={currentStep} flow={flow} fullBleed>
-      <CountdownBadge
-          key={`${timeoutSeconds}-${String(resetSignal)}`}
-          timeoutSeconds={timeoutSeconds}
-          onTimeout={onBack}
-        />
       <div className="flex flex-1 flex-col w-full">
         <div className="relative flex-1 bg-black">
-           
           <img
             src={streamUrl}
             alt="카메라 스트림"
             className="absolute inset-0 h-full w-full object-cover"
+          />
+          <CountdownBadge
+            key={`${timeoutSeconds}-${String(resetSignal)}`}
+            timeoutSeconds={timeoutSeconds}
+            onTimeout={onBack}
           />
           {guide}
         </div>
