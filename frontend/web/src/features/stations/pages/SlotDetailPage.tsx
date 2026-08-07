@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
-import { RETURN_STATUS_LABEL, RETURN_STATUS_TONE } from '@/features/history/types';
+import { RETURN_STATUS_LABEL, RETURN_STATUS_TONE } from '@/shared/constants/returnStatus';
 import { formatScore } from '@/features/inspections/lib/aiScore';
 import { SlotLockIcon } from '@/features/stations/components/SlotLockIcon';
 import { SlotStatusDialog } from '@/features/stations/components/SlotStatusDialog';

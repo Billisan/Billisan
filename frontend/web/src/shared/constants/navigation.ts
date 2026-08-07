@@ -41,10 +41,13 @@ export const NAV_ITEMS: NavItem[] = [
      *   { label: '이력', to: '/history/rentals', match: '/history', icon: ListIcon },
      * (`ListIcon` 도 위 import 에 다시 추가해야 합니다)
      *
-     * `features/history` 폴더는 그대로 둡니다 — 슬롯 상세가 `types.ts` 의
-     * `RETURN_STATUS_LABEL`·`RETURN_STATUS_TONE` 을 쓰고 있어서입니다. 그쪽은 목업이
-     * 아니라 **실 응답**(`SlotDetailResponse.latestReturnAttempt.status`)을 표시하는
-     * 라벨이라, 지우면 실 API 화면이 깨집니다.
+     * **`features/history` 폴더는 삭제했습니다.** 라우트를 닫아 도달할 수 없게 된 뒤에도
+     * 목업 데이터가 번들에 실려 다녔습니다. 반납 상태 라벨만은 슬롯 상세가 **실 응답**
+     * (`SlotDetailResponse.latestReturnAttempt.status`)을 그리는 데 쓰고 있어서
+     * `shared/constants/returnStatus.ts` 로 옮겼습니다.
+     *
+     * 되살리려면 git 에서 복원하세요(삭제 커밋 참조). 그 전에 `historyApi` 에 실 API
+     * 분기를 넣어야 같은 문제가 반복되지 않습니다.
      */
     /*
      * 배지(대기 건수)를 뗐습니다.

@@ -1,4 +1,4 @@
-import type { ReturnAttemptStatus } from '@/features/history/types';
+import type { ReturnAttemptStatus } from '@/shared/constants/returnStatus';
 import type { BadgeTone } from '@/shared/components/Badge';
 import {
     AI_RESULT_LABEL,
