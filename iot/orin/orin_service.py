@@ -1,133 +1,124 @@
-"""카메라 프레임 공유와 얼굴 가이드 영역 판정."""
+"""OrinService - 각 기능 믹스인을 결합하고 ZeroMQ 명령 루프를 돌린다.
+
+실제 업무 로직은 믹스인(messaging / face_auth / inspection)에 있고,
+이 클래스는 '무슨 명령이 오면 누구에게 넘기는가'만 담당한다."""
+import json
 import threading
 import time
 
-import cv2
+import psycopg2
+import zmq
+from pgvector.psycopg2 import register_vector
 
 from .config import (
-    GUIDE_CX_FRAC, GUIDE_CY_FRAC, GUIDE_RX_FRAC_OF_HEIGHT,
-    GUIDE_RY_FRAC_OF_HEIGHT, GUIDE_NEAR_MARGIN, VISIBLE_HEIGHT_RATIO,
+    DB_CONFIG, PI_IP, ZEROMQ_COMMAND_PORT, ZEROMQ_EVENT_PORT, COMMAND_PREFIX,
+    EVENT_PREFIX_TMPL, ORIN_BOOT_ID, AUTH_WARMUP_SECONDS, AUTH_SESSION_DEFAULT_SECONDS,
 )
+from .face_auth import FaceAuthMixin
+from .inspection import InspectionMixin
+from .messaging import MessagingMixin
 
 
-class SharedCamera:
-    """카메라를 한 곳에서만 열고, 다른 모든 곳은 여기서 최신 프레임만 읽어간다."""
+class OrinService(MessagingMixin, FaceAuthMixin, InspectionMixin):
+    def __init__(self, camera, face_app, inspector=None):
+        self.camera = camera
+        self.face_app = face_app
+        self.inspector = inspector  # 파손우산 검증기 (없으면 INSPECT_UMBRELLA 실행 불가)
+        self.conn = psycopg2.connect(**DB_CONFIG)
+        # 조회 전용 서비스이므로 autocommit으로 둔다. 끄면 SELECT 하나에도 트랜잭션이 열리고
+        # commit/rollback을 안 하는 한 'idle in transaction' 상태로 남는데, 그러면 스냅샷이
+        # 고정돼 다른 세션이 새로 등록한 얼굴이 이 커넥션에 보이지 않는 문제가 생긴다.
+        self.conn.autocommit = True
+        register_vector(self.conn)
 
-    # 연속 실패가 이 횟수를 넘으면 장치를 다시 연다 (USB 재연결·드라이버 리셋 대응)
-    REOPEN_AFTER_FAILURES = 30
-    READ_FAIL_SLEEP = 0.1        # 실패 시 대기 - 없으면 busy-loop로 CPU를 100% 태운다
+        ctx = zmq.Context()
+        self.command_sub = ctx.socket(zmq.SUB)
+        self.command_sub.connect(f"tcp://{PI_IP}:{ZEROMQ_COMMAND_PORT}")
+        self.command_sub.setsockopt_string(zmq.SUBSCRIBE, "")
+        self.command_sub.setsockopt(zmq.RCVTIMEO, 500)
 
-    def __init__(self, index=0, width=None, height=None):
-        # 재연결 시 같은 설정으로 다시 열기 위해 보관
-        self.index = index
-        self.width = width
-        self.height = height
-        self.consecutive_failures = 0
-        self._healthy = True
+        self.event_pub = ctx.socket(zmq.PUB)
+        self.event_pub.connect(f"tcp://{PI_IP}:{ZEROMQ_EVENT_PORT}")
 
-        self.cap = self._open()
-        if not self.cap.isOpened():
-            raise RuntimeError(f"카메라를 열 수 없습니다 (index={index})")
+        # 표시용 최신 상태 (프리뷰 오버레이용)
+        self.overlay_lock = threading.Lock()
+        self.overlay_bbox = None
+        self.overlay_labels = ["Idle"]
 
-        self._report_negotiated()
+        # commandId -> 마지막 Terminal 결과 (중복 재수신 시 재실행 없이 재전송)
+        self.processed_commands = {}
 
-        self.latest_frame = None
-        self.lock = threading.Lock()
-        threading.Thread(target=self._loop, daemon=True).start()
-
-    def _open(self):
-        """장치를 열고 포맷·해상도를 설정한다. 최초 기동과 재연결에서 공용으로 쓴다."""
-        cap = cv2.VideoCapture(self.index)
-        # MJPG를 해상도보다 먼저 지정해야 한다. 무압축(YUYV)으로 잡히면 USB 대역폭 때문에
-        # 1280x720이 7.5fps로 떨어지지만, MJPG면 같은 해상도에서 30fps가 나온다.
-        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
-        if self.width:
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
-        if self.height:
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
-        return cap
-
-    def _report_negotiated(self):
-        """드라이버가 실제로 협상한 값을 출력한다 (요청과 다를 수 있음)."""
-        actual_w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        actual_h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        actual_fps = self.cap.get(cv2.CAP_PROP_FPS)
-        fourcc_int = int(self.cap.get(cv2.CAP_PROP_FOURCC))
-        actual_fourcc = "".join(chr((fourcc_int >> 8 * i) & 0xFF) for i in range(4))
-        print(f"[Camera] 요청={self.width}x{self.height} MJPG -> 실제={actual_w}x{actual_h} "
-              f"{actual_fourcc} @{actual_fps:.0f}fps")
-        if (actual_w, actual_h) != (self.width, self.height):
-            print(f"[Camera] 경고: 요청 해상도가 그대로 적용되지 않음 "
-                  f"(지원 목록 확인: v4l2-ctl -d /dev/video{self.index} --list-formats-ext)")
-        if actual_fourcc != "MJPG":
-            print(f"[Camera] 경고: MJPG가 아닌 {actual_fourcc}로 협상됨 - 프레임레이트가 낮을 수 있음")
-
-    def _reopen(self):
-        """장치를 닫고 다시 연다. USB 재연결이나 드라이버 리셋 상황을 회복하기 위한 경로."""
-        print(f"[Camera] 연속 실패 {self.consecutive_failures}회 - 장치 재연결 시도")
-        try:
-            self.cap.release()
-        except Exception as e:
-            print(f"[Camera] release 실패(무시): {e}")
-        time.sleep(0.5)  # 장치가 정리될 시간을 준다
-        self.cap = self._open()
-        if self.cap.isOpened():
-            print("[Camera] 재연결 성공")
-            self._report_negotiated()
-            self.consecutive_failures = 0
-            self._healthy = True
-        else:
-            print("[Camera] 재연결 실패 - 다음 주기에 재시도")
-
-    def _loop(self):
+    def command_loop(self):
         while True:
             try:
-                ok, frame = self.cap.read()
-            except Exception as e:
-                # 장치가 사라지면 read 자체가 예외를 던지는 경우가 있다
-                print(f"[Camera] read 예외: {e}")
-                ok, frame = False, None
-
-            if ok:
-                if self.consecutive_failures:
-                    print(f"[Camera] 프레임 수신 복구 (실패 {self.consecutive_failures}회 후)")
-                    self.consecutive_failures = 0
-                    self._healthy = True
-                with self.lock:
-                    self.latest_frame = frame
+                topic_b, payload_b = self.command_sub.recv_multipart()
+            except zmq.Again:
+                continue
+            except ValueError:
+                print("[Orin] 잘못된 멀티파트 메시지 무시")
                 continue
 
-            # --- 실패 경로 ---
-            # 대기 없이 재시도하면 초당 수만 번 루프를 돌며 코어 하나를 100% 점유한다.
-            # Jetson은 그 발열로 thermal throttling이 걸려 AI 추론까지 느려지므로 반드시 쉰다.
-            self.consecutive_failures += 1
-            if self.consecutive_failures == 1:
-                print("[Camera] 프레임 수신 실패 - 재시도 중")
-            if self.consecutive_failures >= self.REOPEN_AFTER_FAILURES:
-                self._healthy = False
-                self._reopen()
-            time.sleep(self.READ_FAIL_SLEEP)
+            topic = topic_b.decode("utf-8")
+            try:
+                command = json.loads(payload_b.decode("utf-8"))
+            except json.JSONDecodeError:
+                print(f"[Orin] JSON 파싱 실패: {payload_b[:80]}")
+                continue
 
-    def is_healthy(self) -> bool:
-        """최근 프레임 수신이 정상인지. 헬스비트·상태 보고에 쓸 수 있다."""
-        return self._healthy
+            if not topic.startswith(COMMAND_PREFIX):
+                continue
 
-    def get_frame(self):
-        with self.lock:
-            return None if self.latest_frame is None else self.latest_frame.copy()
+            command_id = command.get("commandId")
+            command_type = command.get("commandType")
+            request_id = command.get("requestId")
+            station_id = command.get("stationId")
+            target_boot_id = command.get("targetBootId")
+
+            print(f"[Orin] Command 수신: {command_type} (commandId={command_id})")
+
+            # Boot ID 불일치 - 이 명령은 이 Orin 프로세스를 위한 게 아니거나 Stale
+            if target_boot_id and target_boot_id != ORIN_BOOT_ID:
+                print(f"[Orin] targetBootId 불일치 - 무시 (수신={target_boot_id}, 현재={ORIN_BOOT_ID})")
+                continue
+
+            # 만료 체크
+            # (간단 비교를 위해 실제로는 datetime 파싱이 필요하지만, 여기선 생략하고 세션 내부 타임아웃으로 처리)
+
+            # 중복 commandId - 재실행 없이 기존 결과 재전송
+            if command_id in self.processed_commands:
+                print(f"[Orin] 중복 commandId={command_id} - 기존 결과 재전송")
+                cached = self.processed_commands[command_id]
+                topic_out = EVENT_PREFIX_TMPL.format(event_type=cached["eventType"])
+                self.event_pub.send_multipart([topic_out.encode("utf-8"), json.dumps(cached).encode("utf-8")])
+                continue
+
+            # 명령 수락 - COMMAND_ACCEPTED는 여기서 딱 1회만 발행
+            # (세션 중 진행 상황/가이던스는 COMMAND_PROGRESS로 분리)
+            if command_type in ("AUTHENTICATE_FACE", "INSPECT_UMBRELLA"):
+                self.send_event("COMMAND_ACCEPTED", command_id, request_id, station_id,
+                                 "PROCESSING", {"status": "ACCEPTED", "guidanceCode": "NONE"},
+                                 command_type=command_type)
+
+            if command_type == "AUTHENTICATE_FACE":
+                # 세션 타임아웃: expiresAt 절대시각을 파싱하지 않고, 받은 시점부터
+                # 로컬 상대시간으로 AUTH_SESSION_DEFAULT_SECONDS만큼만 센다.
+                # (트레이드오프: 네트워크 지연으로 명령이 아주 늦게 도착해도 도착 시점부터
+                #  새로 카운트한다 - 지금은 로컬 테스트라 지연이 미미해 문제 없음)
+                expires_at_ts = time.time() + AUTH_WARMUP_SECONDS + AUTH_SESSION_DEFAULT_SECONDS
+
+                terminal_event = self._run_authenticate_session(command_id, request_id, station_id, expires_at_ts)
+                self.processed_commands[command_id] = terminal_event
+                print(f"[Orin] Terminal 전송 완료: commandId={command_id}, result={terminal_event['result']}")
+
+            elif command_type == "INSPECT_UMBRELLA":
+                terminal_event = self._run_inspect_session(command, command_id, request_id, station_id)
+                self.processed_commands[command_id] = terminal_event
+                print(f"[Orin] Terminal 전송 완료: commandId={command_id}")
 
 
-def is_within_guide(bbox, frame_width, frame_height) -> bool:
-    x1, y1, x2, y2 = bbox
-    face_cx = (x1 + x2) / 2
-    face_cy = (y1 + y2) / 2
+            else:
+                print(f"[Orin] 미지원 commandType 무시: {command_type}")
 
-    visible_height = frame_height * VISIBLE_HEIGHT_RATIO
-    crop_top = (frame_height - visible_height) / 2
-
-    guide_cx = GUIDE_CX_FRAC * frame_width
-    guide_cy = crop_top + GUIDE_CY_FRAC * visible_height
-    guide_rx = GUIDE_RX_FRAC_OF_HEIGHT * visible_height * GUIDE_NEAR_MARGIN
-    guide_ry = GUIDE_RY_FRAC_OF_HEIGHT * visible_height * GUIDE_NEAR_MARGIN
-
-    return ((face_cx - guide_cx) / guide_rx) ** 2 + ((face_cy - guide_cy) / guide_ry) ** 2 <= 1.0
+    def get_overlay(self):
+        with self.overlay_lock:
+            return self.overlay_bbox, list(self.overlay_labels)
