@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter } from 'react-router-dom';
 
 import { AppShell } from '@/components/layout/AppShell';
 import { LegacySlotRedirect } from '@/app/LegacySlotRedirect';
@@ -6,16 +6,21 @@ import { NotFoundPage } from '@/app/NotFoundPage';
 import { ProtectedRoute } from '@/app/ProtectedRoute';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage';
-import { RentalDetailPage } from '@/features/history/pages/RentalDetailPage';
 import { InspectionDetailPage } from '@/features/inspections/pages/InspectionDetailPage';
 import { InspectionListPage } from '@/features/inspections/pages/InspectionListPage';
-import { RentalListPage } from '@/features/history/pages/RentalListPage';
-import { ReturnDetailPage } from '@/features/history/pages/ReturnDetailPage';
-import { ReturnListPage } from '@/features/history/pages/ReturnListPage';
-import { SettlementDetailPage } from '@/features/history/pages/SettlementDetailPage';
-import { SettlementListPage } from '@/features/history/pages/SettlementListPage';
 import { InventoryPage } from '@/features/inventory/pages/InventoryPage';
-import { UserHistoryPage } from '@/features/users/pages/UserHistoryPage';
+/*
+ * 이력 화면 import 도 함께 뺐습니다 — 라우트가 없으면 안 쓰이는 값이라 린트가 걸립니다.
+ * 되살릴 때 아래를 다시 넣으세요 (아래 라우트 주석과 짝입니다).
+ *   import { RentalDetailPage } from '@/features/history/pages/RentalDetailPage';
+ *   import { RentalListPage } from '@/features/history/pages/RentalListPage';
+ *   import { ReturnDetailPage } from '@/features/history/pages/ReturnDetailPage';
+ *   import { ReturnListPage } from '@/features/history/pages/ReturnListPage';
+ *   import { SettlementDetailPage } from '@/features/history/pages/SettlementDetailPage';
+ *   import { SettlementListPage } from '@/features/history/pages/SettlementListPage';
+ *   import { UserHistoryPage } from '@/features/users/pages/UserHistoryPage';
+ *   import { Navigate } from 'react-router-dom';
+ */
 import { SlotDetailPage } from '@/features/stations/pages/SlotDetailPage';
 import { StationDetailPage } from '@/features/stations/pages/StationDetailPage';
 import { StationListPage } from '@/features/stations/pages/StationListPage';
@@ -63,22 +68,33 @@ export const router = createBrowserRouter([
                         path: 'umbrellas',
                         element: <InventoryPage />,
                     },
-                    // 이력 3종 — 화면흐름 §4 의 `/admin/history/*` 경로 후보를 따릅니다.
-                    // 전부 P1 이라 확정 API 가 없습니다 (WEB-API-CAND-002~007).
-                    { path: 'history', element: <Navigate to="/history/rentals" replace /> },
-                    { path: 'history/rentals', element: <RentalListPage /> },
-                    { path: 'history/rentals/:rentalId', element: <RentalDetailPage /> },
-                    { path: 'history/returns', element: <ReturnListPage /> },
-                    {
-                        path: 'history/returns/:returnAttemptId',
-                        element: <ReturnDetailPage />,
-                    },
-                    { path: 'history/settlements', element: <SettlementListPage /> },
-                    {
-                        path: 'history/settlements/:settlementId',
-                        element: <SettlementDetailPage />,
-                    },
-                    { path: 'users/:userRef/history', element: <UserHistoryPage /> },
+                    /*
+                     * 이력 3종 + 사용자 이력 — **라우트를 닫았습니다. 코드는 그대로 둡니다.**
+                     *
+                     * `historyApi` 에는 **실 API 분기 자체가 없습니다.** 다른 api 모듈은
+                     * `if (env.useMockData) … else http.get(…)` 로 갈리는데, 여기는
+                     * `delay(MOCK_RENTALS)` 처럼 목업만 돌려줍니다 — 계약에 대여·반납·정산
+                     * 조회가 없어서(admin 8 경로 전수 확인) 부를 곳이 없기 때문입니다.
+                     *
+                     * 그런데 **화면은 그 사실을 알리지 않습니다.** `useQuery` 가 정상 성공으로
+                     * 처리해 로딩도 돌고 오류 배너도 없어서, 관리자는 실서버 데이터로 읽습니다.
+                     * 목업이 `PHYSICAL_DONE`(반납이 서버에서 안 닫힌 상태)을 `COMPLETED` 로
+                     * 덮어 그리기까지 해서, 진행 중인 문제를 화면이 가립니다.
+                     *
+                     * 사이드바·알림·대시보드에서는 이미 내렸지만 URL 을 직접 치면 열려서
+                     * 여기까지 막습니다. 이제 404 로 갑니다.
+                     *
+                     * 되살리려면 아래를 다시 넣고 위 import 를 복구하세요. 그 전에
+                     * `historyApi` 에 실 API 분기를 넣어야 같은 문제가 반복되지 않습니다.
+                     *   { path: 'history', element: <Navigate to="/history/rentals" replace /> },
+                     *   { path: 'history/rentals', element: <RentalListPage /> },
+                     *   { path: 'history/rentals/:rentalId', element: <RentalDetailPage /> },
+                     *   { path: 'history/returns', element: <ReturnListPage /> },
+                     *   { path: 'history/returns/:returnAttemptId', element: <ReturnDetailPage /> },
+                     *   { path: 'history/settlements', element: <SettlementListPage /> },
+                     *   { path: 'history/settlements/:settlementId', element: <SettlementDetailPage /> },
+                     *   { path: 'users/:userRef/history', element: <UserHistoryPage /> },
+                     */
                     // 파손 검수 2종 — P0 계약(ADMIN-INSPECTION-001~003)이 있는 화면입니다.
                     { path: 'inspections', element: <InspectionListPage /> },
                     { path: 'inspections/:inspectionId', element: <InspectionDetailPage /> },
