@@ -113,6 +113,10 @@ function toDetail(station: Station, slot: SlotSummary): SlotDetail {
  *
  * 목록 API 가 없는 실 모드에서 재고 집계가 유일한 대여소 단위 실데이터입니다.
  *
+ * **이름은 서버 값을 씁니다** (`stationName`, BILL-168 에서 추가). 그전에는
+ * 명부에 적어 둔 이름만 썼는데, DB 에서 대여소 이름을 바꿔도 화면이 안 따라갔습니다.
+ * 서버가 안 주면(구버전) 명부로 떨어지고, 명부에도 없으면 축약 ID 입니다.
+ *
  * **`deviceStatus` 는 `null`(알 수 없음)입니다.** 예전에는 `'ONLINE'` 을 박아 넣었는데,
  * 재고 API 가 응답한 건 **서버가 살아 있다**는 뜻이지 **현장의 함이 살아 있다**는 뜻이
  * 아닙니다. 함이 어제부터 꺼져 있어도 DB 슬롯 행은 그대로라 서버는 200 을 돌려주고,
@@ -123,11 +127,12 @@ function toDetail(station: Station, slot: SlotSummary): SlotDetail {
  * 화면에서 판단에 쓰지 않습니다(표시는 슬롯 4축과 재고 비율로 합니다).
  *
  * TODO: 대여소 조회 API 가 `device_status`·`last_seen_at` 을 주면 그 값으로 바꾸세요.
+ *       좌표(`position`)는 ERD 에 컬럼이 없어 여전히 명부 값입니다.
  */
 function composeStation(seed: StationSeedEntry, inventory: InventorySummary): Station {
     return {
         stationId: seed.stationId,
-        name: inventory.stationName,
+        name: inventory.stationName?.trim() || seed.name,
         position: seed.position,
         serviceStatus: 'AVAILABLE',
         deviceStatus: null,
