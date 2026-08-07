@@ -28,6 +28,8 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Optional;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class DeviceTerminalEventService {
 
+    private static final Logger log = LoggerFactory.getLogger(DeviceTerminalEventService.class);
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private final RentalRepository rentalRepository;
@@ -64,9 +67,59 @@ public class DeviceTerminalEventService {
 
     @Transactional
     public DeviceTerminalEventResponse recordTerminalEvent(DeviceTerminalEventRequest request) {
+        if (request.eventType() == EventType.PHYSICAL_STATE_CONFIRMED) {
+            return recordPhysicalStateConfirmation(request);
+        }
         return request.returnAttemptId() != null
                 ? recordReturnLockEvent(request)
                 : recordRentalUnlockEvent(request);
+    }
+
+    /**
+     * 체크아웃 UNLOCK 완료 후 Pi가 스스로 재잠금을 감지해 자발적으로 보내는 재확인
+     * 이벤트 — 사전에 발급된 commandId가 없어 slotId로 대상을 찾는다(팀 결정: (B)).
+     * Rental.activate()는 이 이벤트와 무관하게 이미 UNLOCK 완료 시점에 끝나 있으므로
+     * 여기서는 손대지 않는다.
+     *
+     * <p>센서가 관측한 물리 상태는 DB에 매칭되는 ACTIVE 대여가 있는지와 무관한 사실이라,
+     * ACTIVE 대여를 못 찾아도 occupancy 동기화는 그대로 수행한다(리뷰로 발견) — 그렇지
+     * 않으면 대여가 어떤 이유로든 먼저 종료·유실된 슬롯이 실제로는 비었는데도 DB엔
+     * OCCUPIED로 남아, findRentCheckoutCandidate가 빈 슬롯을 다시 대여 후보로 내줄 수
+     * 있다. 재확인해도 여전히 OCCUPIED면(아직 안 뺐음) 슬롯은 격리하지 않고 로그만
+     * 남긴다(팀 결정).
+     */
+    private DeviceTerminalEventResponse recordPhysicalStateConfirmation(DeviceTerminalEventRequest request) {
+        Slot slot = slotRepository.findByIdForUpdate(request.slotId())
+                .orElseThrow(() -> new IllegalStateException(
+                        "slotId로 슬롯을 찾을 수 없습니다: " + request.slotId()));
+
+        DeviceOperation deviceOperation = DeviceOperation.request(
+                slot.getStationId(), slot.getSlotId(), DeviceOperation.OperationType.PHYSICAL_STATE_CONFIRM);
+        LocalDateTime now = LocalDateTime.now();
+
+        Optional<Rental> activeRental = rentalRepository
+                .findFirstByCheckoutSlotIdAndStatusOrderByRequestedAtDesc(slot.getSlotId(), Rental.Status.ACTIVE);
+
+        Slot.OccupancyStatus observedOccupancyStatus = request.evidence().after().occupancyStatus();
+        slot.applyObservedPhysicalState(observedOccupancyStatus, request.evidence().after().lockStatus());
+
+        if (activeRental.isEmpty()) {
+            log.warn("PHYSICAL_STATE_CONFIRMED 도착했지만 slotId={}에 ACTIVE 대여가 없습니다 — occupancy만 동기화합니다",
+                    slot.getSlotId());
+        } else if (observedOccupancyStatus == Slot.OccupancyStatus.OCCUPIED) {
+            log.warn("PHYSICAL_STATE_CONFIRMED 재확인에도 여전히 OCCUPIED입니다 — rentalId={}, slotId={}",
+                    activeRental.get().getRentalId(), slot.getSlotId());
+        }
+
+        recordOutcome(deviceOperation, request,
+                activeRental.isEmpty() ? DeviceOperation.Status.OUTCOME_UNKNOWN : DeviceOperation.Status.SUCCEEDED,
+                DeviceOperation.TerminalEventType.OPERATION_COMPLETED, now);
+        deviceOperationRepository.save(deviceOperation);
+
+        return new DeviceTerminalEventResponse(
+                request.eventId(), deviceOperation.getCommandId(), deviceOperation.getStatus().name(),
+                activeRental.map(r -> r.getStatus().name()).orElse("NO_ACTIVE_RENTAL"),
+                "CONSISTENT", now, buildInventory(slot.getStationId()));
     }
 
     private DeviceTerminalEventResponse recordRentalUnlockEvent(DeviceTerminalEventRequest request) {

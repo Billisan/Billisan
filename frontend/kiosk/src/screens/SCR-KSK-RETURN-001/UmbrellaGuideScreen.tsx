@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import umbrellaGuideImage from '../../assets/umbrella-guide.jpg'
 import { GuideContent } from '../../components/common/GuideContent'
 import { ClockIcon } from '../../components/icons/ClockIcon'
 import { EyeIcon } from '../../components/icons/EyeIcon'
@@ -43,7 +44,13 @@ export function UmbrellaGuideScreen({
         title={t.return.guideTitle}
         subtitle={t.return.guideSubtitle}
         guideBox={
-          <div className="border-disabled h-64 w-104 rounded-2xl border-2 border-dashed" />
+          <div className="border-disabled h-64 w-104 overflow-hidden rounded-2xl border-2 border-dashed">
+            <img
+              src={umbrellaGuideImage}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          </div>
         }
         steps={umbrellaGuideSteps}
         footer={

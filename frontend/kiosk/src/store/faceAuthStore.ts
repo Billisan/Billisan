@@ -15,6 +15,7 @@ interface FaceAuthState {
   variant: AuthScreenVariant
   guidanceCode: string | null
   displayName: string | null
+  studentId: string | null
   startCapture: (
     mode: KioskMode,
     onEligible: (sessionId: string) => void,
@@ -50,12 +51,18 @@ export const useFaceAuthStore = create<FaceAuthState>((set, get) => ({
   variant: AUTH_SCREEN_VARIANT.GUIDE,
   guidanceCode: null,
   displayName: null,
+  studentId: null,
 
   startCapture: (mode, onEligible, onBlocked) => {
     closeStream?.()
     clearPendingTimers()
     confirmIdentityRef = null
-    set({ variant: AUTH_SCREEN_VARIANT.FACE_CAPTURE, guidanceCode: null, displayName: null })
+    set({
+      variant: AUTH_SCREEN_VARIANT.FACE_CAPTURE,
+      guidanceCode: null,
+      displayName: null,
+      studentId: null,
+    })
 
     let pendingEligibility: KioskStageMessage | null = null
 
@@ -98,6 +105,7 @@ export const useFaceAuthStore = create<FaceAuthState>((set, get) => ({
             variant: AUTH_SCREEN_VARIANT.AUTH_SUCCESS,
             guidanceCode: null,
             displayName: message.displayName ?? null,
+            studentId: message.studentId ?? null,
           })
           return
 
@@ -125,6 +133,11 @@ export const useFaceAuthStore = create<FaceAuthState>((set, get) => ({
     closeStream = null
     clearPendingTimers()
     confirmIdentityRef = null
-    set({ variant: AUTH_SCREEN_VARIANT.GUIDE, guidanceCode: null, displayName: null })
+    set({
+      variant: AUTH_SCREEN_VARIANT.GUIDE,
+      guidanceCode: null,
+      displayName: null,
+      studentId: null,
+    })
   },
 }))

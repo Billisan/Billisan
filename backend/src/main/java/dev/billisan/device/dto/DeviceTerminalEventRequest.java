@@ -35,7 +35,13 @@ public record DeviceTerminalEventRequest(
     }
 
     public enum EventType {
-        OPERATION_COMPLETED, OPERATION_FAILED, TIMED_OUT
+        OPERATION_COMPLETED, OPERATION_FAILED, TIMED_OUT,
+        /**
+         * 체크아웃 UNLOCK이 끝난 뒤, 백엔드가 명령을 낸 적 없이 Pi가 재잠금을 스스로
+         * 감지해 보내는 재확인 이벤트. commandId로 찾을 기존 DeviceOperation이 없으므로
+         * slotId 기준으로 처리한다.
+         */
+        PHYSICAL_STATE_CONFIRMED
     }
 
     public record Evidence(

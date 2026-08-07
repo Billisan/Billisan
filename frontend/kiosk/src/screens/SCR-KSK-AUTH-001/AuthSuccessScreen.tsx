@@ -9,8 +9,10 @@ import { useTranslation } from "../../i18n/useTranslation";
 interface AuthSuccessScreenProps {
   flow?: StepFlow;
   displayName: string | null;
+  studentId: string | null;
   onConfirm: () => void;
   onReject: () => void;
+  onBack?: () => void;
 }
 
 type SuccessPhase = "ICON_ONLY" | "TEXT_SHOWN" | "CONFIRM";
@@ -25,11 +27,15 @@ const CONFIRM_REVEAL_DELAY_MS = 1000;
 // TEMP: 09-screen-flow.md §1은 얼굴 인증 중 이름 표시를 명시적으로 금지하지만, 팀 결정
 // (2026-08-03)으로 이 실명 확인 단계를 추가하기로 했다 — 명세서는 아직 갱신 전이라 여기서는
 // 그 결정을 우선 반영하고, displayName은 faceAuthStore를 통해 Mock 값만 채워진다.
+// TEMP: 팀 결정(2026-08-06)으로 같은 확인 단계에 학번(studentId)도 함께 표시한다 — 사유는
+// displayName과 동일.
 export function AuthSuccessScreen({
   flow,
   displayName,
+  studentId,
   onConfirm,
   onReject,
+  onBack,
 }: AuthSuccessScreenProps) {
   const t = useTranslation();
   const [phase, setPhase] = useState<SuccessPhase>("ICON_ONLY");
@@ -52,9 +58,10 @@ export function AuthSuccessScreen({
   }, [phase]);
 
   const isConfirmPhase = phase === "CONFIRM";
+  const confirmQuestion = t.auth.confirmQuestion(displayName, studentId);
 
   return (
-    <KioskLayout currentStep={2} flow={flow}>
+    <KioskLayout onBack={onBack} currentStep={2} flow={flow}>
       {/* justify-center로 실제 뷰포트 높이 기준 정중앙에서 시작하고, CONFIRM 단계에서만
           추가로 translateY만큼 위로 슬라이드한다 — 값 자체는 PROVISIONAL_UI_VALUE. */}
       <div className="flex h-full min-h-0 w-full flex-1 flex-col items-center justify-center">
@@ -83,20 +90,24 @@ export function AuthSuccessScreen({
             </h2>
           )}
           {isConfirmPhase && (
-            <div className="animate-rise-in flex w-102 flex-col items-center gap-8">
+            <div className="animate-rise-in flex flex-col items-center gap-6">
               <div className="flex flex-col items-center gap-4 text-center">
                 <h2 className="text-3xl font-bold text-black">
-                  {t.auth.confirmQuestion(displayName)}
+                  {confirmQuestion.before}
+                  {confirmQuestion.studentId && (
+                    <span className="text-xl">{confirmQuestion.studentId}</span>
+                  )}
+                  {confirmQuestion.after}
                 </h2>
                 <p className="text-tertiary-text text-xl">
                   {t.auth.confirmSubtitle}
                 </p>
               </div>
-              <div className="mt-10 flex w-full flex-col gap-6">
-                <Button onClick={onConfirm} className="w-full">
+              <div className="mt-20 flex w-full flex-row gap-6">
+                <Button onClick={onConfirm} className="flex-1 w-106">
                   {t.auth.confirmYes(flow ?? "RENT")}
                 </Button>
-                <Button variant="outline" onClick={onReject} className="w-full">
+                <Button variant="outline" onClick={onReject} className="flex-1 w-106">
                   {t.auth.confirmNo}
                 </Button>
               </div>

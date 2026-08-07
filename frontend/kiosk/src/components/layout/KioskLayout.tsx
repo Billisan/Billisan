@@ -19,7 +19,6 @@ interface KioskLayoutProps {
 export function KioskLayout({
   children,
   onBack,
-  fullBleed = false,
   currentStep,
   flow,
 }: KioskLayoutProps) {
@@ -39,7 +38,7 @@ export function KioskLayout({
 
   return (
     <div className="relative flex h-screen flex-col bg-linear-to-b from-white via-white via-60% to-[#FFFAE1]">
-      <header className="grid h-36 w-full grid-cols-[1fr_auto_1fr] items-center px-10">
+      <header className="grid h-34 w-full grid-cols-[1fr_auto_1fr] items-center px-14">
         <div className="flex justify-start">
           {!currentStep ? (
             <div className="flex items-center gap-6">
@@ -78,11 +77,9 @@ export function KioskLayout({
           {!currentStep && <LanguageToggle />}
         </div>
       </header>
-      <main className="flex min-h-0 flex-1 flex-col items-center justify-end">
+      <main className="flex min-h-0 flex-1 flex-col items-center justify-end overflow-hidden">
         <div
-          className={`flex min-h-0 w-full flex-1 flex-col items-center overflow-hidden ${
-            fullBleed ? "" : "gap-12 p-14"
-          }`}
+          className={`flex min-h-0 w-full flex-1 flex-col items-center`}
         >
           {children}
         </div>

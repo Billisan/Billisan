@@ -10,6 +10,7 @@ export interface StationSummary {
 export const MAIN_SCREEN_VARIANT = {
   DEFAULT: 'DEFAULT',
   RENT_DISABLED_NO_STOCK: 'RENT_DISABLED_NO_STOCK',
+  RETURN_DISABLED_NO_CAPACITY: 'RETURN_DISABLED_NO_CAPACITY',
 } as const
 
 export type MainScreenVariant =

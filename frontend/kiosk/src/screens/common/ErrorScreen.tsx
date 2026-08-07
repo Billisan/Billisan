@@ -62,15 +62,24 @@ export function ErrorScreen({
           )}
         </div>
 
-        <div className="flex w-full flex-col items-center gap-4">
-          <Button onClick={onAction} className="w-100">
+        <div
+          className={`flex w-full items-center gap-4 ${
+            secondaryActionLabel && onSecondaryAction ? 'flex-row' : 'flex-col'
+          }`}
+        >
+          <Button
+            onClick={onAction}
+            className={
+              secondaryActionLabel && onSecondaryAction ? 'flex-1' : 'w-100'
+            }
+          >
             {actionLabel ?? t.common.home}
           </Button>
           {secondaryActionLabel && onSecondaryAction && (
             <Button
               variant="outline"
               onClick={onSecondaryAction}
-              className="w-100"
+              className="flex-1"
             >
               {secondaryActionLabel}
             </Button>
