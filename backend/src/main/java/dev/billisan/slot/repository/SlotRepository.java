@@ -60,8 +60,11 @@ public interface SlotRepository extends JpaRepository<Slot, UUID> {
             ItemCondition itemCondition);
 
     /**
-     * EDGE-RENT-001 checkout 후보 선정. 물리 상태(AVAILABLE+OCCUPIED+LOCKED+NORMAL)를 만족하면서, 
-     * 이미 다른 REQUESTED 대여가 물고 있지 않은 슬롯을 번호 오름차순으로 찾아 그중 첫 번째를 반환한다. 
+     * EDGE-RENT-001 checkout 후보 선정. 물리 상태(AVAILABLE+OCCUPIED+LOCKED+NORMAL)를 만족하면서,
+     * 이미 다른 REQUESTED·ACTIVE 대여가 물고 있지 않은 슬롯을 번호 오름차순으로 찾아 그중 첫 번째를
+     * 반환한다. ACTIVE도 막는 이유: occupancy=OCCUPIED는 원래 "이미 나간 대여는 EMPTY로 바뀐다"는
+     * 전제로 안전장치 역할을 했는데, 체크아웃 후 실제 회수 여부를 재확인하는 절차가 없어 그 전제가
+     * 깨진다(2026-08-07 실측) — occupancy 값과 무관하게 슬롯 단위로도 이중 배정을 막아야 한다.
      * 스테이션당 키오스크 1대라 요청이 겹치지 않으므로 별도 행 잠금은 쓰지 않는다.
      */
     default Optional<Slot> findRentCheckoutCandidate(UUID stationId) {
@@ -71,7 +74,7 @@ public interface SlotRepository extends JpaRepository<Slot, UUID> {
                         OccupancyStatus.OCCUPIED,
                         LockStatus.LOCKED,
                         ItemCondition.NORMAL,
-                        Rental.Status.REQUESTED)
+                        List.of(Rental.Status.REQUESTED, Rental.Status.ACTIVE))
                 .stream()
                 .findFirst();
     }
@@ -83,7 +86,7 @@ public interface SlotRepository extends JpaRepository<Slot, UUID> {
             + "and s.lockStatus = :lockStatus "
             + "and s.itemCondition = :itemCondition "
             + "and not exists ("
-            + "  select 1 from Rental r where r.checkoutSlotId = s.slotId and r.status = :requestedStatus"
+            + "  select 1 from Rental r where r.checkoutSlotId = s.slotId and r.status in :blockingStatuses"
             + ") "
             + "order by s.slotNumber")
     List<Slot> findRentCheckoutCandidates(
@@ -92,7 +95,7 @@ public interface SlotRepository extends JpaRepository<Slot, UUID> {
             @Param("occupancyStatus") OccupancyStatus occupancyStatus,
             @Param("lockStatus") LockStatus lockStatus,
             @Param("itemCondition") ItemCondition itemCondition,
-            @Param("requestedStatus") Rental.Status requestedStatus);
+            @Param("blockingStatuses") List<Rental.Status> blockingStatuses);
 
     /**
      * EDGE-RETURN-003 반납 후보 선정
