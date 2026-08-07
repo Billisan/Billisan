@@ -127,7 +127,7 @@ function toDetail(station: Station, slot: SlotSummary): SlotDetail {
 function composeStation(seed: StationSeedEntry, inventory: InventorySummary): Station {
     return {
         stationId: seed.stationId,
-        name: seed.name,
+        name: inventory.stationName,
         position: seed.position,
         serviceStatus: 'AVAILABLE',
         deviceStatus: null,
