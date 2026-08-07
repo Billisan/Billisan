@@ -24,17 +24,17 @@ type UiStep =
   | 'PROCESSING'
   | 'SLOT_GUIDE'
   | 'COMPLETED'
-  | 'UNCERTAIN_NOTICE'
   | 'DAMAGED_NOTICE'
-  | 'UNCERTAIN_BLOCKED'
   | 'DAMAGED_CONFIRM'
 
-// 같은 검수 결과(UNCERTAIN/DAMAGED)가 연속 몇 번째부터 "재인식 or 최종 결정" 게이트 화면(BLOCKED/CONFIRM)을
-// 띄울지. 그 전(1~2회째)은 NOTICE 화면(재인식 유도 + 이대로 진행 허용).
+// 같은 검수 결과(DAMAGED)가 연속 몇 번째부터 "재인식 or 최종 결정" 게이트 화면(CONFIRM)을 띄울지.
+// 그 전(1~2회째)은 NOTICE 화면(재인식 유도 + 이대로 진행 허용).
+// UNCERTAIN은 2026-08-07 사용자 결정으로 NORMAL과 완전히 동일하게 처리(별도 안내/차단 화면 없음).
 const STREAK_THRESHOLD = 3
 
 // 사용자 지정값(2026-08-07) — "우산 인식이 완료되었습니다" 체크 화면 최소 노출 시간.
-// 이 시간이 지나기 전 검수 결과 이벤트가 먼저 도착해도 화면은 3초를 채운 뒤에만 전환된다.
+// 이 화면은 검수 결과가 DAMAGED가 아닐 때만 뜨며(같은 날 사용자 결정), 뜬 뒤에는 최종 RESULT가
+// 이 시간보다 먼저 도착해도 3초를 채운 뒤에야 다음 화면(SLOT_GUIDE 등)으로 전환된다.
 const CAPTURE_SUCCESS_HOLD_MS = 3000
 
 interface ReturnFlowProps {
@@ -60,9 +60,9 @@ export function ReturnFlow({ sessionId, onBack }: ReturnFlowProps) {
   const [returnedAt, setReturnedAt] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
   const started = useRef(false)
-  // UNCERTAIN/DAMAGED가 연속 몇 번째인지 세는 상태 — 재인식(retryInspection)해도 초기화하지
-  // 않고 이어서 센다(연속 기준, 다른 결과가 나오면 streakCount만 리셋).
-  const lastStreakResult = useRef<'UNCERTAIN' | 'DAMAGED' | null>(null)
+  // DAMAGED가 연속 몇 번째인지 세는 상태 — 재인식(retryInspection)해도 초기화하지 않고
+  // 이어서 센다(연속 기준, 다른 결과가 나오면 streakCount만 리셋). UNCERTAIN은 더 이상 추적 안 함.
+  const lastStreakResult = useRef<'DAMAGED' | null>(null)
   const streakCount = useRef(0)
   // 한 번의 시도(startReturn 1회 호출) 안에서 RETURN_SLOT_ASSIGNED/WAITING_INSERTION/
   // SPRING_COMMITTING 이벤트가 여러 번 와도 스트릭은 1번만 반영하기 위한 가드.
@@ -116,15 +116,9 @@ export function ReturnFlow({ sessionId, onBack }: ReturnFlowProps) {
         )
         return
       case 'INSPECTION_PROCESSING':
-        setStep('CAPTURE_SUCCESS')
-        captureSuccessHoldActive.current = true
-        pendingAfterHold.current = null
-        holdTimerId.current = window.setTimeout(() => {
-          captureSuccessHoldActive.current = false
-          const pending = pendingAfterHold.current
-          pendingAfterHold.current = null
-          pending?.()
-        }, CAPTURE_SUCCESS_HOLD_MS)
+        // 이 시점엔 검수 결과(DAMAGED 여부)를 아직 모른다 — "우산 인식이 완료되었습니다" 체크
+        // 화면은 결과를 알고 난 뒤(DAMAGED가 아닐 때만) 아래 case에서 띄운다.
+        setStep('PROCESSING')
         return
       case 'RETURN_SLOT_ASSIGNED':
       case 'WAITING_INSERTION':
@@ -133,7 +127,7 @@ export function ReturnFlow({ sessionId, onBack }: ReturnFlowProps) {
           countedThisAttempt.current = true
           const result = event.inspectionResult
 
-          if (result === 'UNCERTAIN' || result === 'DAMAGED') {
+          if (result === 'DAMAGED') {
             streakCount.current =
               lastStreakResult.current === result ? streakCount.current + 1 : 1
             lastStreakResult.current = result
@@ -142,26 +136,29 @@ export function ReturnFlow({ sessionId, onBack }: ReturnFlowProps) {
             lastStreakResult.current = null
           }
 
-          if (result === 'UNCERTAIN' && streakCount.current >= STREAK_THRESHOLD) {
-            awaitingDecision.current = true
-            runOrDefer(() => setStep('UNCERTAIN_BLOCKED'))
-            return
-          }
           if (result === 'DAMAGED' && streakCount.current >= STREAK_THRESHOLD) {
             awaitingDecision.current = true
-            runOrDefer(() => setStep('DAMAGED_CONFIRM'))
-            return
-          }
-          if (result === 'UNCERTAIN') {
-            awaitingDecision.current = true
-            runOrDefer(() => setStep('UNCERTAIN_NOTICE'))
+            setStep('DAMAGED_CONFIRM')
             return
           }
           if (result === 'DAMAGED') {
             awaitingDecision.current = true
-            runOrDefer(() => setStep('DAMAGED_NOTICE'))
+            setStep('DAMAGED_NOTICE')
             return
           }
+
+          // NORMAL/UNCERTAIN(정상 처리, 2026-08-07 사용자 결정) — DAMAGED가 아닐 때만 "우산 인식이
+          // 완료되었습니다" 체크 화면을 최소 CAPTURE_SUCCESS_HOLD_MS만큼 보여준 뒤 SLOT_GUIDE로 넘어간다.
+          setStep('CAPTURE_SUCCESS')
+          captureSuccessHoldActive.current = true
+          pendingAfterHold.current = () => setStep('SLOT_GUIDE')
+          holdTimerId.current = window.setTimeout(() => {
+            captureSuccessHoldActive.current = false
+            const pending = pendingAfterHold.current
+            pendingAfterHold.current = null
+            pending?.()
+          }, CAPTURE_SUCCESS_HOLD_MS)
+          return
         }
         // 이미 게이트 화면(NOTICE/BLOCKED/CONFIRM)을 띄운 상태라면 같은 시도의 뒤이은
         // 이벤트로 SLOT_GUIDE를 덮어쓰지 않는다.
@@ -245,21 +242,6 @@ export function ReturnFlow({ sessionId, onBack }: ReturnFlowProps) {
     )
   }
 
-  if (step === 'UNCERTAIN_NOTICE') {
-    return (
-      <ErrorScreen
-        title={t.return.uncertainNoticeTitle}
-        subtitle={t.return.uncertainNoticeSubtitle}
-        actionLabel={t.return.retryInspection}
-        onAction={retryInspection}
-        secondaryActionLabel={t.return.proceedAnyway}
-        onSecondaryAction={proceedAfterInspection}
-        currentStep={3}
-        flow="RETURN"
-      />
-    )
-  }
-
   if (step === 'DAMAGED_NOTICE') {
     return (
       <ErrorScreen
@@ -269,19 +251,6 @@ export function ReturnFlow({ sessionId, onBack }: ReturnFlowProps) {
         onAction={retryInspection}
         secondaryActionLabel={t.return.proceedAnyway}
         onSecondaryAction={proceedAfterInspection}
-        currentStep={3}
-        flow="RETURN"
-      />
-    )
-  }
-
-  if (step === 'UNCERTAIN_BLOCKED') {
-    return (
-      <ErrorScreen
-        title={t.return.uncertainBlockedTitle}
-        tips={t.return.uncertainBlockedTips}
-        actionLabel={t.return.retryInspection}
-        onAction={retryInspection}
         currentStep={3}
         flow="RETURN"
       />
