@@ -71,13 +71,17 @@ class SharedCamera:
             print(f"[Camera] release 실패(무시): {e}")
         time.sleep(0.5)  # 장치가 정리될 시간을 준다
         self.cap = self._open()
+        # 성공·실패와 무관하게 카운터를 리셋한다. 실패했다고 그대로 두면 다음 루프에서
+        # 곧바로(31회째) 다시 _reopen이 호출되어, 무거운 VideoCapture 해제/생성이
+        # 매 0.1초마다 반복된다 - 원래 막으려던 자원 낭비가 형태만 바꿔 재발한다.
+        # 리셋해두면 다음 재시도는 REOPEN_AFTER_FAILURES회(약 3초) 뒤가 된다.
+        self.consecutive_failures = 0
         if self.cap.isOpened():
             print("[Camera] 재연결 성공")
             self._report_negotiated()
-            self.consecutive_failures = 0
             self._healthy = True
         else:
-            print("[Camera] 재연결 실패 - 다음 주기에 재시도")
+            print(f"[Camera] 재연결 실패 - 약 {self.REOPEN_AFTER_FAILURES * self.READ_FAIL_SLEEP:.0f}초 후 재시도")
 
     def _loop(self):
         while True:
