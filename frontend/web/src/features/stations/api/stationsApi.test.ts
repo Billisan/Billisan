@@ -159,16 +159,25 @@ describe('대여소 목록 — 한 곳이 실패해도 나머지는 살린다', 
 
 describe('대여소 발견 — 하드코딩에 매이지 않는다', () => {
     it('명부에 없는 대여소도 검수 응답에서 찾아낸다', async () => {
+        /*
+         * 명부는 **이름표일 뿐 접근 목록이 아닙니다.** 여기 없는 대여소도 검수 응답의
+         * `stationId` 로 발견되어 목록에 나옵니다 — 이름만 축약 ID 로 뜹니다.
+         *
+         * 그래서 명부를 실서버에 실재하는 한 곳으로 줄여도(없는 곳에 404 를 반복해
+         * 보내지 않으려고) 화면이 좁아지지 않습니다. 이 테스트가 그걸 지킵니다.
+         */
         mockRealMode((url) => {
             if (url.includes('/inspections')) {
                 return Promise.resolve({ data: { items: [{ stationId: DISCOVERED }] } });
             }
-            return Promise.resolve(inventoryOf(url.includes(SEEDED) ? SEEDED : DISCOVERED));
+            return Promise.resolve(inventoryOf(DISCOVERED));
         });
 
         const ids = (await stationsApi.list()).map((s) => s.stationId);
-        expect(ids).toContain(DISCOVERED);
-        expect(ids).toContain(SEEDED);
+        expect(ids, '검수에서 발견한 대여소가 빠졌습니다').toContain(DISCOVERED);
+        expect(ids, '명부 대여소가 빠졌습니다').toEqual(
+            expect.arrayContaining(REAL_STATIONS.map((entry) => entry.stationId)),
+        );
     });
 
     it('이름이 없는 대여소는 축약 ID 로 보여 준다 — 지어내지 않는다', async () => {
