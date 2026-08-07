@@ -25,6 +25,10 @@ class OrinService(MessagingMixin, FaceAuthMixin, InspectionMixin):
         self.face_app = face_app
         self.inspector = inspector  # 파손우산 검증기 (없으면 INSPECT_UMBRELLA 실행 불가)
         self.conn = psycopg2.connect(**DB_CONFIG)
+        # 조회 전용 서비스이므로 autocommit으로 둔다. 끄면 SELECT 하나에도 트랜잭션이 열리고
+        # commit/rollback을 안 하는 한 'idle in transaction' 상태로 남는데, 그러면 스냅샷이
+        # 고정돼 다른 세션이 새로 등록한 얼굴이 이 커넥션에 보이지 않는 문제가 생긴다.
+        self.conn.autocommit = True
         register_vector(self.conn)
 
         ctx = zmq.Context()
