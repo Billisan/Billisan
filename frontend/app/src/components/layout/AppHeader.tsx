@@ -13,7 +13,7 @@ interface AppHeaderProps {
 // 아래(스크롤과 무관하게 항상 고정)에 둬서 쓰는 걸 전제로 한다 — Screen이 이 화면들에선 top 세이프
 // 에어리어를 비워두고(edges에서 제외), 대신 이 컴포넌트가 insets.top만큼 paddingTop을 직접 줘서
 // 상태바 영역까지 흰 배경이 이어지게 한다(edge-to-edge, 상단 포함).
-// onPressAlert 없으면 배지만 표시하고 탭해도 무동작(마이페이지는 아직 이 Phase 범위 밖이라 미연결).
+// onPressAlert 없으면 배지만 표시하고 탭해도 무동작(2026-08-06 기준 홈·내역조회·마이페이지 전부 연결됨).
 export function AppHeader({ schoolName, alertCount, onPressAlert }: AppHeaderProps) {
   const insets = useSafeAreaInsets()
 

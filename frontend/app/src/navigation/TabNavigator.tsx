@@ -21,6 +21,9 @@ const Tab = createBottomTabNavigator<TabParamList>()
 // 활성 탭 필(pill)에 테두리를 주고 높이를 키우기 위한 커스텀 tabBarButton(2026-08-05 사용자 확인) —
 // tabBarActiveBackgroundColor만으로는 border를 줄 수 없다. React Navigation이 이 커스텀 버튼에
 // focused 여부를 accessibilityState가 아니라 'aria-selected' prop으로 전달해서 그걸로 판정한다.
+// 2026-08-07 추가 확인 — BottomTabItem.tsx가 활성 배경색에 적용하는 borderRadius를 variant(기본값
+// 'uikit')별로 자체 계산해 0으로 강제 덮어써서(node_modules 소스 확인), tabBarItemStyle에 준
+// borderRadius가 무시되고 있었다. 여기서 style 배열 마지막에 명시적으로 다시 얹어 덮어쓴다.
 function TabBarButton({ children, style, ref: _ref, ...rest }: BottomTabBarButtonProps) {
   const focused = rest['aria-selected'] === true
 
@@ -30,7 +33,8 @@ function TabBarButton({ children, style, ref: _ref, ...rest }: BottomTabBarButto
       style={[
         style,
         {
-          height: 52,
+          height: 56,
+          borderRadius: 20,
           borderWidth: focused ? 1.5 : 0,
           borderColor: focused ? '#FFD700' : 'transparent',
         },
@@ -54,7 +58,7 @@ export function TabNavigator() {
         tabBarActiveTintColor: '#1E2A38',
         tabBarInactiveTintColor: '#5F5E5E',
         tabBarActiveBackgroundColor: '#FFEDC0',
-        tabBarItemStyle: { marginHorizontal: 6, marginVertical: 8, borderRadius: 16 },
+        tabBarItemStyle: { marginHorizontal: 4, marginVertical: 4, borderRadius: 20 },
         tabBarButton: (props) => <TabBarButton {...props} />,
       }}
     >

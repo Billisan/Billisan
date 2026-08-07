@@ -106,6 +106,7 @@ export function HomeScreen() {
           <View className="flex-row items-center justify-between">
             <View>
               <Text className="text-base font-bold text-text">초단기 강수 예보</Text>
+              <Text className="text-xs text-text-secondary">현재부터 6시간 이내 예보</Text>
             </View>
             <View>
               <Pressable
@@ -117,7 +118,7 @@ export function HomeScreen() {
               </Pressable>
               {isForecastInfoOpen && (
                 <View className="absolute right-6 -top-2 z-10 w-44 rounded-lg bg-primary p-2">
-                  <Text className="text-xs leading-4 text-black">현재부터 6시간 이내 예보입니다!</Text>
+                  <Text className="text-xs leading-4 text-black">빌리대학교 기준 강수 예보입니다!</Text>
                 </View>
               )}
             </View>

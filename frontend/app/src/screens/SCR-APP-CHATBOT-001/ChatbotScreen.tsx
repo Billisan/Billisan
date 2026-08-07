@@ -133,7 +133,7 @@ export function ChatbotScreen() {
           </View>
 
           <View className="max-w-[85%] self-start rounded-3xl rounded-tl-none bg-background px-4 py-3">
-            <Text className="text-lg text-text">{GREETING_MESSAGE}</Text>
+            <Text className="text-base text-text">{GREETING_MESSAGE}</Text>
           </View>
 
           <View className="self-start rounded-2xl border border-disabled bg-white">
@@ -141,11 +141,11 @@ export function ChatbotScreen() {
               <Pressable
                 key={question}
                 onPress={() => handleSend(question)}
-                className={`px-4 py-3 active:opacity-60 ${
+                className={`px-3 py-3 active:opacity-60 ${
                   index < SUGGESTED_QUESTIONS.length - 1 ? 'border-b border-disabled' : ''
                 }`}
               >
-                <Text className="text-lg text-text">{question}</Text>
+                <Text className="text-base text-text">{question}</Text>
               </Pressable>
             ))}
           </View>
