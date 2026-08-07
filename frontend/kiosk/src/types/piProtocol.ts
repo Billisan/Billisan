@@ -70,9 +70,12 @@ export interface FaceAuthResult {
   retryable: boolean
   // TEMP: 임베디드 문서(2026-07-31) 실 wire 스펙에는 없는 필드. 팀 결정(2026-08-03)으로
   // AuthSuccessScreen에 실명 확인 단계("OOO님이 맞으신가요?")를 추가하기로 하면서 임시로
-  // 얹었다 — 실제 Pi가 이 필드를 보내줄지, 필드명이 무엇일지는 아직 명세서에 반영 전이라
-  // 실 서버 연동 시 undefined로 온다(Mock에서만 값 채움).
-  displayName?: string | null
+  // 얹었다 — 실 Pi 응답 실측(2026-08-06)으로 필드명이 `userName`임을 확인(명세서는 아직 미반영).
+  userName?: string | null
+  // TEMP: 09-screen-flow.md §1은 학번 표시도 명시적으로 금지하지만, 팀 결정(2026-08-06)으로
+  // userName과 같은 확인 단계에 학번을 함께 보여주기로 했다 — 실 Pi 응답 실측(2026-08-06)으로
+  // 필드명이 예상대로 `studentId`임을 확인.
+  studentId?: string | null
 }
 
 // --- KSK-RENT-001 ---
@@ -81,6 +84,15 @@ export interface RentEvent {
   kioskStep: string
   checkoutSlotId: string | null
   slotNumber: number | null
+}
+
+// TEMP: 임베디드팀이 대화로 전달한 스펙 문서(2026-08-07) 기준 필드 — userName/studentId와
+// 달리 아직 실 Pi 응답으로 실측 확인되지 않았다(PROVISIONAL). 스프링 미연동 시 null로 온다고
+// 문서에 명시돼 있어 옵셔널이 아니라 nullable로 둔다.
+export interface PiInventorySnapshot {
+  rentableSlotCount: number
+  emptyReturnSlotCount: number
+  totalSlotCount: number
 }
 
 export interface RentResult {
@@ -93,6 +105,8 @@ export interface RentResult {
   slotNumber: number | null
   rentalSummary: { rentalId: string; rentedAt: string | null; dueAt: string | null } | null
   userMessageCode: string | null
+  // TEMP: PiInventorySnapshot 주석 참고 — PROVISIONAL, 실측 전.
+  inventory: PiInventorySnapshot | null
 }
 
 // --- KSK-RETURN-001 ---
@@ -126,6 +140,8 @@ export interface ReturnResult {
   status: string
   inspectionResult: 'NORMAL' | 'DAMAGED' | 'UNCERTAIN' | 'FAILED'
   userMessageCode: string | null
+  // TEMP: PiInventorySnapshot 주석 참고 — PROVISIONAL, 실측 전.
+  inventory: PiInventorySnapshot | null
 }
 
 // --- KSK-SESSION-002 ---

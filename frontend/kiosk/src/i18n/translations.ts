@@ -28,6 +28,8 @@ export interface Translations {
     returnTitle: string
     returnSubtitle: string
     touchHint: string
+    noStock: string
+    noCapacity: string
   }
   auth: {
     guideStep1: string
@@ -43,7 +45,11 @@ export interface Translations {
     faceNotMatchedTitle: string
     faceNotMatchedTips: string[]
     authSuccessText: string
-    confirmQuestion: (name: string | null) => string
+    // studentId만 별도 폰트 크기(text-xl)로 렌더링하기 위해 문자열 대신 조각으로 반환한다.
+    confirmQuestion: (
+      name: string | null,
+      studentId: string | null,
+    ) => { before: string; studentId: string | null; after: string }
     confirmSubtitle: string
     confirmYes: (flow: 'RENT' | 'RETURN') => string
     confirmNo: string
@@ -121,6 +127,8 @@ const ko: Translations = {
     returnTitle: '반납',
     returnSubtitle: '사용한 우산을 반납합니다',
     touchHint: '화면을 터치하여 메뉴를 선택해주세요',
+    noStock: '우산 재고 없음',
+    noCapacity: '우산함 여유 없음',
   },
   auth: {
     guideStep1: '① 얼굴이 가이드 라인 안에 들어오도록 맞춰주세요.',
@@ -145,8 +153,12 @@ const ko: Translations = {
       '문제가 계속되면 관리자에게 문의해주세요.',
     ],
     authSuccessText: '인증되었습니다',
-    confirmQuestion: (name: string | null) =>
-      name ? `${name}님이 맞으신가요?` : '본인이 맞으신가요?',
+    confirmQuestion: (name: string | null, studentId: string | null) =>
+      name
+        ? studentId
+          ? { before: `${name}님(`, studentId, after: ')이 맞으신가요?' }
+          : { before: `${name}님이 맞으신가요?`, studentId: null, after: '' }
+        : { before: '본인이 맞으신가요?', studentId: null, after: '' },
     confirmSubtitle: '인식된 정보가 본인 정보와 일치하는지 확인해주세요',
     confirmYes: (flow: 'RENT' | 'RETURN') =>
       `예, 우산 ${flow === 'RETURN' ? '반납' : '대여'} 계속하기`,
@@ -250,6 +262,8 @@ const en: Translations = {
     returnTitle: 'Return',
     returnSubtitle: 'Return an umbrella you rented',
     touchHint: 'Touch the screen to select a menu',
+    noStock: 'No umbrellas available',
+    noCapacity: 'No empty slots available',
   },
   auth: {
     guideStep1: '① Position your face inside the guide line.',
@@ -274,8 +288,12 @@ const en: Translations = {
       'Contact an administrator if this continues.',
     ],
     authSuccessText: 'Verified',
-    confirmQuestion: (name: string | null) =>
-      name ? `Is this ${name}?` : 'Is this you?',
+    confirmQuestion: (name: string | null, studentId: string | null) =>
+      name
+        ? studentId
+          ? { before: `Is this ${name} (`, studentId, after: ')?' }
+          : { before: `Is this ${name}?`, studentId: null, after: '' }
+        : { before: 'Is this you?', studentId: null, after: '' },
     confirmSubtitle: 'Please confirm the recognized information matches you',
     confirmYes: (flow: 'RENT' | 'RETURN') =>
       `Yes, continue with ${flow === 'RETURN' ? 'return' : 'rental'}`,
