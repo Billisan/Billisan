@@ -21,6 +21,7 @@ import dev.billisan.slot.dto.SlotListResponse;
 import dev.billisan.slot.dto.SlotStatusUpdateRequest;
 import dev.billisan.slot.dto.SlotSummaryResponse;
 import dev.billisan.slot.repository.SlotRepository;
+import dev.billisan.station.domain.Station;
 import dev.billisan.station.repository.StationRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,7 +53,8 @@ public class SlotAdminService {
     }
 
     public SlotInventoryResponse getInventory(UUID stationId) {
-        requireStation(stationId);
+        Station station = stationRepository.findById(stationId)
+                .orElseThrow(() -> new StationNotFoundException("대여소를 찾을 수 없습니다: " + stationId));
 
         long total = slotRepository.countByStationId(stationId);
         long occupied = slotRepository.countByStationIdAndOccupancyStatus(stationId, OccupancyStatus.OCCUPIED);
@@ -65,8 +67,8 @@ public class SlotAdminService {
                 stationId, ServiceStatus.AVAILABLE, OccupancyStatus.OCCUPIED, LockStatus.LOCKED, ItemCondition.NORMAL);
 
         return new SlotInventoryResponse(
-                stationId, total, occupied, empty, unknownOccupancy, availableUmbrella, adminReview, outOfService,
-                damaged, LocalDateTime.now());
+                stationId, station.getName(), total, occupied, empty, unknownOccupancy, availableUmbrella,
+                adminReview, outOfService, damaged, LocalDateTime.now());
     }
 
     public SlotListResponse listSlots(UUID stationId) {

@@ -10,6 +10,7 @@ import java.util.UUID;
  */
 public record SlotInventoryResponse(
         UUID stationId,
+        String stationName,
         long totalSlotCount,
         long occupiedSlotCount,
         long emptySlotCount,
