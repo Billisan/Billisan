@@ -246,7 +246,9 @@ public class DeviceOperation {
     }
 
     public enum OperationType {
-        UNLOCK
+        UNLOCK,
+        /** 백엔드가 명령을 낸 적 없이 Pi가 자발적으로 보내는 재확인 이벤트 기록용. */
+        PHYSICAL_STATE_CONFIRM
     }
 
     /** V2 마이그레이션의 {@code CK_DEVICE_OPERATION_STATUS}와 동일한 값 집합. */
