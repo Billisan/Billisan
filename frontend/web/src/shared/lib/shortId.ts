@@ -18,3 +18,15 @@ export function shortId(id: string | null | undefined): string {
     if (!id) return '—';
     return `${id.slice(0, 8)}…`;
 }
+
+/**
+ * `shortId` 와 같은 축약이지만 **값이 없으면 `null` 을 돌려줍니다.**
+ *
+ * 표 안에서는 빈 칸을 「—」로 채워야 열이 무너지지 않지만(`shortId`), 카드에서는
+ * 「연결 반납 시도」 줄 자체를 그리지 않는 편이 낫습니다. 있지도 않은 항목에 대시를
+ * 찍어 두면 관리자가 "값을 못 읽었나?" 하고 되묻게 됩니다. 호출부가 `null` 을 보고
+ * 줄을 통째로 건너뛸 수 있도록 두 갈래로 둡니다.
+ */
+export function shortRef(id: string | null | undefined): string | null {
+    return id ? `${id.slice(0, 8)}…` : null;
+}

@@ -11,11 +11,6 @@ import {
     useStation,
 } from '@/features/stations/hooks/useStations';
 import {
-    buildSlotHistory,
-    shortRef,
-    type SlotHistoryEntry,
-} from '@/features/stations/mocks/slotDetail';
-import {
     aiResultText,
     aiResultTone,
     DECISION_TONE,
@@ -24,16 +19,15 @@ import {
     deriveSlotDisplayStatus,
     displayItemCondition,
     formatSlotLabel,
-    formatUpdatedAt,
     ITEM_CONDITION_TONE,
     pendingInspectionId,
     SLOT_DISPLAY_TONE,
     slotStatusHint,
     slotStatusText,
 } from '@/features/stations/types';
+import { shortRef } from '@/shared/lib/shortId';
 import { Badge } from '@/shared/components/Badge';
 import { CopyButton } from '@/shared/components/CopyButton';
-import { DataTable, TBody, Td, TableCard, Th, THead, Tr } from '@/shared/components/DataTable';
 import { PageBar } from '@/shared/components/PageBar';
 import { ErrorState, LoadingState, NotFoundState } from '@/shared/components/PageState';
 import { PageTitle } from '@/shared/components/PageTitle';
@@ -122,7 +116,6 @@ export function SlotDetailPage() {
     const displayedCondition = displayItemCondition(slot);
     // 상세 응답의 latestInspection / latestReturnAttempt 를 그대로 씁니다 (12-R B-4).
     const inspection = slot.latestInspection;
-    const history = buildSlotHistory(slot);
     const pendingId = pendingInspectionId(slot);
 
     return (
@@ -371,7 +364,22 @@ export function SlotDetailPage() {
                 </InfoCard>
             </div>
 
-            <SlotHistoryTable entries={history} />
+            {/*
+             * **「상태 이력」 카드를 뒀던 자리입니다. 되살리지 마세요.**
+             *
+             * 그 표는 서버가 준 이력이 아니라 `buildSlotHistory` 가 지어낸 것이었습니다.
+             * 「대여 21:22」 같은 시각은 `updatedAt` 에서 45분을 뺀 숫자였고, 「반납」·「대여」
+             * 라는 사건 자체도 코드가 고정해 둔 이야기였습니다.
+             *
+             * 진짜 이력을 그리려면 대여·반납 시각이 필요한데, 관리자 API 8개 어디에도
+             * 없습니다. `LatestReturnAttemptView` 는 `returnAttemptId`·`rentalId`·`status`
+             * 뿐이고(docs/api-docs.json), 명세 전체를 뒤져도 관리자 응답의 시각은
+             * `processedAt`·`updatedAt`·`decidedAt` 셋뿐입니다. DB 엔티티에는 `rentedAt`
+             * 등이 있지만 계약이 안 꺼내 줍니다.
+             *
+             * 그래서 지어내는 대신 **없앴습니다** (PM 결정, 2026-08-08).
+             * 이력 API 나 시각 필드가 계약에 들어오면 그때 실데이터로 새로 만드세요.
+             */}
 
             <SlotStatusDialog
                 open={dialogOpen}
@@ -479,119 +487,5 @@ function RefId({ id, to }: { id: string | null | undefined; to?: string | null }
             {/* 화면에는 8자만 보이므로 전체 값을 꺼낼 손잡이를 답니다. */}
             <CopyButton value={id} label="반납 시도 ID" />
         </span>
-    );
-}
-
-function SlotHistoryTable({ entries }: { entries: SlotHistoryEntry[] }) {
-    return (
-        <TableCard>
-            {/*
-             * ⚠️ **이 표의 값은 서버가 준 것이 아닙니다.**
-             *
-             * `ADMIN-SLOT-DETAIL-001` 응답에는 이력 배열이 없습니다. 아래 줄들은 최근 검수·반납
-             * 시도 각 1건에서 `buildSlotHistory` 가 지어낸 것이고, 시각도 `updatedAt` 에서 임의의
-             * 분을 뺀 값입니다 (`earlier(now, 45)` 등).
-             *
-             * 예전에는 여기 「목업」 배지와 "실제 기록이 아니므로 판단 근거로 쓰지 마세요" 문구가
-             * 붙어 있었습니다. **PM 요청(2026-08-08)으로 뗐습니다** — 화면에 목업이라는
-             * 단어를 남기지 않기로 했습니다. 그래서 지금은 지어낸 시각과 실제 기록을 화면에서
-             * 구분할 방법이 없습니다. 그 위험을 알고 뗀 것입니다.
-             *
-             * TODO: 이력 API 가 계약에 들어오면 mocks/slotDetail.ts 를 지우고 실데이터로 바꾸세요.
-             *       그 전까지 이 카드를 되살릴 일이 있으면 경고 표시를 함께 되살려야 합니다.
-             */}
-            <div className="px-5 pb-[15px] pt-5">
-                <h3 className="text-[15px] font-extrabold leading-none text-brand-ink">
-                    상태 이력
-                </h3>
-            </div>
-
-            {/*
-             * **근거가 없으면 표를 그리지 않습니다.**
-             *
-             * 예전에는 검수도 반납도 없는 슬롯에까지 「반납 → 지금 상태」 + 「대여」 두 줄을
-             * 지어냈습니다. 시드 5번 슬롯이 그 경우인데, 그 슬롯은 관리자가 순찰 중
-             * 「수리 가능」으로 직접 지정한 자리라 대여도 반납도 없습니다(시드 문서 「이력 없음」).
-             * 화면이 있지도 않은 반납 사건을 만들어 틀린 이야기를 하고 있었습니다.
-             *
-             * 근거가 0인 자리는 비웁니다 — 옆 「최근 검수」 카드도 같은 방식입니다.
-             * 경고 표시를 뗀 지금은 이 규칙이 유일한 방어선입니다. 없애지 마세요.
-             */}
-            {entries.length === 0 ? (
-                <p className="px-5 pb-6 text-[13px] font-medium text-brand-muted">
-                    표시할 상태 이력이 없습니다.
-                </p>
-            ) : (
-                <DataTable>
-                    {/*
-                     * 이 표는 '언제 · 무엇이 · 어떻게 바뀌었나' 세 가지만 보여줍니다.
-                     * 위 카드에 이미 있는 것은 여기서 반복하지 않습니다.
-                     *
-                     * 연결ID — 표시 필드의 `최근 returnAttemptId` 는 '슬롯 상태' 카드에 있습니다.
-                     *   표에 36자 UUID 를 깔면 자리만 잡아먹습니다.
-                     * 사유 — 되돌려받는 API 가 없습니다. `ADMIN-SLOT-STATUS-001` 과
-                     *   `ADMIN-INSPECTION-003` 은 `reasonCode`·`note` 를 **받기만** 하고 조회
-                     *   응답에는 그 필드가 없습니다.
-                     * 검수 링크 — §7.6 `ACT-WEB-SLOT-DETAIL-004 연결 검수 이동` 은 '최근 검수'
-                     *   카드의 '검수 상세에서 보기'(검수가 있으면 항상 표시)와 미처리일 때 뜨는
-                     *   상단 '검수하기' 버튼이 충족합니다. 같은 목적지를 세 번 둘 이유가 없습니다.
-                     */}
-                    <THead>
-                        <Th className="w-[28%]">시각</Th>
-                        <Th className="w-[24%]">구분</Th>
-                        <Th align="center" className="w-[48%]">
-                            상태 변화
-                        </Th>
-                    </THead>
-
-                    <TBody>
-                        {entries.map((entry) => (
-                            <Tr key={`${entry.at}-${entry.kind}`} className="h-[56px]">
-                                <Td className="tabular-nums">{formatUpdatedAt(entry.at)}</Td>
-                                <Td className="font-bold text-brand-ink">{entry.kind}</Td>
-                                <Td align="center">
-                                    {/*
-                                     * 화살표를 열 한가운데 **고정**합니다.
-                                     *
-                                     * flex 로 나란히 두면 배지 글자 수에 따라('빈 슬롯' vs
-                                     * '관리자 확인') 화살표 위치가 행마다 달라져서 지그재그로
-                                     * 보입니다. 양옆을 `1fr` 로 잡고 가운데를 `auto` 로 두면
-                                     * 화살표 x 좌표가 어느 행이든 같습니다.
-                                     * 왼쪽은 오른쪽 끝에, 오른쪽은 왼쪽 끝에 붙여 화살표를 향하게 합니다.
-                                     */}
-                                    <span className="grid grid-cols-[1fr_auto_1fr] items-center gap-[12px]">
-                                        <Badge
-                                            tone={SLOT_DISPLAY_TONE[entry.from]}
-                                            className="justify-self-end whitespace-nowrap"
-                                        >
-                                            {slotStatusText(entry.from)}
-                                        </Badge>
-                                        <ArrowRight />
-                                        <Badge
-                                            tone={SLOT_DISPLAY_TONE[entry.to]}
-                                            className="justify-self-start whitespace-nowrap"
-                                        >
-                                            {slotStatusText(entry.to)}
-                                        </Badge>
-                                    </span>
-                                </Td>
-                            </Tr>
-                        ))}
-                    </TBody>
-                </DataTable>
-            )}
-        </TableCard>
-    );
-}
-
-/** 상태 변화 화살표. lucide 아이콘은 획이 얇아서 시안 벡터를 그대로 씁니다. */
-function ArrowRight() {
-    return (
-        <svg viewBox="0 0 8.77 8.59" width="8.77" height="8.59" className="shrink-0" aria-hidden>
-            <path
-                d="M4.474 8.591L3.486 7.611L6.081 5.016H0V3.576H6.081L3.486 0.985L4.474 0L8.77 4.296L4.474 8.591Z"
-                fill="#9AA9B6"
-            />
-        </svg>
     );
 }

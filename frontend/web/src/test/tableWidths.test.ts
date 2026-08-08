@@ -17,12 +17,16 @@ import { describe, expect, it } from 'vitest';
  * 렌더링까지 돌리지 않고 소스를 읽습니다 — 확인할 게 문자열 상수뿐이라 그걸로 충분합니다.
  */
 
+/*
+ * `features/stations/pages/SlotDetailPage.tsx` 는 뺐습니다 — 그 화면의 표는
+ * 「상태 이력」 하나였고, 서버가 주지 않는 값을 지어내던 것이라 통째로 없앴습니다
+ * (2026-08-08). 이력 API 가 생겨 표가 돌아오면 여기에도 다시 넣으세요.
+ */
 const TABLES = [
     'features/inspections/pages/InspectionListPage.tsx',
     'features/map/components/DistributionList.tsx',
     'features/stations/components/SlotTable.tsx',
     'features/stations/components/StationTable.tsx',
-    'features/stations/pages/SlotDetailPage.tsx',
 ];
 
 /**
