@@ -6,12 +6,12 @@ import { Button } from '../../components/common/Button'
 import { ErrorBanner } from '../../components/common/ErrorBanner'
 import { LoadingScreen } from '../../components/common/LoadingScreen'
 import { Screen } from '../../components/layout/Screen'
-import { CampusMap } from './CampusMap'
+import { KakaoMapWebView } from './KakaoMapWebView'
 import { StationBottomSheet } from './StationBottomSheet'
 
-// SCR-APP-STATION-001. 실제 지도 SDK 대신 SVG 기반 가상 캠퍼스 지도(DEC-SF-004 RESOLVED,
-// 2026-08-05 사용자 확인) — 선택된 대여소 id만 화면 레벨 state로 관리하고, 줌/팬 상태는
-// CampusMap 내부에서 관리한다(스펙 §7).
+// SCR-APP-STATION-001. 카카오맵 JS SDK 커스텀 타일셋 + WebView(DEC-SF-004 번복,
+// 2026-08-08 PLAN 참고) — 선택된 대여소 id만 화면 레벨 state로 관리하고, 지도 자체의 줌/팬은
+// WebView 안 카카오 엔진이 관리한다.
 export function MapScreen() {
   const [selectedStationId, setSelectedStationId] = useState<number | null>(null)
   const stationsQuery = useQuery({ queryKey: ['stations'], queryFn: getStations })
@@ -36,7 +36,7 @@ export function MapScreen() {
 
   return (
     <Screen edges={['top', 'right', 'left']}>
-      <CampusMap
+      <KakaoMapWebView
         stations={stations}
         selectedStationId={selectedStationId}
         onSelectStation={setSelectedStationId}
