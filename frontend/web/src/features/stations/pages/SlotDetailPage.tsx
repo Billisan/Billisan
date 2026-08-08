@@ -486,29 +486,24 @@ function SlotHistoryTable({ entries }: { entries: SlotHistoryEntry[] }) {
     return (
         <TableCard>
             {/*
-             * **이 표가 목업이라는 사실을 화면에 적습니다.**
+             * ⚠️ **이 표의 값은 서버가 준 것이 아닙니다.**
              *
              * `ADMIN-SLOT-DETAIL-001` 응답에는 이력 배열이 없습니다. 아래 줄들은 최근 검수·반납
              * 시도 각 1건에서 `buildSlotHistory` 가 지어낸 것이고, 시각도 `updatedAt` 에서 임의의
-             * 분을 뺀 값입니다. 표시가 없으면 관리자가 이걸 실제 기록으로 읽습니다 — 자정 근처에서
-             * 음수가 잘려 '00:00' 이 찍히는 것까지 진짜 대여 시각으로 보게 됩니다.
+             * 분을 뺀 값입니다 (`earlier(now, 45)` 등).
              *
-             * TODO: 이력 API 가 계약에 들어오면 이 머리말과 mocks/slotDetail.ts 를 함께 지우세요.
+             * 예전에는 여기 「목업」 배지와 "실제 기록이 아니므로 판단 근거로 쓰지 마세요" 문구가
+             * 붙어 있었습니다. **PM 요청(2026-08-08)으로 뗐습니다** — 화면에 목업이라는
+             * 단어를 남기지 않기로 했습니다. 그래서 지금은 지어낸 시각과 실제 기록을 화면에서
+             * 구분할 방법이 없습니다. 그 위험을 알고 뗀 것입니다.
+             *
+             * TODO: 이력 API 가 계약에 들어오면 mocks/slotDetail.ts 를 지우고 실데이터로 바꾸세요.
+             *       그 전까지 이 카드를 되살릴 일이 있으면 경고 표시를 함께 되살려야 합니다.
              */}
             <div className="px-5 pb-[15px] pt-5">
-                <div className="flex items-center gap-[7px]">
-                    <h3 className="text-[15px] font-extrabold leading-none text-brand-ink">
-                        상태 이력
-                    </h3>
-                    <Badge tone="slate" title="서버가 주지 않는 값입니다">
-                        목업
-                    </Badge>
-                </div>
-                <p className="mt-[7px] text-[12.5px] font-medium leading-relaxed text-brand-muted">
-                    {entries.length > 0
-                        ? '이력 API가 아직 없어 최근 검수·반납 시도로 구성한 예시입니다. 실제 기록이 아니므로 판단 근거로 쓰지 마세요.'
-                        : '이력 API가 아직 없습니다. 이 슬롯에는 예시를 만들 근거(검수·반납 시도)도 없어 비워 둡니다.'}
-                </p>
+                <h3 className="text-[15px] font-extrabold leading-none text-brand-ink">
+                    상태 이력
+                </h3>
             </div>
 
             {/*
@@ -519,8 +514,8 @@ function SlotHistoryTable({ entries }: { entries: SlotHistoryEntry[] }) {
              * 「수리 가능」으로 직접 지정한 자리라 대여도 반납도 없습니다(시드 문서 「이력 없음」).
              * 화면이 있지도 않은 반납 사건을 만들어 틀린 이야기를 하고 있었습니다.
              *
-             * 「목업」 배지를 달아 뒀더라도 근거 0인 자리는 비웁니다 — 옆 「최근 검수」 카드도
-             * 같은 방식입니다.
+             * 근거가 0인 자리는 비웁니다 — 옆 「최근 검수」 카드도 같은 방식입니다.
+             * 경고 표시를 뗀 지금은 이 규칙이 유일한 방어선입니다. 없애지 마세요.
              */}
             {entries.length === 0 ? (
                 <p className="px-5 pb-6 text-[13px] font-medium text-brand-muted">
