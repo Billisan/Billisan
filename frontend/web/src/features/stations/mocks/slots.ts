@@ -4,6 +4,11 @@ import {
     SEED_SYNCED_AT,
     seedInspectionOfSlot,
 } from '@/features/stations/mocks/ec2Seed';
+import {
+    buildExtraSlots,
+    extraInspectionStateOf,
+    isExtraStation,
+} from '@/features/stations/mocks/extraStations';
 import { applyOverride } from '@/features/stations/mocks/slotOverrides';
 import type { SlotSummary, Station } from '@/features/stations/types';
 
@@ -37,9 +42,12 @@ export const STATION_SYNCED_AT = SEED_SYNCED_AT;
  * 그런 규칙이 없어서 있지도 않은 검수로 이동하는 링크가 생겼습니다.
  */
 export function inspectionStateOf(
-    _station: Station,
+    station: Station,
     slotNumber: number,
 ): 'PENDING' | 'DECIDED' | null {
+    if (isExtraStation(station.stationId)) {
+        return extraInspectionStateOf(station.stationId, slotNumber);
+    }
     return seedInspectionOfSlot(slotNumber)?.reviewStatus ?? null;
 }
 
@@ -51,6 +59,16 @@ export function inspectionStateOf(
  * 대여소로 물으면 빈 배열입니다 (없는 대여소에 슬롯을 지어내지 않습니다).
  */
 export function buildSlots(station: Station): SlotSummary[] {
+    /*
+     * 가상 대여소는 패턴으로 슬롯을 만듭니다 (`extraStations.ts`). 관리자가 바꾼 값은
+     * 시드 대여소와 똑같이 `applyOverride` 를 태워서, 상태 변경이 어느 대여소에서든
+     * 화면에 반영되게 합니다.
+     */
+    if (isExtraStation(station.stationId)) {
+        return buildExtraSlots(station).map(applyOverride);
+    }
+
+    // 여기 없는 대여소에 슬롯을 지어내지 않습니다.
     if (station.stationId !== SEED_STATION.stationId) return [];
 
     return SEED_SLOTS.map((seed) =>
