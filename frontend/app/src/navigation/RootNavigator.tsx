@@ -1,6 +1,7 @@
 import { NavigationContainer } from '@react-navigation/native'
 import { useEffect } from 'react'
 import { LoadingScreen } from '../components/common/LoadingScreen'
+import { useAlertPolling } from '../hooks/useAlertPolling'
 import { LoginScreen } from '../screens/SCR-APP-AUTH-001/LoginScreen'
 import { useAuthStore } from '../store/useAuthStore'
 import { RootStackNavigator } from './RootStackNavigator'
@@ -16,6 +17,9 @@ export function RootNavigator() {
   useEffect(() => {
     hydrate()
   }, [hydrate])
+
+  // 로그인 상태일 때만 새 알림을 폴링해 로컬 배너로 알린다(2026-08-09, useAlertPolling.ts 참고).
+  useAlertPolling(!!accessToken)
 
   if (isHydrating) {
     return <LoadingScreen message="로그인 정보를 확인하는 중이에요" />

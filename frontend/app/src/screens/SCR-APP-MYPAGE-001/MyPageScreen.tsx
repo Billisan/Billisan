@@ -79,7 +79,10 @@ export function MyPageScreen() {
 
   const logoutMutation = useMutation({
     mutationFn: logout,
-    onSuccess: clearAuth,
+    // 로그아웃은 서버가 확인해줘야 유효한 액션이라기보다 "나가겠다"는 로컬 의도가 핵심이라,
+    // 네트워크 오류 등으로 요청이 실패해도(onSuccess가 아니라 onSettled) 로컬 세션은 정리한다 —
+    // 실패 시에도 아무 피드백 없이 로그아웃 버튼만 다시 눌리는 상태를 방지.
+    onSettled: clearAuth,
   })
 
   if (userQuery.isPending) {

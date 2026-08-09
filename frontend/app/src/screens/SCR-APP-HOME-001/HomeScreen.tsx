@@ -107,7 +107,16 @@ export function HomeScreen() {
 
         {/* WEATHER-001(§5.12) 위젯 — 2026-08-06 실제 연동으로 전환(DEC-SF-003 RESOLVED, 캠퍼스 고정
             좌표). provider 값은 서버가 주는 그대로("UNDECIDED"일 수 있음), 화면에는 표시하지 않는다. */}
-        <View className="gap-4 rounded-2xl bg-white p-5">
+        <View
+          className="gap-4 rounded-2xl bg-white p-5"
+          style={{
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.06,
+            shadowRadius: 2,
+            elevation: 1,
+          }}
+        >
           <View className="flex-row items-center justify-between">
             <View className='gap-1'>
               <Text className="text-base font-bold text-text">초단기 강수 예보</Text>
@@ -183,6 +192,13 @@ export function HomeScreen() {
         <Pressable
           onPress={() => tabNavigation.navigate('Map')}
           className="h-[300px] overflow-hidden rounded-2xl bg-white active:opacity-90"
+          style={{
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.06,
+            shadowRadius: 2,
+            elevation: 1,
+          }}
         >
           <View className="gap-1 p-5 pb-3">
             <Text className="text-base font-bold text-text">캠퍼스 지도</Text>
