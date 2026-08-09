@@ -34,12 +34,12 @@ export function LoginScreen() {
   return (
     <Screen>
       <View className="flex-1 justify-center gap-10 px-8">
-        <View className="items-center gap-1">
-          <Logo width={144} height={67} />
-          <Text className="text-base text-text-secondary">빌리대학교</Text>
+        <View className="items-center gap-5">
+          <Logo width={124} height={60} />
+          <Text className="text-xl font-medium">빌리대학교</Text>
         </View>
 
-        <View className="gap-4">
+        <View className="gap-6">
           <TextField
             label="이메일"
             value={identifier}
@@ -57,14 +57,12 @@ export function LoginScreen() {
               setPassword(value)
               loginMutation.reset()
             }}
-            placeholder="비밀번호를 입력해주세요"
             secureTextEntry
+            placeholder="비밀번호를 입력해주세요"
             hasError={hasError}
           />
           {hasError && (
-            <Text className="text-sm font-medium text-error-text">
-              계정 정보를 확인해주세요
-            </Text>
+            <Text className="text-sm font-medium text-error-text">계정 정보를 확인해주세요</Text>
           )}
         </View>
 
