@@ -33,6 +33,10 @@ interface KakaoMapWebViewProps {
   // 0단계(9장)는 카카오 4x4 가상 월드 그리드와 타일 수가 안 맞아 확대 범위에서 제외했다
   // (Tileset minZoom=1, 2026-08-09 사용자 결정) — initialLevel로도 0을 넘기지 않는다.
   initialLevel?: number
+  // 새로고침용(2026-08-09) — stations는 Mock에서 항상 같은 배열 참조라 refetch만으로는
+  // useMemo가 재계산되지 않는다. 이 값이 바뀌면 WebView를 강제로 다시 마운트해 지도를
+  // 처음부터 다시 그린다(팬/줌 위치도 초기화됨, 새로고침 의도에 부합).
+  refreshKey?: number
 }
 
 // 마커 탭 시 WebView -> RN으로 오는 메시지 타입. HTML 쪽 post(type, payload)가 항상
@@ -266,10 +270,13 @@ export function KakaoMapWebView({
   onSelectStation,
   markerSize = 32,
   initialLevel = 2,
+  refreshKey = 0,
 }: KakaoMapWebViewProps) {
   const html = useMemo(
     () => buildHtml(stations, markerSize, initialLevel),
-    [stations, markerSize, initialLevel],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshKey는 stations 참조가 안 바뀌어도
+    // 강제로 다시 그리기 위한 트리거일 뿐, html 계산 자체엔 안 쓰인다.
+    [stations, markerSize, initialLevel, refreshKey],
   )
   const webViewRef = useRef<WebView>(null)
   const [isMapReady, setIsMapReady] = useState(false)
@@ -286,6 +293,7 @@ export function KakaoMapWebView({
   return (
     <View className="flex-1">
       <WebView
+        key={refreshKey}
         ref={webViewRef}
         originWhitelist={['*']}
         source={{ html }}

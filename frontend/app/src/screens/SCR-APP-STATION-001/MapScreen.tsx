@@ -38,6 +38,9 @@ export function MapScreen() {
   const stationsQuery = useQuery({ queryKey: ['stations'], queryFn: getStations })
   // 다른 화면(내역조회·마이페이지)과 동일하게 알림 배지는 HOME-001을 재사용(전용 API 새로 안 만듦).
   const headerQuery = useQuery({ queryKey: ['map-header'], queryFn: getHomeSummary })
+  // 새로고침 아이콘용(2026-08-09) — Mock stations는 매번 같은 배열 참조라 refetch만으로는
+  // KakaoMapWebView가 다시 그려지지 않아서, 이 값을 바꿔 WebView를 강제로 재마운트한다.
+  const [mapRefreshKey, setMapRefreshKey] = useState(0)
 
   if (stationsQuery.isPending) {
     return <LoadingScreen />
@@ -83,6 +86,7 @@ export function MapScreen() {
             stations={stations}
             selectedStationId={selectedStationId}
             onSelectStation={setSelectedStationId}
+            refreshKey={mapRefreshKey}
           />
         </View>
         {/* 상시 노출 대여소 목록 시트(2026-08-09) — 우산 재고 tier 범례 + 필터 + 목록을 담고,
@@ -94,6 +98,11 @@ export function MapScreen() {
             selectedStationId={selectedStationId}
             onSelectStation={setSelectedStationId}
             containerHeight={screenHeight}
+            onRefresh={() => {
+              stationsQuery.refetch()
+              headerQuery.refetch()
+              setMapRefreshKey((key) => key + 1)
+            }}
           />
         )}
       </View>

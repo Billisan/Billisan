@@ -1,3 +1,4 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { FlatList, Pressable, Text, View } from 'react-native'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
@@ -36,6 +37,9 @@ interface StationListSheetProps {
   // Dimensions.get('window')는 하단 탭바 등을 빼지 않은 기기 전체 높이라 실제 사용 가능 영역과
   // 어긋난다(2026-08-09 실기기 확인) — MapScreen에서 onLayout으로 실측한 컨테이너 높이를 받는다.
   containerHeight: number
+  // 새로고침 아이콘(2026-08-09 사용자 요청) — INT-APP-004(PROJECT_GUIDE.md §9.1)와 동일하게
+  // 새 API 없이 기존 GET(대여소·홈 요약)을 다시 호출한다.
+  onRefresh: () => void
 }
 
 // SCR-APP-STATION-001 지도 탭 상시 노출 시트(2026-08-09 사용자 요청) — 기존
@@ -47,6 +51,7 @@ export function StationListSheet({
   selectedStationId,
   onSelectStation,
   containerHeight,
+  onRefresh,
 }: StationListSheetProps) {
   const sheetHeight = containerHeight * 0.4
   const maxTranslate = sheetHeight - COLLAPSED_PEEK
@@ -99,6 +104,13 @@ export function StationListSheet({
         <View className="items-center pt-2">
           <View className="h-1 w-10 rounded-full bg-disabled" />
         </View>
+        <Pressable
+          onPress={onRefresh}
+          hitSlop={8}
+          className="absolute right-4 top-7 active:opacity-60"
+        >
+          <MaterialCommunityIcons name="refresh" size={24} color="#5F5E5E" />
+        </Pressable>
 
         <View className="mb-4 mt-3 flex-row gap-3 px-4">
           {(['all', 'many', 'less', 'empty'] as FilterTier[]).map((tier) => (
