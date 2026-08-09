@@ -33,10 +33,9 @@ function TabBarButton({ children, style, ref: _ref, ...rest }: BottomTabBarButto
       style={[
         style,
         {
-          height: 56,
-          borderRadius: 20,
-          borderWidth: focused ? 1.5 : 0,
-          borderColor: focused ? '#FFD700' : 'transparent',
+          height: 44,
+          borderRadius: 16,
+          paddingHorizontal: 4,
         },
       ]}
     >
@@ -58,7 +57,7 @@ export function TabNavigator() {
         tabBarActiveTintColor: '#1E2A38',
         tabBarInactiveTintColor: '#5F5E5E',
         tabBarActiveBackgroundColor: '#FFEDC0',
-        tabBarItemStyle: { marginHorizontal: 4, marginVertical: 4, borderRadius: 20 },
+        tabBarItemStyle: { marginHorizontal: 6, marginVertical: 0, borderRadius: 20 },
         tabBarButton: (props) => <TabBarButton {...props} />,
       }}
     >
