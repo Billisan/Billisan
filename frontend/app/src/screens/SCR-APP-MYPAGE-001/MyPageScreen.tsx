@@ -14,8 +14,10 @@ import { ErrorBanner } from '../../components/common/ErrorBanner'
 import { LoadingScreen } from '../../components/common/LoadingScreen'
 import { AppHeader } from '../../components/layout/AppHeader'
 import { Screen } from '../../components/layout/Screen'
+import { cardShadow } from '../../lib/cardShadow'
 import type { MyPageStackParamList } from '../../navigation/MyPageStackNavigator'
 import type { RootStackParamList } from '../../navigation/RootStackNavigator'
+import { useAlertReadStore } from '../../store/useAlertReadStore'
 import { useAuthStore } from '../../store/useAuthStore'
 import { RENTAL_STATUS } from '../../types/rental'
 
@@ -73,11 +75,17 @@ export function MyPageScreen() {
   })
   // 알림 배지 수만 필요해서 HOME-001을 재사용한다(§2.5 API 매핑엔 없지만, 신규 API·타입을 만들지
   // 않기 위한 선택 — 2026-08-04). 전용 카운트가 필요해지면 ALERT-001 기반으로 다시 정리한다.
-  const alertCountQuery = useQuery({ queryKey: ['mypage-alert-count'], queryFn: getHomeSummary })
+  // 쿼리 키를 HomeScreen.tsx와 동일한 'home'으로 둬서 캐시를 공유(2026-08-09 코드 리뷰 반영) —
+  // 탭 전환 시 중복 요청 없이 캐시된 값을 바로 보여주고 백그라운드에서만 갱신.
+  const alertCountQuery = useQuery({ queryKey: ['home'], queryFn: getHomeSummary })
+  const alertReadCount = useAlertReadStore((state) => state.readKeys.size)
 
   const logoutMutation = useMutation({
     mutationFn: logout,
-    onSuccess: clearAuth,
+    // 로그아웃은 서버가 확인해줘야 유효한 액션이라기보다 "나가겠다"는 로컬 의도가 핵심이라,
+    // 네트워크 오류 등으로 요청이 실패해도(onSuccess가 아니라 onSettled) 로컬 세션은 정리한다 —
+    // 실패 시에도 아무 피드백 없이 로그아웃 버튼만 다시 눌리는 상태를 방지.
+    onSettled: clearAuth,
   })
 
   if (userQuery.isPending) {
@@ -103,7 +111,7 @@ export function MyPageScreen() {
     <Screen edges={['right', 'bottom', 'left']}>
       <AppHeader
         schoolName={profile.schoolName}
-        alertCount={alertCountQuery.data?.alertCount ?? 0}
+        alertCount={Math.max((alertCountQuery.data?.alertCount ?? 0) - alertReadCount, 0)}
         onPressAlert={() => rootNavigation.navigate('Notification')}
       />
       <ScrollView
@@ -135,7 +143,7 @@ export function MyPageScreen() {
           </View>
         </View>
 
-        <View className="gap-4 rounded-2xl bg-white p-5">
+        <View className="gap-4 rounded-2xl bg-white p-5" style={cardShadow}>
           <View className="flex-row items-center justify-between">
             <Text className="text-base font-bold text-text">현재 대여 현황</Text>
             {rental ? (
@@ -162,7 +170,10 @@ export function MyPageScreen() {
             <Text className="text-sm text-text-secondary">불러오는 중이에요</Text>
           )}
           {rentalQuery.isError && (
-            <Text className="text-sm text-text-secondary">대여 정보를 불러오지 못했어요</Text>
+            <View className="gap-2">
+              <ErrorBanner message="대여 정보를 불러오지 못했어요" />
+              <Button label="다시 시도" onPress={() => rentalQuery.refetch()} />
+            </View>
           )}
 
           {!rentalQuery.isPending && !rentalQuery.isError && !rental && (
@@ -244,7 +255,7 @@ export function MyPageScreen() {
           </View>
         )}
 
-        <View className="overflow-hidden rounded-2xl bg-white">
+        <View className="overflow-hidden rounded-2xl bg-white" style={cardShadow}>
           <Pressable
             onPress={() => navigation.navigate('Inquiry')}
             className="border-b border-disabled px-5 py-4 active:opacity-70"

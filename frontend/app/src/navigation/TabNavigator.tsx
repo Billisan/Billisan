@@ -3,6 +3,7 @@ import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import type { NavigatorScreenParams } from '@react-navigation/native'
 import { Pressable } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { HistoryScreen } from '../screens/SCR-APP-HISTORY-001/HistoryScreen'
 import { HomeScreen } from '../screens/SCR-APP-HOME-001/HomeScreen'
 import { MapScreen } from '../screens/SCR-APP-STATION-001/MapScreen'
@@ -33,8 +34,8 @@ function TabBarButton({ children, style, ref: _ref, ...rest }: BottomTabBarButto
       style={[
         style,
         {
-          height: 34,
-          borderRadius: 16,
+          height: 30,
+          borderRadius: 20,
           // paddingHorizontal: 4,
         },
       ]}
@@ -50,6 +51,8 @@ function TabBarButton({ children, style, ref: _ref, ...rest }: BottomTabBarButto
 // 2026-08-04: 실제 탭 바 목업 스크린샷 확인 후 반영 — 아이콘은 포커스와 무관하게 아웃라인 계열로
 // 고정(마이페이지만 원본 목업처럼 채워진 사람 아이콘), 활성 탭은 배경색(밑줄/필 형태)으로만 구분한다.
 export function TabNavigator() {
+  const insets = useSafeAreaInsets()
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -59,6 +62,13 @@ export function TabNavigator() {
         tabBarActiveBackgroundColor: '#FFEDC0',
         tabBarItemStyle: { marginHorizontal: 6, marginVertical: 0, borderRadius: 20 },
         tabBarButton: (props) => <TabBarButton {...props} />,
+        // 2026-08-10 사용자 확인 — 탭바 자체 높이를 키우되, 명시적 height를 주면 iOS 홈
+        // 인디케이터용 safe area가 자동으로 안 붙어서 useSafeAreaInsets로 직접 더해준다.
+        tabBarStyle: {
+          height: 64 + insets.bottom,
+          paddingTop: 8,
+          paddingBottom: insets.bottom + 8,
+        },
       }}
     >
       <Tab.Screen
@@ -66,7 +76,9 @@ export function TabNavigator() {
         component={HomeScreen}
         options={{
           title: '홈',
-          tabBarIcon: ({ color }) => <MaterialCommunityIcons name="home-outline" size={24} color={color} />,
+          tabBarIcon: ({ color }) => (
+            <MaterialCommunityIcons name="home-outline" size={24} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -74,7 +86,9 @@ export function TabNavigator() {
         component={MapScreen}
         options={{
           title: '지도',
-          tabBarIcon: ({ color }) => <MaterialCommunityIcons name="map-outline" size={24} color={color} />,
+          tabBarIcon: ({ color }) => (
+            <MaterialCommunityIcons name="map-outline" size={24} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -82,7 +96,9 @@ export function TabNavigator() {
         component={HistoryScreen}
         options={{
           title: '내역조회',
-          tabBarIcon: ({ color }) => <MaterialCommunityIcons name="history" size={24} color={color} />,
+          tabBarIcon: ({ color }) => (
+            <MaterialCommunityIcons name="history" size={24} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -90,7 +106,9 @@ export function TabNavigator() {
         component={MyPageStackNavigator}
         options={{
           title: '마이페이지',
-          tabBarIcon: ({ color }) => <MaterialCommunityIcons name="account" size={24} color={color} />,
+          tabBarIcon: ({ color }) => (
+            <MaterialCommunityIcons name="account" size={24} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>

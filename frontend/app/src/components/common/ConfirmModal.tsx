@@ -9,6 +9,9 @@ interface ConfirmModalProps {
   cancelLabel?: string
   confirmLabel: string
   confirmVariant?: 'primary' | 'danger'
+  // 확인 버튼 자체를 눌러도 반응 안 하게 막는다(PROJECT_GUIDE.md §9.1 "전송 중 중복 Tap 차단") —
+  // 호출부에서 mutation의 isPending을 넘겨 중복 제출을 막는 용도(2026-08-09 코드 리뷰 반영).
+  disabled?: boolean
   onCancel: () => void
   onConfirm: () => void
 }
@@ -21,6 +24,7 @@ export function ConfirmModal({
   cancelLabel = '취소',
   confirmLabel,
   confirmVariant = 'primary',
+  disabled = false,
   onCancel,
   onConfirm,
 }: ConfirmModalProps) {
@@ -55,9 +59,10 @@ export function ConfirmModal({
             </Pressable>
             <Pressable
               onPress={onConfirm}
+              disabled={disabled}
               className={`flex-1 items-center justify-center rounded-2xl px-4 py-4 active:opacity-80 ${
                 confirmVariant === 'danger' ? 'bg-error-cta' : 'bg-primary'
-              }`}
+              } ${disabled ? 'opacity-50' : ''}`}
             >
               <Text
                 className={`text-base font-bold ${confirmVariant === 'danger' ? 'text-white' : 'text-text'}`}

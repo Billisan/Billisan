@@ -3,8 +3,8 @@ import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useMutation } from '@tanstack/react-query'
 import * as Crypto from 'expo-crypto'
-import { useState } from 'react'
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { Keyboard, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import Animated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated'
 import { sendChatbotMessage } from '../../api/chatbotApi'
 import { Screen } from '../../components/layout/Screen'
@@ -43,8 +43,6 @@ function formatTimeLabel(date: Date) {
   return `오늘, ${period} ${displayHour}:${displayMinutes}`
 }
 
-let requestSeq = 0
-
 // SCR-APP-CHATBOT-001(app-screen-flow.md §2.9). 대화 이력은 이 컴포넌트의 로컬 state에만 유지되고
 // 화면을 벗어나면 사라진다(§6 "영속 저장 금지" 원칙).
 export function ChatbotScreen() {
@@ -58,6 +56,16 @@ export function ChatbotScreen() {
   // 새 라이브러리 추가가 아니라 이미 package.json에 있는 react-native-reanimated를 처음 사용하는 것.
   const keyboard = useAnimatedKeyboard({ isStatusBarTranslucentAndroid: true })
   const keyboardAvoidingStyle = useAnimatedStyle(() => ({ paddingBottom: keyboard.height.value }))
+  const scrollViewRef = useRef<ScrollView>(null)
+
+  // 새 메시지가 쌓이거나(onContentSizeChange) 키보드가 올라올 때(keyboardDidShow) 최신 대화가
+  // 화면 밖으로 가려지지 않도록 맨 아래로 스크롤한다(2026-08-09 코드 리뷰 반영).
+  useEffect(() => {
+    const subscription = Keyboard.addListener('keyboardDidShow', () => {
+      scrollViewRef.current?.scrollToEnd({ animated: true })
+    })
+    return () => subscription.remove()
+  }, [])
 
   const mutation = useMutation({
     mutationFn: sendChatbotMessage,
@@ -87,19 +95,20 @@ export function ChatbotScreen() {
       return
     }
 
-    requestSeq += 1
-    setMessages((prev) => [...prev, { id: `user-${requestSeq}`, role: 'user', text: trimmed }])
+    setMessages((prev) => [...prev, { id: Crypto.randomUUID(), role: 'user', text: trimmed }])
     setInput('')
     setErrorState(null)
     mutation.mutate({ requestId: Crypto.randomUUID(), message: trimmed })
   }
 
   const handleRetry = () => {
+    if (mutation.isPending) {
+      return
+    }
     const lastUserMessage = [...messages].reverse().find((message) => message.role === 'user')
     if (!lastUserMessage) {
       return
     }
-    requestSeq += 1
     setErrorState(null)
     mutation.mutate({ requestId: Crypto.randomUUID(), message: lastUserMessage.text })
   }
@@ -127,7 +136,12 @@ export function ChatbotScreen() {
   return (
     <Screen background="white" edges={['right', 'bottom', 'left']}>
       <Animated.View style={[{ flex: 1 }, keyboardAvoidingStyle]}>
-        <ScrollView className="flex-1" contentContainerClassName="gap-4 px-6 py-6">
+        <ScrollView
+          ref={scrollViewRef}
+          className="flex-1"
+          contentContainerClassName="gap-4 px-6 py-6"
+          onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+        >
           <View className="self-center rounded-full bg-background px-3 py-1">
             <Text className="text-xs text-text-secondary">{formatTimeLabel(sessionStartedAt)}</Text>
           </View>
@@ -191,7 +205,10 @@ export function ChatbotScreen() {
               <View className="flex-row gap-2">
                 <Pressable
                   onPress={handleRetry}
-                  className="rounded-full bg-error-cta px-4 py-2 active:opacity-80"
+                  disabled={mutation.isPending}
+                  className={`rounded-full bg-error-cta px-4 py-2 ${
+                    mutation.isPending ? 'opacity-40' : 'active:opacity-80'
+                  }`}
                 >
                   <Text className="text-xs font-bold text-white">다시 시도</Text>
                 </Pressable>

@@ -298,9 +298,17 @@ export function KakaoMapWebView({
         originWhitelist={['*']}
         source={{ html }}
         onMessage={(event) => {
-          const message = JSON.parse(event.nativeEvent.data) as
+          // WebView가 JSON이 아닌 문자열을 보내는 경우(예상 못 한 내부 오류 등)에도 앱 전체가
+          // 죽지 않도록 방어(2026-08-09 코드 리뷰 반영).
+          let message:
             | StationSelectedMessage
             | { type: 'MAP_READY' | 'MAP_ERROR' | 'SDK_LOAD_ERROR'; payload: unknown }
+          try {
+            message = JSON.parse(event.nativeEvent.data)
+          } catch (error) {
+            console.log('[KakaoMapWebView] failed to parse message', event.nativeEvent.data, error)
+            return
+          }
 
           if (message.type === 'STATION_SELECTED') {
             onSelectStation(message.payload.stationId)

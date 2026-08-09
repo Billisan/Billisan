@@ -12,6 +12,7 @@ import { LoadingScreen } from '../../components/common/LoadingScreen'
 import { AppHeader } from '../../components/layout/AppHeader'
 import { Screen } from '../../components/layout/Screen'
 import type { RootStackParamList } from '../../navigation/RootStackNavigator'
+import { useAlertReadStore } from '../../store/useAlertReadStore'
 import { KakaoMapWebView } from './KakaoMapWebView'
 import { StationListSheet } from './StationListSheet'
 
@@ -37,7 +38,9 @@ export function MapScreen() {
   }
   const stationsQuery = useQuery({ queryKey: ['stations'], queryFn: getStations })
   // 다른 화면(내역조회·마이페이지)과 동일하게 알림 배지는 HOME-001을 재사용(전용 API 새로 안 만듦).
-  const headerQuery = useQuery({ queryKey: ['map-header'], queryFn: getHomeSummary })
+  // 쿼리 키를 HomeScreen.tsx와 동일한 'home'으로 둬서 캐시를 공유(2026-08-10 알림 배지 불일치 수정).
+  const headerQuery = useQuery({ queryKey: ['home'], queryFn: getHomeSummary })
+  const alertReadCount = useAlertReadStore((state) => state.readKeys.size)
   // 새로고침 아이콘용(2026-08-09) — Mock stations는 매번 같은 배열 참조라 refetch만으로는
   // KakaoMapWebView가 다시 그려지지 않아서, 이 값을 바꿔 WebView를 강제로 재마운트한다.
   const [mapRefreshKey, setMapRefreshKey] = useState(0)
@@ -51,7 +54,7 @@ export function MapScreen() {
       <Screen edges={['right', 'left']}>
         <AppHeader
           schoolName={headerQuery.data?.user.schoolName ?? ''}
-          alertCount={headerQuery.data?.alertCount ?? 0}
+          alertCount={Math.max((headerQuery.data?.alertCount ?? 0) - alertReadCount, 0)}
           onPressAlert={() => rootNavigation.navigate('Notification')}
         />
         <View className="mt-10 gap-4 px-6">
@@ -69,7 +72,7 @@ export function MapScreen() {
       <View className="flex-1" onLayout={handleScreenLayout}>
         <AppHeader
           schoolName={headerQuery.data?.user.schoolName ?? ''}
-          alertCount={headerQuery.data?.alertCount ?? 0}
+          alertCount={Math.max((headerQuery.data?.alertCount ?? 0) - alertReadCount, 0)}
           onPressAlert={() => rootNavigation.navigate('Notification')}
         />
 

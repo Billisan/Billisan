@@ -19,52 +19,45 @@ export function LoginScreen() {
     mutationFn: login,
     onSuccess: setAuth,
   })
+  // 입력창을 고칠 때마다 reset()을 부르지 않는다 — 로그인 버튼을 다시 누르면 mutate()가 이전
+  // 에러 상태를 자동으로 초기화하므로, 에러 문구는 재시도 시점에 자연스럽게 사라진다.
   const hasError = loginMutation.isError
 
   const handleLogin = () => {
-    loginMutation.mutate(
-      { identifier, password },
-      {
-        // 비밀번호는 성공·실패 관계없이 요청 직후 즉시 비운다(PROJECT_GUIDE.md §9.3).
-        onSettled: () => setPassword(''),
-      },
-    )
+    // mutate에 넘기는 { identifier, password }는 호출 시점에 동기적으로 값이 복사되므로,
+    // 아래 setPassword('')는 진행 중인 요청에 영향을 주지 않는다. 응답을 기다렸다 지우면(onSettled)
+    // 요청이 끝날 때까지 평문이 화면 상태에 남아있게 되어 "제출 직후 즉시 제거"(PROJECT_GUIDE.md
+    // §9.3)라는 원칙에 맞지 않는다.
+    loginMutation.mutate({ identifier, password })
+    setPassword('')
   }
 
   return (
     <Screen>
-      <View className="flex-1 justify-center gap-10 px-8">
-        <View className="items-center gap-1">
-          <Logo width={144} height={67} />
-          <Text className="text-base text-text-secondary">빌리대학교</Text>
+      <View className="flex-1 justify-center gap-10 px-8 pb-20">
+        <View className="items-center gap-5">
+          <Logo width={124} height={60} />
+          <Text className="text-xl font-medium">빌리대학교</Text>
         </View>
 
-        <View className="gap-4">
+        <View className="gap-6">
           <TextField
             label="이메일"
             value={identifier}
-            onChangeText={(value) => {
-              setIdentifier(value)
-              loginMutation.reset()
-            }}
+            onChangeText={setIdentifier}
             placeholder="이메일을 입력해주세요"
             hasError={hasError}
           />
           <TextField
             label="비밀번호"
             value={password}
-            onChangeText={(value) => {
-              setPassword(value)
-              loginMutation.reset()
-            }}
-            placeholder="비밀번호를 입력해주세요"
+            onChangeText={setPassword}
             secureTextEntry
+            placeholder="비밀번호를 입력해주세요"
             hasError={hasError}
           />
           {hasError && (
-            <Text className="text-sm font-medium text-error-text">
-              계정 정보를 확인해주세요
-            </Text>
+            <Text className="text-sm font-medium text-error-text">계정 정보를 확인해주세요</Text>
           )}
         </View>
 

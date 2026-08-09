@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useQuery } from '@tanstack/react-query'
-import { useLayoutEffect, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo } from 'react'
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
 import { Swipeable } from 'react-native-gesture-handler'
 import { getAlerts } from '../../api/alertApi'
@@ -10,7 +10,9 @@ import { Button } from '../../components/common/Button'
 import { ErrorBanner } from '../../components/common/ErrorBanner'
 import { LoadingScreen } from '../../components/common/LoadingScreen'
 import { Screen } from '../../components/layout/Screen'
+import { cardShadow } from '../../lib/cardShadow'
 import type { RootStackParamList } from '../../navigation/RootStackNavigator'
+import { useAlertReadStore } from '../../store/useAlertReadStore'
 import type { AlertItem } from '../../types/alert'
 import { ALERT_ACTION_TYPE } from '../../types/alert'
 
@@ -75,21 +77,36 @@ function groupByDay(items: AlertItem[]): DayGroup[] {
 }
 
 // SCR-APP-NOTIFICATION-001(app-screen-flow.md §2.7). 서버 영속 읽음 저장(ALERT-002)은
-// DEFERRED_NOT_CONTRACTED — 읽음 상태는 이 컴포넌트의 로컬 state에만 유지, 새로고침 시 초기화된다.
+// 여전히 DEFERRED_NOT_CONTRACTED — 읽음 상태는 서버에 저장하지 않는다. 다만 홈/마이페이지/
+// 내역 헤더의 알림 배지가 여기서 읽은 개수만큼 줄어들도록(2026-08-09 사용자 확인), 이 화면
+// 로컬 state 대신 세션 전용 전역 스토어(useAlertReadStore)를 쓴다.
 export function NotificationScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
-  const [readKeys, setReadKeys] = useState<Set<string>>(new Set())
+  const readKeys = useAlertReadStore((state) => state.readKeys)
+  const markRead = useAlertReadStore((state) => state.markRead)
+  const markAllReadKeys = useAlertReadStore((state) => state.markAllRead)
+  const pruneToKnownKeys = useAlertReadStore((state) => state.pruneToKnownKeys)
 
   const alertsQuery = useQuery({ queryKey: ['alerts'], queryFn: getAlerts })
+  const items = alertsQuery.data ?? []
 
-  const markRead = (alertKey: string) => {
-    setReadKeys((prev) => new Set(prev).add(alertKey))
-  }
-
-  const markAllRead = () => {
+  // 헤더 배지 근사치가 어긋나지 않도록(2026-08-10 확인), 최신 목록을 받을 때마다 그 목록에
+  // 없는 readKeys를 정리한다. alertsQuery.data가 아직 없을 때(로딩·에러)는 건드리지 않는다.
+  useEffect(() => {
     if (!alertsQuery.data) return
-    setReadKeys(new Set(alertsQuery.data.map((item) => item.alertKey)))
-  }
+    pruneToKnownKeys(alertsQuery.data.map((item) => item.alertKey))
+  }, [alertsQuery.data, pruneToKnownKeys])
+  // 읽음 처리(readKeys) 등 다른 state가 바뀔 때마다 전체 목록을 다시 그룹화하지 않도록 items가
+  // 바뀔 때만 재계산(2026-08-09 코드 리뷰 반영). 아래 조건부 return들보다 먼저 호출해야 하는
+  // 훅이라 여기 둔다.
+  const dayGroups = useMemo(() => groupByDay(items), [items])
+
+  // alertsQuery.data 외 다른 값을 참조하도록 나중에 바뀌어도 useLayoutEffect 의존성 배열을
+  // 빠뜨리지 않도록 useCallback으로 감싸고 그 결과를 의존성에 명시한다(2026-08-09 코드 리뷰 반영).
+  const markAllRead = useCallback(() => {
+    if (!alertsQuery.data) return
+    markAllReadKeys(alertsQuery.data.map((item) => item.alertKey))
+  }, [alertsQuery.data, markAllReadKeys])
 
   // 헤더 오른쪽 "모두 읽음" 버튼 — 로컬 state(markAllRead)를 참조해야 해서 RootStackNavigator의
   // options가 아니라 화면 안에서 setOptions로 등록한다.
@@ -105,7 +122,7 @@ export function NotificationScreen() {
         </Pressable>
       ),
     })
-  }, [navigation, alertsQuery.data])
+  }, [navigation, markAllRead])
 
   const handlePress = (item: AlertItem) => {
     markRead(item.alertKey)
@@ -132,9 +149,6 @@ export function NotificationScreen() {
       </Screen>
     )
   }
-
-  const items = alertsQuery.data
-  const dayGroups = groupByDay(items)
 
   return (
     <Screen background="white" edges={['right', 'bottom', 'left']}>
@@ -184,6 +198,7 @@ export function NotificationScreen() {
                     className={`relative gap-4 rounded-2xl p-4 active:opacity-80 ${
                       isRead ? 'bg-white border border-border' : 'bg-secondary'
                     }`}
+                    style={cardShadow}
                   >
                     {!isRead && (
                       <View className="absolute right-4 top-4 h-2 w-2 rounded-full bg-primary" />

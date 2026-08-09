@@ -1,4 +1,5 @@
 import { Pressable, Text, View } from 'react-native'
+import { cardShadow } from '../../lib/cardShadow'
 import type { RentalHistoryItem } from '../../types/history'
 import { RENTAL_STATUS } from '../../types/rental'
 
@@ -60,7 +61,11 @@ export function HistoryItemCard({ item, expanded, onPress }: HistoryItemCardProp
   const settlement = settlementBadge(item)
 
   return (
-    <Pressable onPress={onPress} className="gap-3 rounded-2xl bg-white p-5 active:opacity-90">
+    <Pressable
+      onPress={onPress}
+      className="gap-3 rounded-2xl bg-white p-5 active:opacity-90"
+      style={cardShadow}
+    >
       <View className="flex-row items-center justify-between gap-2">
         <Text className="flex-1 text-base font-bold text-text">
           {item.checkoutStationName}
