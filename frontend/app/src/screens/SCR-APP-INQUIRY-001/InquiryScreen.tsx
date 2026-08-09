@@ -41,8 +41,8 @@ export function InquiryScreen() {
   }
 
   return (
-    <Screen background="white">
-      <ScrollView className="flex-1" contentContainerClassName="gap-8 px-6">
+    <Screen background="white" edges={['right', 'bottom', 'left']}>
+      <ScrollView className="flex-1" contentContainerClassName="gap-8 px-6 pt-10">
         <SelectField
           label="유형"
           labelClassName="mb-2 text-base font-semibold text-text-secondary"

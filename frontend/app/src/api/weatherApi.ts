@@ -1,33 +1,16 @@
+import { apiClient } from './client'
 import type { WeatherForecast } from '../types/weather'
 
-const MIN_DELAY_MS = 300
-const MAX_DELAY_MS = 800
-const HOUR_MS = 60 * 60 * 1000
+// 우산 대여소가 있는 캠퍼스 고정 좌표(2026-08-06 사용자 확인). 
+// 서울 강남구 테헤란로 212
+const CAMPUS_LATITUDE = 37.501329
+const CAMPUS_LONGITUDE = 127.039538
 
-// WEATHER-001(PROJECT_GUIDE.md §5.12) 대응 Mock. DEC-SF-003(공급자·호출 경계)가 여전히 미확정이라
-// 실제 외부 공급자는 호출하지 않고, 문서에 정의된 대로 provider를 "UNDECIDED"로 고정한다.
-// (2026-08-04 사용자 확인 — 위젯 UI는 목업대로 구현하되 실제 연동은 보류)
-export function getShortTermWeather(): Promise<WeatherForecast> {
-  const now = Date.now()
-  const delay = MIN_DELAY_MS + Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS)
-
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        baseTime: new Date(now).toISOString(),
-        items: [
-          { forecastAt: new Date(now).toISOString(), precipitationProbability: 0, condition: 'CLOUDY' },
-          { forecastAt: new Date(now + HOUR_MS).toISOString(), precipitationProbability: 10, condition: 'CLOUDY' },
-          {
-            forecastAt: new Date(now + 2 * HOUR_MS).toISOString(),
-            precipitationProbability: 30,
-            condition: 'CLOUDY',
-          },
-          { forecastAt: new Date(now + 3 * HOUR_MS).toISOString(), precipitationProbability: 60, condition: 'RAIN' },
-          { forecastAt: new Date(now + 4 * HOUR_MS).toISOString(), precipitationProbability: 70, condition: 'RAIN' },
-        ],
-        provider: 'UNDECIDED',
-      })
-    }, delay)
+// WEATHER-001(PROJECT_GUIDE.md §5.12). 호출 경계(App→Spring)와 좌표 출처가 2026-08-06 확정되어
+// 실제 연동으로 전환. provider 값 자체(예: "UNDECIDED")는 서버가 주는 그대로 표시한다.
+export async function getShortTermWeather(): Promise<WeatherForecast> {
+  const response = await apiClient.get<WeatherForecast>('/api/v1/weather/short-term', {
+    params: { latitude: CAMPUS_LATITUDE, longitude: CAMPUS_LONGITUDE },
   })
+  return response.data
 }

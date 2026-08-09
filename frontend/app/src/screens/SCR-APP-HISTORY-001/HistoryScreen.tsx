@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs'
 import { useNavigation } from '@react-navigation/native'
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
@@ -11,6 +12,7 @@ import { ErrorBanner } from '../../components/common/ErrorBanner'
 import { LoadingScreen } from '../../components/common/LoadingScreen'
 import { AppHeader } from '../../components/layout/AppHeader'
 import { Screen } from '../../components/layout/Screen'
+import type { RootStackParamList } from '../../navigation/RootStackNavigator'
 import type { TabParamList } from '../../navigation/TabNavigator'
 import type { HistoryStatusFilter, RentalHistoryItem } from '../../types/history'
 import { HistoryMonthGroup } from './HistoryMonthGroup'
@@ -63,6 +65,7 @@ function groupByMonth(items: RentalHistoryItem[]): MonthGroup[] {
 
 export function HistoryScreen() {
   const navigation = useNavigation<BottomTabNavigationProp<TabParamList>>()
+  const rootNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const [filter, setFilter] = useState<HistoryStatusFilter>('ALL')
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
@@ -96,6 +99,7 @@ export function HistoryScreen() {
       <AppHeader
         schoolName={headerQuery.data?.user.schoolName ?? ''}
         alertCount={headerQuery.data?.alertCount ?? 0}
+        onPressAlert={() => rootNavigation.navigate('Notification')}
       />
       <View className="mb-4 flex-row justify-between p-6">
         {FILTERS.map((item) => (

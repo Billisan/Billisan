@@ -2,6 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useMutation } from '@tanstack/react-query'
+import * as Crypto from 'expo-crypto'
 import { useState } from 'react'
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import Animated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated'
@@ -90,7 +91,7 @@ export function ChatbotScreen() {
     setMessages((prev) => [...prev, { id: `user-${requestSeq}`, role: 'user', text: trimmed }])
     setInput('')
     setErrorState(null)
-    mutation.mutate({ requestId: `mock-request-${requestSeq}`, message: trimmed })
+    mutation.mutate({ requestId: Crypto.randomUUID(), message: trimmed })
   }
 
   const handleRetry = () => {
@@ -100,7 +101,7 @@ export function ChatbotScreen() {
     }
     requestSeq += 1
     setErrorState(null)
-    mutation.mutate({ requestId: `mock-request-${requestSeq}`, message: lastUserMessage.text })
+    mutation.mutate({ requestId: Crypto.randomUUID(), message: lastUserMessage.text })
   }
 
   const goToInquiry = () => {
@@ -124,15 +125,15 @@ export function ChatbotScreen() {
   }
 
   return (
-    <Screen background="white">
+    <Screen background="white" edges={['right', 'bottom', 'left']}>
       <Animated.View style={[{ flex: 1 }, keyboardAvoidingStyle]}>
         <ScrollView className="flex-1" contentContainerClassName="gap-4 px-6 py-6">
           <View className="self-center rounded-full bg-background px-3 py-1">
             <Text className="text-xs text-text-secondary">{formatTimeLabel(sessionStartedAt)}</Text>
           </View>
 
-          <View className="max-w-[85%] self-start rounded-2xl rounded-tl-none bg-background px-4 py-3">
-            <Text className="text-lg text-text">{GREETING_MESSAGE}</Text>
+          <View className="max-w-[85%] self-start rounded-3xl rounded-tl-none bg-background px-4 py-3">
+            <Text className="text-base text-text">{GREETING_MESSAGE}</Text>
           </View>
 
           <View className="self-start rounded-2xl border border-disabled bg-white">
@@ -140,11 +141,11 @@ export function ChatbotScreen() {
               <Pressable
                 key={question}
                 onPress={() => handleSend(question)}
-                className={`px-4 py-3 active:opacity-60 ${
+                className={`px-3 py-3 active:opacity-60 ${
                   index < SUGGESTED_QUESTIONS.length - 1 ? 'border-b border-disabled' : ''
                 }`}
               >
-                <Text className="text-lg text-text">{question}</Text>
+                <Text className="text-base text-text">{question}</Text>
               </Pressable>
             ))}
           </View>

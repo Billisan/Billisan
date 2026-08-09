@@ -15,6 +15,7 @@ import { LoadingScreen } from '../../components/common/LoadingScreen'
 import { AppHeader } from '../../components/layout/AppHeader'
 import { Screen } from '../../components/layout/Screen'
 import type { MyPageStackParamList } from '../../navigation/MyPageStackNavigator'
+import type { RootStackParamList } from '../../navigation/RootStackNavigator'
 import { useAuthStore } from '../../store/useAuthStore'
 import { RENTAL_STATUS } from '../../types/rental'
 
@@ -59,6 +60,7 @@ function rentalStatusLabel(status: string) {
 
 export function MyPageScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MyPageStackParamList>>()
+  const rootNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const clearAuth = useAuthStore((state) => state.clearAuth)
   const [extendModalVisible, setExtendModalVisible] = useState(false)
   const [reportModalVisible, setReportModalVisible] = useState(false)
@@ -102,6 +104,7 @@ export function MyPageScreen() {
       <AppHeader
         schoolName={profile.schoolName}
         alertCount={alertCountQuery.data?.alertCount ?? 0}
+        onPressAlert={() => rootNavigation.navigate('Notification')}
       />
       <ScrollView
         className="flex-1"
@@ -129,7 +132,6 @@ export function MyPageScreen() {
           </View>
           <View>
             <Text className="text-lg font-bold text-text">{profile.displayName}님</Text>
-            <Text className="text-sm text-text-secondary">{profile.studentNumber}</Text>
           </View>
         </View>
 

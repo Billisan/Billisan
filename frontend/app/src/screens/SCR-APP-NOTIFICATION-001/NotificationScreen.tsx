@@ -124,7 +124,7 @@ export function NotificationScreen() {
 
   if (alertsQuery.isError || !alertsQuery.data) {
     return (
-      <Screen background="white">
+      <Screen background="white" edges={['right', 'bottom', 'left']}>
         <View className="mt-10 gap-4 px-6">
           <ErrorBanner message="알림을 불러오지 못했어요" />
           <Button label="다시 시도" onPress={() => alertsQuery.refetch()} />
@@ -137,7 +137,7 @@ export function NotificationScreen() {
   const dayGroups = groupByDay(items)
 
   return (
-    <Screen background="white">
+    <Screen background="white" edges={['right', 'bottom', 'left']}>
       <ScrollView
         className="flex-1"
         contentContainerClassName="gap-6 px-6 pb-6"
@@ -149,7 +149,7 @@ export function NotificationScreen() {
         }
       >
         {items.length === 0 && (
-          <View className="mt-16 items-center gap-3 px-6">
+          <View className="mt-16 items-center gap-3 px-6 pt-10">
             <Text className="text-lg font-bold text-text">새로운 알림이 없어요</Text>
             <Text className="text-center text-base text-text-secondary">
               대여·반납·미정산 관련 알림이 오면{'\n'}여기서 확인할 수 있어요
@@ -158,7 +158,7 @@ export function NotificationScreen() {
         )}
 
         {dayGroups.map((group) => (
-          <View key={group.key} className="gap-4">
+          <View key={group.key} className="gap-4 pt-10">
             <Text className="text-sm font-bold text-text-secondary">{group.label}</Text>
 
             {group.items.map((item) => {
