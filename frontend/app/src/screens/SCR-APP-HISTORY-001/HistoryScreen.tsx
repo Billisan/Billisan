@@ -71,7 +71,9 @@ export function HistoryScreen() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   // 마이페이지와 동일하게 알림 배지는 HOME-001을 재사용(전용 API 새로 안 만듦, 2026-08-04 결정 그대로).
-  const headerQuery = useQuery({ queryKey: ['history-header'], queryFn: getHomeSummary })
+  // 쿼리 키를 HomeScreen.tsx와 동일한 'home'으로 둬서 캐시를 공유(2026-08-09 코드 리뷰 반영) —
+  // 탭 전환 시 중복 요청 없이 캐시된 값을 바로 보여주고 백그라운드에서만 갱신.
+  const headerQuery = useQuery({ queryKey: ['home'], queryFn: getHomeSummary })
   const alertReadCount = useAlertReadStore((state) => state.readKeys.size)
   const historyQuery = useQuery({
     queryKey: ['history', filter],

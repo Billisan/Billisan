@@ -86,12 +86,9 @@ export function InquiryScreen() {
         description="확인 후 순차적으로 답변드리겠습니다."
         confirmLabel="접수하기"
         confirmVariant="primary"
+        disabled={inquiryMutation.isPending}
         onCancel={() => setConfirmModalVisible(false)}
-        onConfirm={() => {
-          if (!inquiryMutation.isPending) {
-            inquiryMutation.mutate({ type, title, content })
-          }
-        }}
+        onConfirm={() => inquiryMutation.mutate({ type, title, content })}
       />
     </Screen>
   )

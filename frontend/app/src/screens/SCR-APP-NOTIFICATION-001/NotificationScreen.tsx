@@ -10,6 +10,7 @@ import { Button } from '../../components/common/Button'
 import { ErrorBanner } from '../../components/common/ErrorBanner'
 import { LoadingScreen } from '../../components/common/LoadingScreen'
 import { Screen } from '../../components/layout/Screen'
+import { cardShadow } from '../../lib/cardShadow'
 import type { RootStackParamList } from '../../navigation/RootStackNavigator'
 import { useAlertReadStore } from '../../store/useAlertReadStore'
 import type { AlertItem } from '../../types/alert'
@@ -185,6 +186,7 @@ export function NotificationScreen() {
                     className={`relative gap-4 rounded-2xl p-4 active:opacity-80 ${
                       isRead ? 'bg-white border border-border' : 'bg-secondary'
                     }`}
+                    style={cardShadow}
                   >
                     {!isRead && (
                       <View className="absolute right-4 top-4 h-2 w-2 rounded-full bg-primary" />
