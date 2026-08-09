@@ -16,6 +16,7 @@ import { AppHeader } from '../../components/layout/AppHeader'
 import { Screen } from '../../components/layout/Screen'
 import type { MyPageStackParamList } from '../../navigation/MyPageStackNavigator'
 import type { RootStackParamList } from '../../navigation/RootStackNavigator'
+import { useAlertReadStore } from '../../store/useAlertReadStore'
 import { useAuthStore } from '../../store/useAuthStore'
 import { RENTAL_STATUS } from '../../types/rental'
 
@@ -74,6 +75,7 @@ export function MyPageScreen() {
   // 알림 배지 수만 필요해서 HOME-001을 재사용한다(§2.5 API 매핑엔 없지만, 신규 API·타입을 만들지
   // 않기 위한 선택 — 2026-08-04). 전용 카운트가 필요해지면 ALERT-001 기반으로 다시 정리한다.
   const alertCountQuery = useQuery({ queryKey: ['mypage-alert-count'], queryFn: getHomeSummary })
+  const alertReadCount = useAlertReadStore((state) => state.readKeys.size)
 
   const logoutMutation = useMutation({
     mutationFn: logout,
@@ -103,7 +105,7 @@ export function MyPageScreen() {
     <Screen edges={['right', 'bottom', 'left']}>
       <AppHeader
         schoolName={profile.schoolName}
-        alertCount={alertCountQuery.data?.alertCount ?? 0}
+        alertCount={Math.max((alertCountQuery.data?.alertCount ?? 0) - alertReadCount, 0)}
         onPressAlert={() => rootNavigation.navigate('Notification')}
       />
       <ScrollView

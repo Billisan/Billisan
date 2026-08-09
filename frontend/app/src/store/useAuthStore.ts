@@ -2,7 +2,6 @@ import { create } from 'zustand'
 import { setAccessToken, setUnauthorizedHandler } from '../api/client'
 import { clearSession, loadSession, saveSession } from '../lib/secureStorage'
 import type { AuthUser, LoginResponse } from '../types/auth'
-import { useAlertReadStore } from './useAlertReadStore'
 
 interface AuthState {
   accessToken: string | null
@@ -25,7 +24,6 @@ export const useAuthStore = create<AuthState>((set) => {
   const clearAuth = () => {
     setAccessToken(null)
     clearSession().catch(() => {})
-    useAlertReadStore.getState().reset()
     set({ accessToken: null, user: null })
   }
 

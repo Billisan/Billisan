@@ -76,20 +76,20 @@ function groupByDay(items: AlertItem[]): DayGroup[] {
 }
 
 // SCR-APP-NOTIFICATION-001(app-screen-flow.md §2.7). 서버 영속 읽음 저장(ALERT-002)은
-// DEFERRED_NOT_CONTRACTED — 읽음 상태는 이 컴포넌트의 로컬 state에만 유지, 새로고침 시 초기화된다.
+// 여전히 DEFERRED_NOT_CONTRACTED — 읽음 상태는 서버에 저장하지 않는다. 다만 홈/마이페이지/
+// 내역 헤더의 알림 배지가 여기서 읽은 개수만큼 줄어들도록(2026-08-09 사용자 확인), 이 화면
+// 로컬 state 대신 세션 전용 전역 스토어(useAlertReadStore)를 쓴다.
 export function NotificationScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
-  const [readKeys, setReadKeys] = useState<Set<string>>(new Set())
+  const readKeys = useAlertReadStore((state) => state.readKeys)
+  const markRead = useAlertReadStore((state) => state.markRead)
+  const markAllReadKeys = useAlertReadStore((state) => state.markAllRead)
 
   const alertsQuery = useQuery({ queryKey: ['alerts'], queryFn: getAlerts })
 
-  const markRead = (alertKey: string) => {
-    setReadKeys((prev) => new Set(prev).add(alertKey))
-  }
-
   const markAllRead = () => {
     if (!alertsQuery.data) return
-    setReadKeys(new Set(alertsQuery.data.map((item) => item.alertKey)))
+    markAllReadKeys(alertsQuery.data.map((item) => item.alertKey))
   }
 
   // 헤더 오른쪽 "모두 읽음" 버튼 — 로컬 state(markAllRead)를 참조해야 해서 RootStackNavigator의

@@ -17,6 +17,7 @@ import { Screen } from '../../components/layout/Screen'
 import type { RootStackParamList } from '../../navigation/RootStackNavigator'
 import type { TabParamList } from '../../navigation/TabNavigator'
 import { KakaoMapWebView } from '../SCR-APP-STATION-001/KakaoMapWebView'
+import { useAlertReadStore } from '../../store/useAlertReadStore'
 import type { WeatherCondition } from '../../types/weather'
 
 const RAIN_RECOMMEND_THRESHOLD = 50
@@ -54,6 +55,7 @@ export function HomeScreen() {
   const weatherQuery = useQuery({ queryKey: ['home-weather'], queryFn: getShortTermWeather })
   // 지도 미리보기용 — 실패해도 미리보기만 안 뜨고 나머지 홈 화면엔 영향 없어야 하니 독립 쿼리로 분리.
   const stationsQuery = useQuery({ queryKey: ['stations'], queryFn: getStations })
+  const alertReadCount = useAlertReadStore((state) => state.readKeys.size)
 
   if (homeQuery.isPending) {
     return <LoadingScreen />
@@ -78,7 +80,7 @@ export function HomeScreen() {
     <Screen edges={['right', 'bottom', 'left']}>
       <AppHeader
         schoolName={user.schoolName}
-        alertCount={alertCount}
+        alertCount={Math.max(alertCount - alertReadCount, 0)}
         onPressAlert={() => rootNavigation.navigate('Notification')}
       />
       <ScrollView

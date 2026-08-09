@@ -14,6 +14,7 @@ import { AppHeader } from '../../components/layout/AppHeader'
 import { Screen } from '../../components/layout/Screen'
 import type { RootStackParamList } from '../../navigation/RootStackNavigator'
 import type { TabParamList } from '../../navigation/TabNavigator'
+import { useAlertReadStore } from '../../store/useAlertReadStore'
 import type { HistoryStatusFilter, RentalHistoryItem } from '../../types/history'
 import { HistoryMonthGroup } from './HistoryMonthGroup'
 
@@ -71,6 +72,7 @@ export function HistoryScreen() {
 
   // 마이페이지와 동일하게 알림 배지는 HOME-001을 재사용(전용 API 새로 안 만듦, 2026-08-04 결정 그대로).
   const headerQuery = useQuery({ queryKey: ['history-header'], queryFn: getHomeSummary })
+  const alertReadCount = useAlertReadStore((state) => state.readKeys.size)
   const historyQuery = useQuery({
     queryKey: ['history', filter],
     queryFn: () => getRentalHistory({ status: filter }),
@@ -98,7 +100,7 @@ export function HistoryScreen() {
     <Screen edges={['right', 'bottom', 'left']}>
       <AppHeader
         schoolName={headerQuery.data?.user.schoolName ?? ''}
-        alertCount={headerQuery.data?.alertCount ?? 0}
+        alertCount={Math.max((headerQuery.data?.alertCount ?? 0) - alertReadCount, 0)}
         onPressAlert={() => rootNavigation.navigate('Notification')}
       />
       <View className="mb-4 flex-row justify-between p-6">

@@ -1,20 +1,36 @@
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { create } from 'zustand'
+import { createJSONStorage, persist } from 'zustand/middleware'
 
 interface AlertReadState {
   readKeys: Set<string>
   markRead: (alertKey: string) => void
   markAllRead: (alertKeys: string[]) => void
-  reset: () => void
 }
 
-// 알림 읽음 상태는 서버에 영속하지 않는 세션 전용 클라이언트 state다(DEC-SF-008,
-// ALERT-002는 여전히 DEFERRED_NOT_CONTRACTED). NotificationScreen 로컬 state가 아니라
-// 전역 스토어로 두는 이유는 홈/마이페이지/내역 헤더(AppHeader)의 알림 배지가 여기서 읽은
-// 개수만큼 줄어들게 하기 위함(2026-08-09 사용자 확인) — 헤더의 alertCount는 HOME-001이 주는
-// 서버 계산값이라 정확히 1:1 대응하진 않고, "읽은 개수만큼 차감"하는 근사치로만 반영한다.
-export const useAlertReadStore = create<AlertReadState>((set) => ({
-  readKeys: new Set(),
-  markRead: (alertKey) => set((state) => ({ readKeys: new Set(state.readKeys).add(alertKey) })),
-  markAllRead: (alertKeys) => set({ readKeys: new Set(alertKeys) }),
-  reset: () => set({ readKeys: new Set() }),
-}))
+// 알림 읽음 상태는 서버에 영속하지 않는다(DEC-SF-008, ALERT-002 여전히
+// DEFERRED_NOT_CONTRACTED) — 대신 기기 로컬(AsyncStorage)에만 저장해 앱을 껐다 켜도, 로그아웃 후
+// 다시 로그인해도 유지되게 한다(2026-08-09 사용자 확인, 신규 라이브러리
+// @react-native-async-storage/async-storage 설치 승인받음). 홈/마이페이지/내역 헤더(AppHeader)의
+// 알림 배지는 여기서 읽은 개수만큼 줄어든다 — 헤더의 alertCount는 HOME-001이 주는 서버 계산값이라
+// 정확히 1:1 대응하진 않고 근사치로만 반영한다.
+// Set은 기본 JSON.stringify로 직렬화되지 않아 replacer/reviver로 배열 <-> Set을 변환한다.
+export const useAlertReadStore = create<AlertReadState>()(
+  persist(
+    (set) => ({
+      readKeys: new Set(),
+      markRead: (alertKey) => set((state) => ({ readKeys: new Set(state.readKeys).add(alertKey) })),
+      markAllRead: (alertKeys) => set({ readKeys: new Set(alertKeys) }),
+    }),
+    {
+      name: 'alert-read-keys',
+      storage: createJSONStorage(() => AsyncStorage, {
+        replacer: (_key, value) => (value instanceof Set ? { __isSet: true, values: [...value] } : value),
+        reviver: (_key, value) =>
+          value && typeof value === 'object' && (value as { __isSet?: boolean }).__isSet
+            ? new Set((value as { values: string[] }).values)
+            : value,
+      }),
+    },
+  ),
+)
