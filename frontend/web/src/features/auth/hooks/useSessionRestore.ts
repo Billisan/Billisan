@@ -9,17 +9,18 @@ import { qk } from '@/shared/api/queryKeys';
 /**
  * 새로고침 뒤 세션 복원.
  *
- * Bearer 토큰은 브라우저 영속 저장소에 둘 수 없어서(API명세 B-2) 메모리에만 있고,
- * 새로고침하면 사라집니다.
+ * **`authStore` 가 이제 `localStorage` 에 `persist` 됩니다** (백엔드에 세션 복원
+ * 엔드포인트가 없어서 택한 임시 조치 — `authStore.ts` 상단 주석 참고). 그래서 실
+ * API 모드에서도 새로고침 직후 이미 `admin` 이 채워져 있는 경우가 대부분이고,
+ * 그러면 아래 `enabled` 가 `false` 가 되어 이 훅은 아무 요청도 보내지 않고 바로
+ * "복원 끝"으로 처리됩니다.
  *
- * **실 API 모드에서는 복원할 방법이 없습니다.** 세션 복원 엔드포인트
- * (`GET /admin/auth/me`)가 서버에도 스웨거에도 없습니다 — admin 경로는 8개뿐이고
- * 인증은 `POST /admin/auth/login` 하나입니다. 그래서 `authApi.me()` 가 네트워크를
- * 타지 않고 곧바로 실패하고, 화면은 로그인으로 갑니다. 예전에는 여기서 실제로
- * 요청을 보내 매번 404 를 받았습니다.
- *
- * 목업 모드에서는 `authApi.me()` 가 sessionStorage 에 남긴 신원을 읽습니다
- * (`mocks/mockSession.ts`). 어느 쪽이든 화면 입장에서는 같은 호출입니다.
+ * 이 훅 자체는 `authApi.me()` 경로를 여전히 갖고 있습니다 — 목업 모드
+ * (`mocks/mockSession.ts` 의 sessionStorage 기반 세션)를 위해서, 그리고 나중에
+ * 백엔드가 `GET /admin/auth/me` 를 실제로 만들면 `authApi.me()` 쪽만 되돌리고 이
+ * 훅은 그대로 쓸 수 있게 하기 위해서입니다. 실 API 모드에서 `admin` 이 비어 있는
+ * 채로 이 훅이 돌면(예: `localStorage` 를 지운 직후) `authApi.me()` 는 네트워크를
+ * 타지 않고 곧바로 실패합니다 — 세션 복원 엔드포인트가 아직 없어서입니다.
  *
  * 실패는 정상 흐름입니다 — 그냥 로그인 안 한 상태라는 뜻이라 조용히 넘어갑니다.
  *
