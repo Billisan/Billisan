@@ -3,7 +3,7 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useState, type ComponentProps } from 'react'
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
 import { getHomeSummary } from '../../api/homeApi'
 import { getStations } from '../../api/stationApi'
@@ -22,7 +22,7 @@ import type { WeatherCondition } from '../../types/weather'
 
 const RAIN_RECOMMEND_THRESHOLD = 50
 
-type MaterialCommunityIconName = keyof typeof MaterialCommunityIcons.glyphMap
+type MaterialCommunityIconName = ComponentProps<typeof MaterialCommunityIcons>['name']
 
 function formatHour(forecastAt: string) {
   return `${new Date(forecastAt).getHours()}시`
@@ -61,26 +61,14 @@ export function HomeScreen() {
     return <LoadingScreen />
   }
 
-  if (homeQuery.isError || !homeQuery.data) {
-    return (
-      <Screen>
-        <View className="mt-10 gap-4 px-6">
-          <ErrorBanner message="홈 정보를 불러오지 못했어요" />
-          <Button label="다시 시도" onPress={() => homeQuery.refetch()} />
-        </View>
-      </Screen>
-    )
-  }
-
-  const { user, pendingSettlement, alertCount } = homeQuery.data
   const weatherItems = weatherQuery.data?.items ?? []
   const maxRainProbability = Math.max(0, ...weatherItems.map((item) => item.precipitationProbability))
 
   return (
     <Screen edges={['right', 'bottom', 'left']}>
       <AppHeader
-        schoolName={user.schoolName}
-        alertCount={Math.max(alertCount - alertReadCount, 0)}
+        schoolName={homeQuery.data?.user.schoolName ?? ''}
+        alertCount={Math.max((homeQuery.data?.alertCount ?? 0) - alertReadCount, 0)}
         onPressAlert={() => rootNavigation.navigate('Notification')}
       />
       <ScrollView
@@ -96,14 +84,24 @@ export function HomeScreen() {
           />
         }
       >
-        <View className="gap-2">
-          <Text className="text-base font-medium text-text-secondary">
-            안녕하세요, {user.displayName}님!
-          </Text>
-          <Text className="text-2xl font-bold leading-8 text-text">
-            오늘도 편하게{'\n'}우산을 이용하세요.
-          </Text>
-        </View>
+        {/* homeQuery 실패가 날씨·지도 미리보기까지 끌고 내려가지 않도록, 이 영역에만 인라인
+            에러+재시도를 둔다(날씨·지도를 독립 쿼리로 분리한 것과 같은 Partial Success 원칙을
+            반대 방향에도 적용, 2026-08-09 코드 리뷰 반영). */}
+        {homeQuery.isError || !homeQuery.data ? (
+          <View className="gap-3">
+            <ErrorBanner message="홈 정보를 불러오지 못했어요" />
+            <Button label="다시 시도" onPress={() => homeQuery.refetch()} />
+          </View>
+        ) : (
+          <View className="gap-2">
+            <Text className="text-base font-medium text-text-secondary">
+              안녕하세요, {homeQuery.data.user.displayName}님!
+            </Text>
+            <Text className="text-2xl font-bold leading-8 text-text">
+              오늘도 편하게{'\n'}우산을 이용하세요.
+            </Text>
+          </View>
+        )}
 
         {/* WEATHER-001(§5.12) 위젯 — 2026-08-06 실제 연동으로 전환(DEC-SF-003 RESOLVED, 캠퍼스 고정
             좌표). provider 값은 서버가 주는 그대로("UNDECIDED"일 수 있음), 화면에는 표시하지 않는다. */}
