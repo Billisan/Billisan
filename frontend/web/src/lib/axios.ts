@@ -41,6 +41,25 @@ export const http: AxiosInstance = axios.create({
     withCredentials: true,
 });
 
+/**
+ * 목업 모드에서 네트워크로 새려던 요청.
+ *
+ * **전용 타입인 이유가 있습니다.** 그냥 `Error` 로 던지면 아래 응답 인터셉터가 이걸
+ * 「서버가 응답을 못 준 경우」로 읽고 「서버에 연결하지 못했습니다」로 바꿔 버립니다.
+ * 그건 정반대 안내입니다 — 서버 탓이 아니라 **우리 코드에 목업 분기가 빠진 것**이고,
+ * 관리자가 아니라 개발자가 고쳐야 합니다. 그래서 이 오류만 손대지 않고 통과시킵니다.
+ */
+export class MockNetworkBlockedError extends Error {
+    constructor(method: string | undefined, url: string | undefined) {
+        super(
+            `목업 모드에서 네트워크 요청이 발생했습니다: ${method?.toUpperCase() ?? 'GET'} ${url ?? '(경로 없음)'}\n` +
+                '해당 api 모듈에 목업 분기가 빠졌습니다. 실 API 로 확인하려면 ' +
+                '.env.development.local 에 VITE_USE_MOCK_DATA=false 를 두세요.',
+        );
+        this.name = 'MockNetworkBlockedError';
+    }
+}
+
 /** 로그인 요청 자체는 401 이 나도 '세션 만료'가 아닙니다. 그냥 자격이 틀린 것뿐입니다. */
 function isAuthEntryPoint(url: string | undefined): boolean {
     return Boolean(url && (url.includes('/auth/login') || url.includes('/auth/me')));
@@ -70,6 +89,24 @@ function offlineMessageOf(error: AxiosError<unknown>): string {
 }
 
 http.interceptors.request.use((config) => {
+    /*
+     * **전목업 모드에서는 요청을 아예 내보내지 않습니다.**
+     *
+     * 목업 분기는 각 api 모듈 안에 흩어져 있어서(`stationsApi`·`inspectionsApi`·`authApi`),
+     * 한 곳만 빠뜨려도 조용히 네트워크로 샙니다. 실제로 그런 적이 있습니다 — 지금은
+     * 지운 `historyApi` 에는 `env.useMockData` 분기가 아예 없었습니다.
+     *
+     * 그래서 마지막 관문을 여기에 둡니다. 목업으로 돌리는 동안에는 무엇이 새든 이 줄에서
+     * 죽고, 브라우저 네트워크 탭에 요청이 **뜨지도 않습니다**. dev 프록시도 기본으로
+     * 꺼 두었으니(`vite.config.ts`) 파이프와 마개를 둘 다 잠근 셈입니다.
+     *
+     * 두 플래그가 모두 켜졌을 때만 막습니다. 하나만 내려 둔 경우는 "그 부분만 실 API 로
+     * 확인하겠다"는 뜻이라 통과시킵니다.
+     */
+    if (import.meta.env.DEV && env.useMockData && env.mockAuth) {
+        throw new MockNetworkBlockedError(config.method, config.url);
+    }
+
     const token = getAccessToken();
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
@@ -85,6 +122,12 @@ http.interceptors.response.use(
         return response;
     },
     (error: AxiosError<unknown>) => {
+        /*
+         * 목업 차단은 통신 실패가 아니라 **우리 코드의 결함**입니다. 아래 변환을 태우면
+         * 「서버에 연결하지 못했습니다」가 되어 진짜 원인이 지워지므로 그대로 올립니다.
+         */
+        if (error instanceof MockNetworkBlockedError) return Promise.reject(error);
+
         const status = error.response?.status ?? 0;
         const { code, message } = readApiError(error.response?.data);
         const url = error.config?.url;

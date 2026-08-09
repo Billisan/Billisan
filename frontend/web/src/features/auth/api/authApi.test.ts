@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { http } from '@/lib/axios';
 import { env } from '@/config/env';
@@ -38,9 +38,22 @@ describe('요청 규격', () => {
     });
 
     it('X-Request-Id 를 UUID 로 붙인다', async () => {
-        // 서버 오류 응답의 meta.requestId 와 짝이 되는 값입니다.
+        /*
+         * 서버 오류 응답의 meta.requestId 와 짝이 되는 값입니다.
+         *
+         * **실 API 모드로 http 를 새로 읽습니다.** 같은 인터셉터 앞단에 목업 네트워크
+         * 차단이 있어서(`MockNetworkBlockedError`), `.env.development` 기본값(전목업)
+         * 으로는 헤더를 붙이기 전에 던집니다. 헤더 규격은 실제로 요청이 나가는
+         * 모드에서만 의미가 있으므로 그 모드로 확인합니다.
+         */
+        vi.resetModules();
+        vi.doMock('@/config/env', () => ({
+            env: { ...env, useMockData: false, mockAuth: false },
+        }));
+        const { http: realHttp } = await import('@/lib/axios');
+
         const handler = (
-            http.interceptors.request as unknown as {
+            realHttp.interceptors.request as unknown as {
                 handlers: { fulfilled: (c: unknown) => unknown }[];
             }
         ).handlers[0];

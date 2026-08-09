@@ -32,26 +32,33 @@ export default defineConfig({
     server: {
         port: 5173,
         /*
-         * 백엔드 공통 응답 규격(/api)에 맞춘 개발용 프록시.
+         * **기본값은 프록시 없음입니다.** `npm run dev` 는 목업 전용이고, 5173 에서
+         * 나가는 API 요청 경로가 아예 존재하지 않습니다. `/api` 로 뭘 보내든 dev 서버가
+         * 자기 자신에서 404 로 끝내고, 이 컴퓨터 밖으로 한 바이트도 나가지 않습니다.
          *
-         * **실 API 검증도 이 프록시로 하세요.** `VITE_API_BASE_URL` 에 절대 URL 을 넣으면
-         * 프록시를 건너뛰고 브라우저가 서버로 직접 나갑니다. 그러면 주소가 번들에 구워져
-         * **dev 서버를 꺼도 열려 있는 탭이 계속 그 서버로 요청합니다.** 실제로 그 일이
-         * 있었습니다 — 서버를 껐는데도 팀 서버 로그에 우리 요청이 계속 찍혔습니다.
+         * 설정(`VITE_USE_MOCK_DATA`)에만 기대지 않으려고 이렇게 둡니다. 플래그는 누구든
+         * 실수로 내릴 수 있지만, 없는 프록시는 실수로 켜지지 않습니다. 실제로 팀 서버
+         * 로그가 우리 개발 요청으로 더럽혀진 적이 있어서 파이프 자체를 끊어 둡니다.
          *
-         * 프록시로 두면 브라우저가 아는 주소는 `localhost:5173` 뿐입니다. dev 서버가
-         * 죽는 순간 요청은 연결 거부로 끝나고 **팀 서버까지 닿지 못합니다.** CORS 도
-         * 아예 발생하지 않습니다 — 브라우저 입장에선 같은 오리진입니다.
+         * 백엔드에 붙여야 할 때만 **주소를 명시해서** 켭니다:
+         *
+         *   $env:DEV_API_PROXY_TARGET="http://localhost:8080"; npm run dev
          *
          * 접두사가 `VITE_` 가 아닙니다. 그래야 이 주소가 클라이언트 번들에 안 들어갑니다.
          *
-         *   DEV_API_PROXY_TARGET=http://<host>:8080 npm run dev
+         * **절대 URL 로 우회하지 마세요.** `VITE_API_BASE_URL` 에 `http://…` 를 넣으면
+         * 프록시를 건너뛰고 브라우저가 서버로 직접 나가는데, 그 주소가 번들에 구워져
+         * **dev 서버를 꺼도 열려 있는 탭이 계속 그 서버로 요청합니다.** 실제로 겪은 일입니다.
+         * 프록시로 두면 브라우저가 아는 주소는 `localhost:5173` 뿐이라, dev 서버가 죽는
+         * 순간 연결 거부로 끝나고 팀 서버까지 닿지 못합니다.
          */
-        proxy: {
-            '/api': {
-                target: process.env.DEV_API_PROXY_TARGET ?? 'http://localhost:8080',
-                changeOrigin: true,
-            },
-        },
+        proxy: process.env.DEV_API_PROXY_TARGET
+            ? {
+                  '/api': {
+                      target: process.env.DEV_API_PROXY_TARGET,
+                      changeOrigin: true,
+                  },
+              }
+            : undefined,
     },
 });
