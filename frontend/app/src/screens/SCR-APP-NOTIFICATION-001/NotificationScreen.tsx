@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useQuery } from '@tanstack/react-query'
-import { useLayoutEffect } from 'react'
+import { useCallback, useLayoutEffect, useMemo } from 'react'
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
 import { Swipeable } from 'react-native-gesture-handler'
 import { getAlerts } from '../../api/alertApi'
@@ -87,11 +87,18 @@ export function NotificationScreen() {
   const markAllReadKeys = useAlertReadStore((state) => state.markAllRead)
 
   const alertsQuery = useQuery({ queryKey: ['alerts'], queryFn: getAlerts })
+  const items = alertsQuery.data ?? []
+  // 읽음 처리(readKeys) 등 다른 state가 바뀔 때마다 전체 목록을 다시 그룹화하지 않도록 items가
+  // 바뀔 때만 재계산(2026-08-09 코드 리뷰 반영). 아래 조건부 return들보다 먼저 호출해야 하는
+  // 훅이라 여기 둔다.
+  const dayGroups = useMemo(() => groupByDay(items), [items])
 
-  const markAllRead = () => {
+  // alertsQuery.data 외 다른 값을 참조하도록 나중에 바뀌어도 useLayoutEffect 의존성 배열을
+  // 빠뜨리지 않도록 useCallback으로 감싸고 그 결과를 의존성에 명시한다(2026-08-09 코드 리뷰 반영).
+  const markAllRead = useCallback(() => {
     if (!alertsQuery.data) return
     markAllReadKeys(alertsQuery.data.map((item) => item.alertKey))
-  }
+  }, [alertsQuery.data, markAllReadKeys])
 
   // 헤더 오른쪽 "모두 읽음" 버튼 — 로컬 state(markAllRead)를 참조해야 해서 RootStackNavigator의
   // options가 아니라 화면 안에서 setOptions로 등록한다.
@@ -107,7 +114,7 @@ export function NotificationScreen() {
         </Pressable>
       ),
     })
-  }, [navigation, alertsQuery.data])
+  }, [navigation, markAllRead])
 
   const handlePress = (item: AlertItem) => {
     markRead(item.alertKey)
@@ -134,9 +141,6 @@ export function NotificationScreen() {
       </Screen>
     )
   }
-
-  const items = alertsQuery.data
-  const dayGroups = groupByDay(items)
 
   return (
     <Screen background="white" edges={['right', 'bottom', 'left']}>

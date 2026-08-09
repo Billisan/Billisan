@@ -3,7 +3,7 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
 import { getHomeSummary } from '../../api/homeApi'
 import { getRentalHistory } from '../../api/historyApi'
@@ -79,6 +79,10 @@ export function HistoryScreen() {
     queryKey: ['history', filter],
     queryFn: () => getRentalHistory({ status: filter }),
   })
+  const items = historyQuery.data?.items ?? []
+  // expandedId 등 다른 state가 바뀔 때마다 전체 목록을 다시 그룹화하지 않도록 items가 바뀔 때만
+  // 재계산(2026-08-09 코드 리뷰 반영). 아래 조건부 return들보다 먼저 호출해야 하는 훅이라 여기 둔다.
+  const monthGroups = useMemo(() => groupByMonth(items), [items])
 
   if (historyQuery.isPending) {
     return <LoadingScreen />
@@ -94,9 +98,6 @@ export function HistoryScreen() {
       </Screen>
     )
   }
-
-  const items = historyQuery.data.items
-  const monthGroups = groupByMonth(items)
 
   return (
     <Screen edges={['right', 'bottom', 'left']}>
