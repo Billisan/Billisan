@@ -6,6 +6,7 @@ interface AlertReadState {
   readKeys: Set<string>
   markRead: (alertKey: string) => void
   markAllRead: (alertKeys: string[]) => void
+  pruneToKnownKeys: (alertKeys: string[]) => void
 }
 
 // 알림 읽음 상태는 서버에 영속하지 않는다(DEC-SF-008, ALERT-002 여전히
@@ -21,6 +22,16 @@ export const useAlertReadStore = create<AlertReadState>()(
       readKeys: new Set(),
       markRead: (alertKey) => set((state) => ({ readKeys: new Set(state.readKeys).add(alertKey) })),
       markAllRead: (alertKeys) => set({ readKeys: new Set(alertKeys) }),
+      // 홈/지도/내역/마이페이지 헤더 배지는 서버 alertCount에서 readKeys.size를 그냥 빼기만
+      // 하는 근사치라(위 주석 참고), readKeys에 이미 사라진 과거 알림 키가 계속 쌓이면 실제
+      // 안읽은 알림이 있어도 배지가 0으로 깎인다(2026-08-10 확인). NotificationScreen이 최신
+      // 목록을 받을 때마다 그 목록에 없는 키를 여기서 정리해 크기를 실제와 가깝게 유지한다.
+      pruneToKnownKeys: (alertKeys) =>
+        set((state) => {
+          const known = new Set(alertKeys)
+          const pruned = new Set([...state.readKeys].filter((key) => known.has(key)))
+          return pruned.size === state.readKeys.size ? state : { readKeys: pruned }
+        }),
     }),
     {
       name: 'alert-read-keys',

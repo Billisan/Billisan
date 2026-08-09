@@ -34,7 +34,7 @@ export function LoginScreen() {
 
   return (
     <Screen>
-      <View className="flex-1 justify-center gap-10 px-8">
+      <View className="flex-1 justify-center gap-10 px-8 pb-20">
         <View className="items-center gap-5">
           <Logo width={124} height={60} />
           <Text className="text-xl font-medium">빌리대학교</Text>

@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useQuery } from '@tanstack/react-query'
-import { useCallback, useLayoutEffect, useMemo } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo } from 'react'
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
 import { Swipeable } from 'react-native-gesture-handler'
 import { getAlerts } from '../../api/alertApi'
@@ -85,9 +85,17 @@ export function NotificationScreen() {
   const readKeys = useAlertReadStore((state) => state.readKeys)
   const markRead = useAlertReadStore((state) => state.markRead)
   const markAllReadKeys = useAlertReadStore((state) => state.markAllRead)
+  const pruneToKnownKeys = useAlertReadStore((state) => state.pruneToKnownKeys)
 
   const alertsQuery = useQuery({ queryKey: ['alerts'], queryFn: getAlerts })
   const items = alertsQuery.data ?? []
+
+  // 헤더 배지 근사치가 어긋나지 않도록(2026-08-10 확인), 최신 목록을 받을 때마다 그 목록에
+  // 없는 readKeys를 정리한다. alertsQuery.data가 아직 없을 때(로딩·에러)는 건드리지 않는다.
+  useEffect(() => {
+    if (!alertsQuery.data) return
+    pruneToKnownKeys(alertsQuery.data.map((item) => item.alertKey))
+  }, [alertsQuery.data, pruneToKnownKeys])
   // 읽음 처리(readKeys) 등 다른 state가 바뀔 때마다 전체 목록을 다시 그룹화하지 않도록 items가
   // 바뀔 때만 재계산(2026-08-09 코드 리뷰 반영). 아래 조건부 return들보다 먼저 호출해야 하는
   // 훅이라 여기 둔다.
