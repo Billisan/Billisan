@@ -33,9 +33,9 @@ function TabBarButton({ children, style, ref: _ref, ...rest }: BottomTabBarButto
       style={[
         style,
         {
-          height: 44,
+          height: 34,
           borderRadius: 16,
-          paddingHorizontal: 4,
+          // paddingHorizontal: 4,
         },
       ]}
     >

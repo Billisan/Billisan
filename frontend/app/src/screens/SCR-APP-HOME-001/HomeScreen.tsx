@@ -109,7 +109,7 @@ export function HomeScreen() {
           <View className="flex-row items-center justify-between">
             <View className='gap-1'>
               <Text className="text-base font-bold text-text">초단기 강수 예보</Text>
-              <Text className="text-xs text-text-secondary">현재부터 6시간 이내 예보</Text>
+              <Text className="text-sm text-text-secondary">현재부터 6시간 이내 예보</Text>
             </View>
             <View>
               <Pressable
@@ -184,8 +184,8 @@ export function HomeScreen() {
         >
           <View className="gap-1 p-5 pb-3">
             <Text className="text-base font-bold text-text">캠퍼스 지도</Text>
-            <Text className="text-xs text-text-secondary">
-              캠퍼스 곳곳의 우산함 위치와 실시간 대여 현황을 확인해보세요
+            <Text className="text-sm text-text-secondary">
+              캠퍼스 곳곳의 우산함 위치와 실시간 대여 현황을 확인해보세요!
             </Text>
           </View>
           <View className="flex-1" pointerEvents="none">
@@ -193,7 +193,7 @@ export function HomeScreen() {
               stations={stationsQuery.data ?? []}
               selectedStationId={null}
               onSelectStation={() => {}}
-              markerSize={24}
+              markerSize={30}
               initialLevel={2}
             />
           </View>

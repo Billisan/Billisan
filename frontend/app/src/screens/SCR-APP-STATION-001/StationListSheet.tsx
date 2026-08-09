@@ -100,22 +100,22 @@ export function StationListSheet({
           <View className="h-1 w-10 rounded-full bg-disabled" />
         </View>
 
-        <View className="flex-row gap-2 px-4 pb-3 pt-3">
+        <View className="mb-4 mt-3 flex-row gap-3 px-4">
           {(['all', 'many', 'less', 'empty'] as FilterTier[]).map((tier) => (
             <Pressable
               key={tier}
               onPress={() => setFilter(tier)}
-              className={`flex-row items-center gap-1.5 rounded-full px-3 py-1.5 active:opacity-80 ${
+              className={`flex-row items-center gap-2 rounded-full px-3 py-2 active:opacity-80 ${
                 filter === tier ? 'bg-primary' : 'bg-gray-100'
               }`}
             >
               {tier !== 'all' && (
                 <View
-                  className={`h-2.5 w-2.5 rounded-full border border-text-secondary ${TIER_DOT_CLASS[tier]}`}
+                  className={`h-4 w-4 rounded-full border border-gray-100 ${TIER_DOT_CLASS[tier]}`}
                 />
               )}
               <Text
-                className={`text-sm ${filter === tier ? 'font-bold text-text' : 'text-text-secondary'}`}
+                className={`text-sm font-bold ${filter === tier ? 'text-text' : 'text-text-secondary'}`}
               >
                 {tier === 'all' ? '전체' : TIER_LABEL[tier]}
               </Text>
@@ -139,15 +139,15 @@ export function StationListSheet({
                 }`}
               >
                 <View className="flex-shrink flex-row items-center gap-2">
-                  <View className={`h-2.5 w-2.5 rounded-full ${TIER_DOT_CLASS[tier]}`} />
-                  <Text className="text-sm font-medium text-text">{item.name}</Text>
+                  <View className={`h-4 w-4 rounded-full ${TIER_DOT_CLASS[tier]}`} />
+                  <Text className="text-base font-semibold text-text">{item.name}</Text>
                   {item.description && (
-                    <Text className="flex-shrink text-xs text-text-secondary" numberOfLines={1}>
+                    <Text className="flex-shrink text-sm text-text-secondary" numberOfLines={1}>
                       {item.description}
                     </Text>
                   )}
                 </View>
-                <Text className="text-sm text-text-secondary">{item.availableCount}개</Text>
+                <Text className="text-base text-text-secondary">{item.availableCount}개</Text>
               </Pressable>
             )
           }}
