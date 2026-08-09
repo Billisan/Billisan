@@ -118,8 +118,13 @@ describe('isSessionAlive', () => {
     });
 });
 
-describe('토큰 보관 (B-2)', () => {
-    /** 계약: "응답 후 로그·브라우저 영속 저장 금지". 스토어는 메모리라 새로고침하면 사라집니다. */
+describe('토큰 보관', () => {
+    /*
+     * 계약(B-2)은 "응답 후 로그·브라우저 영속 저장 금지"이지만, 백엔드에 세션 복원
+     * 엔드포인트(`GET /auth/me`)가 아직 없어 새로고침마다 강제 로그아웃되는 문제 때문에
+     * `localStorage` 에 `persist` 하기로 결정했습니다(`authStore.ts` 상단 주석 참고).
+     * 그래도 로그아웃하면 저장된 토큰까지 확실히 지워지는지는 계속 봐야 합니다.
+     */
     it('clearAuth 는 토큰까지 지운다', () => {
         login();
         expect(useAuthStore.getState().accessToken).toBe('tok');
