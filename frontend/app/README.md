@@ -35,6 +35,34 @@ EXPO_PUBLIC_KAKAO_JS_KEY=
 
 Node 버전은 로컬 확인 기준 v24 사용 중(별도 `.nvmrc` 없음 — 팀 공통 버전 확정 시 추가 필요).
 
+## APK 배포 (EAS Build)
+
+EAS Build로 내부 배포용 APK 만듦.
+
+**설정 현황**
+
+- 패키지명: `dev.billisan.app` (`app.json`)
+- 빌드 프로필: `eas.json`의 `preview` (내부 배포용 APK, Play Store용 AAB 아님)
+- 서명키(keystore): EAS가 자동 생성해 자체 서버에 보관(EAS-managed) — 최초 1회만 생성, 이후 빌드는 계속 재사용
+- OTA 업데이트(`expo-updates`): 미도입 — 코드가 바뀌면 반드시 다시 빌드 + 재설치해야 반영됨
+
+**빌드 방법**
+
+```bash
+npx eas login       # 최초 1회, Expo 계정 로그인 (팀 공용 계정 확인 필요)
+npx eas build --platform android --profile preview
+```
+
+빌드가 끝나면 터미널에 QR/다운로드 링크가 뜬다. 그 링크로 APK를 받아 폰에 설치한다.
+
+**주의사항**
+
+- 자동 업데이트가 아니다 — 기능 추가·버그 수정 후에는 **매번 새로 빌드해서 재설치**해야 반영된다.
+- keystore 생성 여부를 묻는 프롬프트가 다시 뜨면 **반드시 기존 키 사용(Use existing)**을 선택한다.
+  서명키가 바뀌면 기존에 설치된 앱과 충돌해 재설치가 안 된다(최초 1회만 "새로 생성"이 맞았음).
+- `eas.json`/`app.json`은 git에 커밋되므로 팀 전체가 같은 설정으로 빌드된다. `.env`는 각자 로컬에 있어야
+  한다(git 미포함, 임의 수정 금지).
+
 ## 스크립트
 
 | 명령어 | 설명 |
