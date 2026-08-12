@@ -31,6 +31,7 @@ export function AuthScreen({
   const guidanceCode = useFaceAuthStore((state) => state.guidanceCode)
   const displayName = useFaceAuthStore((state) => state.displayName)
   const studentId = useFaceAuthStore((state) => state.studentId)
+  const processingStartedAt = useFaceAuthStore((state) => state.processingStartedAt)
 
   // 임베디드 문서(2026-07-31) §4.3 guidanceCode 문구 매핑 — 코드→문구 변환은 t(useTranslation)가
   // 있는 이 화면 레이어에서 담당한다(kioskStageStream.ts/faceAuthStore.ts는 원본 코드만 전달).
@@ -92,6 +93,7 @@ export function AuthScreen({
           subtitle={t.common.pleaseWait}
           currentStep={2}
           flow={mode}
+          startedAt={processingStartedAt ?? undefined}
         />
       )
 

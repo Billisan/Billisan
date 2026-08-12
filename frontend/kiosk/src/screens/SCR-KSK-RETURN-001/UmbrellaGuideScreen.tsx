@@ -26,16 +26,16 @@ export function UmbrellaGuideScreen({
   ]
   const [secondsLeft, setSecondsLeft] = useState(AUTO_ADVANCE_SECONDS)
 
+  // 0에 도달하면 onAction만 호출하고 더 이상 타이머를 다시 걸지 않는다 — beginReturn이
+  // 비동기 요청이라 화면이 바로 안 바뀌어도 이 화면에 머무는 동안 초가 음수로 내려가지 않게 함.
   useEffect(() => {
-    const timer = setInterval(() => {
-      setSecondsLeft((prev) => prev - 1)
-    }, 1000)
+    if (secondsLeft <= 0) {
+      onAction()
+      return
+    }
 
-    return () => clearInterval(timer)
-  }, [])
-
-  useEffect(() => {
-    if (secondsLeft <= 0) onAction()
+    const timer = window.setTimeout(() => setSecondsLeft((prev) => prev - 1), 1000)
+    return () => window.clearTimeout(timer)
   }, [secondsLeft, onAction])
 
   return (

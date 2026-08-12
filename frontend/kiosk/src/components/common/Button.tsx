@@ -14,12 +14,13 @@ export function Button({
   className = '',
   ...rest
 }: ButtonProps) {
-  const variantClasses =
-    variant === 'outline'
+  const variantClasses = disabled
+    ? variant === 'outline'
+      ? 'border-disabled border-2 bg-white text-black/50 cursor-not-allowed'
+      : 'bg-disabled text-black/50 cursor-not-allowed'
+    : variant === 'outline'
       ? 'border-disabled border-2 bg-white text-black'
-      : disabled
-        ? 'bg-disabled text-black/50 cursor-not-allowed'
-        : 'bg-primary text-white active:brightness-95'
+      : 'bg-primary text-white active:brightness-95'
 
   return (
     <button

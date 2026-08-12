@@ -23,13 +23,16 @@ export function ReturnCompleteScreen({
 }: ReturnCompleteScreenProps) {
   const t = useTranslation()
   // PROJECT_GUIDE.md §6 "반납 결과 표현 규칙" — 확정 파손·비용 문구는 절대 노출하지 않는다.
+  // UNCERTAIN은 2026-08-07 사용자 결정으로 NORMAL과 완전히 동일하게 처리(관리자 확인 문구 없음).
   const resultMessage: Record<InspectionResult, string> = {
     [INSPECTION_RESULT.NORMAL]: t.return.resultNormal,
     [INSPECTION_RESULT.DAMAGED]: t.return.resultNeedsReview,
-    [INSPECTION_RESULT.UNCERTAIN]: t.return.resultNeedsReview,
+    [INSPECTION_RESULT.UNCERTAIN]: t.return.resultNormal,
     [INSPECTION_RESULT.FAILED]: t.return.resultNeedsReview,
   }
-  const needsReview = inspectionResult !== INSPECTION_RESULT.NORMAL
+  const needsReview =
+    inspectionResult === INSPECTION_RESULT.DAMAGED ||
+    inspectionResult === INSPECTION_RESULT.FAILED
   const [secondsLeft, setSecondsLeft] = useState(AUTO_CONFIRM_SECONDS)
 
   useEffect(() => {

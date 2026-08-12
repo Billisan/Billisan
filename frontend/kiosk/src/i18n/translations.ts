@@ -70,6 +70,7 @@ export interface Translations {
     failedTitle: string
     checkingUmbrella: string
     showUmbrella: string
+    umbrellaRecognized: string
     completeTitle: string
     returnedAtLabel: string
     resultNormal: string
@@ -79,13 +80,9 @@ export interface Translations {
     guideTitle: string
     guideSubtitle: string
     autoAdvance: string
-    uncertainNoticeTitle: string
-    uncertainNoticeSubtitle: string
     damagedNoticeTitle: string
     damagedNoticeSubtitle: string
     proceedAnyway: string
-    uncertainBlockedTitle: string
-    uncertainBlockedTips: string[]
     retryInspection: string
     damagedConfirmTitle: string
     damagedConfirmSubtitle: string
@@ -182,6 +179,7 @@ const ko: Translations = {
     failedTitle: '반납을 완료하지 못했습니다',
     checkingUmbrella: '우산 상태를 확인하고 있어요',
     showUmbrella: '우산을 카메라에 잘 보이게 들어주세요',
+    umbrellaRecognized: '우산 인식이 완료되었습니다.',
     completeTitle: '반납 완료!',
     returnedAtLabel: '반납 시각',
     resultNormal: '반납이 완료되었습니다.',
@@ -196,17 +194,10 @@ const ko: Translations = {
     guideTitle: '우산을 펼쳐 카메라에 보여주세요',
     guideSubtitle: '정확한 파손 검사를 위해 아래 안내를 따라주세요.',
     autoAdvance: '5초 후 자동으로 우산 인식 화면으로 이동합니다',
-    uncertainNoticeTitle: '우산이 명확하게 인식되지 않았어요',
-    uncertainNoticeSubtitle: '다시 촬영하시면 더 정확하게 확인할 수 있어요.',
-    damagedNoticeTitle: '우산에 파손이 의심돼요',
+    damagedNoticeTitle: '우산 파손이 의심돼요',
     damagedNoticeSubtitle:
       '다시 촬영해 확인하거나, 이대로 진행하면 관리자가 최종 확인합니다.',
     proceedAnyway: '이대로 진행하기',
-    uncertainBlockedTitle: '우산이 정확히 인식되지 않았습니다',
-    uncertainBlockedTips: [
-      '우산을 완전히 펼쳐 카메라 정면에 비춰주세요',
-      '밝은 곳에서 다시 촬영하면 인식이 더 잘 됩니다',
-    ],
     retryInspection: '우산 인식 다시하기',
     damagedConfirmTitle:
       '관리자 최종 검증 후 파손 처리됩니다. 파손 처리 확정하시겠습니까?',
@@ -317,6 +308,7 @@ const en: Translations = {
     failedTitle: 'Return Could Not Be Completed',
     checkingUmbrella: 'Checking umbrella condition',
     showUmbrella: 'Hold the umbrella clearly in front of the camera',
+    umbrellaRecognized: 'Umbrella recognized.',
     completeTitle: 'Return Complete!',
     returnedAtLabel: 'Returned At',
     resultNormal: 'Your return is complete.',
@@ -331,17 +323,10 @@ const en: Translations = {
     guideTitle: 'Open the umbrella and show it to the camera',
     guideSubtitle: 'Follow the guide below for an accurate damage check.',
     autoAdvance: 'Moving to the umbrella scan screen in 5 seconds',
-    uncertainNoticeTitle: "The umbrella wasn't recognized clearly",
-    uncertainNoticeSubtitle: 'Re-scanning may give a more accurate result.',
     damagedNoticeTitle: 'Possible damage detected',
     damagedNoticeSubtitle:
       'Re-scan to check again, or continue and an admin will review it.',
     proceedAnyway: 'Continue Anyway',
-    uncertainBlockedTitle: "The umbrella couldn't be recognized clearly",
-    uncertainBlockedTips: [
-      'Fully open the umbrella and hold it facing the camera',
-      'Try again in a well-lit area for better recognition',
-    ],
     retryInspection: 'Re-scan Umbrella',
     damagedConfirmTitle:
       'After final review by an admin, this will be processed as damage. Confirm damage processing?',
