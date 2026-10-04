@@ -1,9 +1,11 @@
 # Security and publication notes
 
-The published history omits captured images, datasets, trained models, runtime logs,
+The published history omits private captured images, datasets, trained models, runtime logs,
 private configuration and account seed data. Contributor metadata and the development
 history are retained. This reduces repository disclosure risks; it is not a production
 security certification.
+
+Reviewed screenshots and demonstration media are included for project documentation.
 
 ## Configuration
 
