@@ -60,7 +60,7 @@ function connect(): Promise<WebSocket> {
       try {
         message = JSON.parse(event.data)
       } catch {
-        console.error('[Pi WS] 메시지 파싱 실패', event.data)
+        console.error('[Pi WS] Invalid message JSON')
         return
       }
       handleMessage(message)
@@ -72,7 +72,7 @@ function connect(): Promise<WebSocket> {
     }
 
     ws.onclose = (event) => {
-      console.log('[Pi WS] close', event.code, event.reason)
+      console.debug('[Pi WS] close', event.code)
       socket = null
       connecting = null
     }
@@ -85,7 +85,7 @@ function handleMessage(message: PiEnvelope) {
   const handlers = pending.get(message.requestId)
   if (!handlers) {
     // 문서 §3 "전방 호환": 대응하는 요청이 없는 메시지(중복 EVENT 등)는 에러 없이 무시.
-    console.log('[Pi WS] 대응 요청 없는 메시지, 무시', message)
+    console.debug('[Pi WS] Ignoring message without a pending request')
     return
   }
 
@@ -123,7 +123,7 @@ function handleMessage(message: PiEnvelope) {
   }
 
   // 문서 §3 "전방 호환": 모르는 type은 에러 처리하지 않고 무시.
-  console.log('[Pi WS] 알 수 없는 type, 무시', message.type)
+  console.debug('[Pi WS] Ignoring unknown message type')
 }
 
 function request<TPayload, TResult>(

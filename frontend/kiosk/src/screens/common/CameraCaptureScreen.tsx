@@ -65,11 +65,14 @@ export function CameraCaptureScreen({
     <KioskLayout onBack={onBack} currentStep={currentStep} flow={flow} fullBleed>
       <div className="flex flex-1 flex-col w-full">
         <div className="relative flex-1 bg-black">
-          <img
-            src={streamUrl}
-            alt="카메라 스트림"
-            className="absolute inset-0 h-full w-full object-cover"
-          />
+          {streamUrl && (
+            <img
+              src={streamUrl}
+              alt="카메라 스트림"
+              className="absolute inset-0 h-full w-full object-cover"
+              referrerPolicy="no-referrer"
+            />
+          )}
           <CountdownBadge
             key={`${timeoutSeconds}-${String(resetSignal)}`}
             timeoutSeconds={timeoutSeconds}

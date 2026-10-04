@@ -22,7 +22,7 @@ export const env = {
      * 지나쳤고, 그러면 `ADMIN-AUTH-001~003` 흐름을 확인할 수 없습니다.
      * 화면흐름 §15 도 "보호 라우트 진입 전 FE 가 세션 유무를 확인한다"고 합니다.
      */
-    authBypass: (import.meta.env.VITE_AUTH_BYPASS ?? 'false') === 'true',
+    authBypass: import.meta.env.DEV && (import.meta.env.VITE_AUTH_BYPASS ?? 'false') === 'true',
     /**
      * 백엔드 없이 목업 계정으로 로그인할지 여부.
      * TODO: `ADMIN-AUTH-001 POST /api/v1/admin/auth/login` 이 붙으면 false 로 내리세요.
@@ -36,14 +36,7 @@ export const env = {
      * 화면은 이 값을 보지 않습니다 — 각 도메인의 api 모듈 안에서만 갈립니다.
      */
     useMockData: (import.meta.env.VITE_USE_MOCK_DATA ?? 'true') === 'true',
-    /**
-     * 시연용 관리자 계정.
-     *
-     * 값은 **소스가 아니라 실행 환경**에서 주입합니다. 상위 기획 문서 §4 가
-     * "P0 시연 비밀번호 원문은 저장소·문서·소스 코드에 고정하지 않고 실행 환경 또는
-     * 시연 운영 절차로 주입한다"고 정했습니다. 로컬 데모 편의로 `.env.development` 에
-     * 넣어 뒀으니, 공유되는 환경에서는 `.env.local` 이나 배포 환경 변수로 옮기세요.
-     */
+    /** Public UI fixture values. Never supply real administrator credentials. */
     demoAdminId: import.meta.env.VITE_DEMO_ADMIN_ID ?? '',
     demoAdminPassword: import.meta.env.VITE_DEMO_ADMIN_PASSWORD ?? '',
 } as const;

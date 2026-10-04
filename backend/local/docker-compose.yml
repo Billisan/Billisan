@@ -1,32 +1,32 @@
 services:
   mosquitto:
     image: eclipse-mosquitto:2
-    container_name: billisan-mqtt-local
     ports:
-      - "1883:1883"
+      - "127.0.0.1:1883:1883"
+    environment:
+      MQTT_USERNAME: ${MQTT_USERNAME:?Set MQTT_USERNAME in backend/.env}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:?Set MQTT_PASSWORD in backend/.env}
+    entrypoint: ["/bin/sh", "/mqtt/start.sh"]
     volumes:
-      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
-
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ../mqtt/acl.conf:/mosquitto/config/acl.conf:ro
+      - ../mqtt/start.sh:/mqtt/start.sh:ro
   db:
     image: mysql:8.0
-    container_name: billisan-db-local
     ports:
-      - "3306:3306"
-    # Flyway V14가 만드는 트리거 생성에 필요 — 없으면 binlog가 켜진 상태에서 트리거 생성이
-    # 거부되어 V14에서 마이그레이션이 실패한다(운영 docker-compose.yml과 동일 옵션).
+      - "127.0.0.1:3306:3306"
     command: --log-bin-trust-function-creators=1
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-billisan}
+      MYSQL_USER: ${MYSQL_USER:-billisan}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD}
     volumes:
       - db-data-local:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_ROOT_PASSWORD mysqladmin ping -h localhost -u root --silent"]
       interval: 10s
       timeout: 5s
-      retries: 5
-
+      retries: 10
 volumes:
   db-data-local:

@@ -65,9 +65,9 @@ export function startKioskStageStream(
           : knownReason,
         sessionId: session.sessionId,
       })
-    } catch (error) {
+    } catch {
       if (cancelled) return
-      console.error('[Pi WS] 인증 스트림 실패', error)
+      console.error('[Pi WS] 인증 스트림 실패')
       onStage({ stage: KIOSK_STAGE.AUTH_FAILED })
     }
   })()

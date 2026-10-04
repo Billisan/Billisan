@@ -8,7 +8,7 @@ import type { AdminIdentity } from '@/features/auth/types';
  */
 const BYPASS_ADMIN: AdminIdentity = {
     adminId: '00000000-0000-4000-8000-0000000000ff',
-    loginId: 'fixture-eeffb8116982@example.invalid',
+    loginId: 'admin@example.invalid',
     role: 'ADMIN',
 };
 

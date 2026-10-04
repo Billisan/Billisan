@@ -5,5 +5,10 @@ build/
 out/
 *.iml
 .env
-.env.example
+.env.*
+*.pem
+*.key
+credentials*
+secrets/
+local/
 HELP.md

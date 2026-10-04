@@ -10,8 +10,7 @@ import { LoadingScreen } from '../common/LoadingScreen'
 import { AuthSuccessScreen } from './AuthSuccessScreen'
 import { FaceAuthGuideScreen } from './FaceAuthGuideScreen'
 
-const FACE_STREAM_TOKEN = import.meta.env.VITE_FACE_STREAM_TOKEN
-const CAMERA_STREAM_BASE_URL = import.meta.env.VITE_CAMERA_STREAM_BASE_URL
+const CAMERA_STREAM_BASE_URL = import.meta.env.VITE_CAMERA_STREAM_BASE_URL ?? ''
 
 interface AuthScreenProps {
   onBack: () => void
@@ -65,7 +64,7 @@ export function AuthScreen({
       // 다시 "준비되었습니다"를 누르면 retry()와 동일하게 startCapture가 새로 시작된다.
       return (
         <CameraCaptureScreen
-          streamUrl={`${CAMERA_STREAM_BASE_URL}?token=${encodeURIComponent(FACE_STREAM_TOKEN)}`}
+          streamUrl={CAMERA_STREAM_BASE_URL}
           guide={<FaceGuideOverlay message={guidanceMessage} />}
           onBack={resetToGuide}
           currentStep={2}

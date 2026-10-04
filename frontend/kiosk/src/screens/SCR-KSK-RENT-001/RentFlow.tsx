@@ -45,9 +45,9 @@ export function RentFlow({ sessionId, onBack }: RentFlowProps) {
           setFailed(true)
         }
       })
-      .catch((error) => {
+      .catch(() => {
         if (cancelled) return
-        console.error('[Pi WS] 대여 요청 실패', error)
+        console.error('[Pi WS] 대여 요청 실패')
         setFailed(true)
       })
 
