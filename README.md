@@ -1,84 +1,80 @@
-# Billisan — 빌리산
+# Billisan · 빌리산
 
-얼굴 인증을 이용하는 우산 대여·반납 서비스의 소스 공개용 사본입니다. 관리자 웹,
-키오스크 UI, Spring 백엔드와 우산 파손 검수용 AI 실험 코드를 포함합니다.
+**얼굴 인증과 AI 파손 검수를 활용한 우산 대여·반납 서비스**
 
-## 구성
+빌리산은 갑작스러운 비에도 가까운 대여소에서 우산을 빌리고 반납할 수 있도록 돕는 서비스입니다.
+키오스크의 이용 흐름과 관리자 웹의 재고·검수 기능을 연결하고, AI로 반납한 우산의 상태를 확인합니다.
 
-| 경로 | 역할 |
-| --- | --- |
-| `backend/` | Java 21 / Spring Boot / MySQL / Flyway / JWT / MQTT |
-| `frontend/web/` | React 관리자 웹, 재고·슬롯·검수 UI 및 목업 |
-| `frontend/kiosk/` | React 키오스크, Pi WebSocket 메시지 연동 및 목업 |
-| `ai/anomaly_detection/` | YOLO 검출·크롭, PatchCore 기반 파손 판정 실험 |
+## 핵심 기능
 
-백엔드는 MySQL을 업무 상태의 기준으로 사용하며 Pi와 MQTT로 통신합니다.
-키오스크는 Pi의 WebSocket 서버와 통신합니다. Pi/GPIO 서비스, 얼굴 인증 서비스,
-모바일 앱 구현은 이 사본에 포함하지 않습니다. 목업 UI와 실제 장치 동작은 다릅니다.
+### 우산 대여·반납
 
-## 로컬 실행
+- 얼굴 인증 안내와 인증 결과 확인을 거쳐 대여·반납을 진행하는 키오스크 UI
+- 대여 가능 재고와 반납 가능 슬롯 안내, 처리 단계별 진행 상태 표시
+- 요청 멱등성, 슬롯 동시성 제어와 데이터베이스 제약을 통한 대여 상태 관리
 
-Node.js 22.12 이상, Java 21, Docker Compose가 필요합니다. UI만 확인할 때는
-Java와 Docker 없이 프런트엔드 목업을 실행할 수 있습니다.
+### AI 우산 파손 검수
+
+- YOLO 기반 우산 검출과 관심 영역 크롭
+- DINOv2 특징과 PatchCore를 활용한 이상 탐지
+- 정상·파손·판단 보류 결과를 구분하고 관리자 검수 흐름과 연결
 
 ### 관리자 웹
 
-```sh
-cd frontend/web
-cp .env.example .env.local
-# 가상의 시연 ID/비밀번호를 .env.local에 설정합니다. 실제 계정 값은 사용하지 않습니다.
-npm install --global pnpm@9.15.9
-pnpm install --frozen-lockfile
-pnpm dev
+- 대시보드와 대여소별 우산 재고·슬롯 상태 조회
+- 대여·반납 이력 및 파손 검수 결과 확인
+- 우산 상태 변경과 관리자 최종 판정
+- JWT 기반 관리자 인증과 역할별 API 접근 제어
+
+### 서비스 안내 챗봇
+
+- 서비스 이용 방법, 대여 정책과 과금 기준 안내
+- FAQ 문서와 OpenAI 호환 API를 활용한 답변 생성
+
+## 서비스 흐름
+
+```text
+대여  이용 선택 → 얼굴 인증 → 이용 자격 확인 → 슬롯 안내 → 우산 인출
+반납  이용 선택 → 얼굴 인증 → 우산 촬영·AI 검수 → 슬롯 안내 → 반납 결과 확인
+관리  재고·슬롯 조회 → 검수 결과 확인 → 관리자 판정·상태 관리
 ```
 
-`pnpm test`와 `pnpm build`로 확인합니다. `VITE_*` 값은 브라우저에 공개됩니다.
-실제 API 연결 시 목업을 끄고 본인의 API 주소와 대여소 정보를 설정해야 합니다.
-관리자 세션 API 일부는 구현되지 않았으므로 [SECURITY.md](SECURITY.md)를 확인하세요.
+키오스크와 Pi는 WebSocket으로, 백엔드와 Pi는 MQTT로 메시지를 주고받습니다.
+MySQL에서 대여·슬롯·검수 상태를 관리하며, 관리자 웹은 REST API로 업무 데이터를 조회하고 변경합니다.
 
-### 키오스크
+## 기술 스택
 
-```sh
-cd frontend/kiosk
-cp .env.example .env.local
-npm ci
-npm run dev
+| 영역 | 기술 |
+| --- | --- |
+| Backend | Java 21, Spring Boot, Spring Security, JPA, Flyway, JWT |
+| Admin Web | React, TypeScript, Vite, TanStack Query, Zustand, Tailwind CSS |
+| Kiosk | React, TypeScript, Vite, Zustand, Tailwind CSS, PWA |
+| AI | Python, Ultralytics YOLO, DINOv2, Anomalib PatchCore, ONNX |
+| Data & Messaging | MySQL, Mosquitto MQTT, WebSocket |
+| Build & Test | Docker Compose, GitHub Actions, JUnit, Vitest |
+
+## 프로젝트 구조
+
+```text
+Billisan/
+├── backend/                  # 인증, 대여 상태, 재고·검수 API, MQTT, 챗봇
+├── frontend/
+│   ├── web/                  # 관리자 웹
+│   └── kiosk/                # 대여·반납 키오스크
+└── ai/
+    └── anomaly_detection/    # 우산 검출, 데이터 전처리, 학습·추론
 ```
 
-`VITE_PI_MOCK=true`로 인증 이후 흐름을 확인할 수 있습니다. 대여소 요약 요청은
-별도 목업 경로를 사용합니다. 실 장치 연결에는 Pi 서버 구현이 필요합니다.
-카메라 미리보기는 기본적으로 비어 있습니다. 인증을 강제하는 신뢰된 로컬 또는
-동일 출처 프록시를 준비한 뒤 URL을 지정하세요. 고정 인증 토큰을 번들에 넣지 않습니다.
+## 시작하기
 
-### 백엔드
+Node.js 22.12 이상을 사용하며, 백엔드 실행에는 Java 21 또는 Docker Compose가 필요합니다.
+각 구성요소의 `.env.example`을 복사한 뒤 실행 환경에 맞게 값을 설정합니다.
 
-```sh
-cd backend
-cp .env.example .env
-# MYSQL_PASSWORD, MYSQL_ROOT_PASSWORD, MQTT_PASSWORD, JWT_SECRET을 새로 생성해 채웁니다.
-# 로컬 Java 실행 시 SPRING_DATASOURCE_PASSWORD를 MYSQL_PASSWORD와 같게 설정합니다.
-docker compose --env-file .env -f local/docker-compose.yml up -d
-./gradlew bootRun
-```
+| 구성요소 | 작업 경로 | 실행 |
+| --- | --- | --- |
+| 관리자 웹 | `frontend/web` | `pnpm install --frozen-lockfile` → `pnpm dev` |
+| 키오스크 | `frontend/kiosk` | `npm ci` → `npm run dev` |
+| 백엔드 | `backend` | `docker compose --env-file .env up --build` |
 
-Windows에서는 `gradlew.bat bootRun`을 사용하고 파일 복사는 `Copy-Item`으로 할 수 있습니다.
-또는 `docker compose --env-file .env up --build`로 전체 로컬 스택을 실행합니다.
-DB와 MQTT는 전체 스택에서 외부 포트를 열지 않습니다. 개발용 포트는 localhost에만
-바인딩하며 MQTT도 비밀번호를 요구합니다. 기본 ACL은 로컬 시연용입니다.
-Flyway가 빈 DB에 스키마를 구성하며 실제 사용자·관리자 계정 시드는 포함하지 않습니다.
-챗봇은 선택 기능이며 사용할 LLM 서버의 URL·키·모델을 직접 설정해야 합니다.
-
-### AI 실험
-
-[AI 안내](ai/anomaly_detection/README.md)를 참고하세요. 학습 데이터와 모델 가중치는
-포함하지 않으므로 소스만으로 즉시 추론하거나 기존 결과를 재현할 수 없습니다.
-
-## 공개 범위
-
-실제 촬영 이미지, 학습 데이터셋, 모델 파일, 실행 로그, 운영 계정 시드, 내부 운영 문서,
-기관 서버 주소, 기존 Git 이력은 포함하지 않습니다. 예제와 목업은 실제 운영 정보가 아닙니다.
-원본 프로젝트는 별도로 보관하며 이 사본은 새로운 Git 이력으로 시작합니다.
-
-이 코드는 학습·시연용으로 공개를 준비한 상태입니다. 실서비스 배포 전 해결할 항목은
-[SECURITY.md](SECURITY.md)에 기록했습니다. 저장소 공개만으로 라이선스가 부여되지 않습니다.
-팀 코드 및 외부 자산의 공개·재사용 권한을 확인한 뒤 적절한 라이선스를 추가하세요.
+관리자 웹은 pnpm 9.15.9를 사용합니다. 상세 설정은 [관리자 웹](frontend/web/README.md),
+[키오스크](frontend/kiosk/README.md), [AI 파이프라인](ai/anomaly_detection/README.md) 문서를 참고하세요.
