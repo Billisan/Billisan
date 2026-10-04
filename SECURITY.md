@@ -1,8 +1,9 @@
 # Security and publication notes
 
-This source export omits captured images, datasets, trained models, runtime logs, private
-configuration, account seed data and the original Git history. This reduces repository
-disclosure risks; it is not a production security certification.
+The published history omits captured images, datasets, trained models, runtime logs,
+private configuration and account seed data. Contributor metadata and the development
+history are retained. This reduces repository disclosure risks; it is not a production
+security certification.
 
 ## Configuration
 
