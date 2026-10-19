@@ -131,3 +131,14 @@ Node.js 22.12 이상을 사용하며, 백엔드 실행에는 Java 21 또는 Dock
 관리자 웹은 pnpm 9.15.9를 사용합니다. 상세 설정은 [관리자 웹](frontend/web/README.md),
 [키오스크](frontend/kiosk/README.md), [사용자 앱](frontend/app/README.md), [AI 파이프라인](ai/anomaly_detection/README.md) 문서를 참고하세요.
 `iot/`의 장치 코드는 시연 장비 기준으로 작성되어 있으므로 실행 전 [SECURITY.md](SECURITY.md)의 장치 설정 항목을 확인하세요.
+
+## Team
+
+| 역할 | GitHub |
+| --- | --- |
+| PM · 관리자 웹 | [@Karryun](https://github.com/Karryun) |
+| 키오스크·사용자 앱 프론트엔드 | [@huizhenz](https://github.com/huizhenz) |
+| 백엔드 · DB | [@WJLee0417](https://github.com/WJLee0417) |
+| 백엔드 · 인증 | [@crolvlee](https://github.com/crolvlee) |
+| Edge AI · 백엔드 API | [@ClOhmYee](https://github.com/ClOhmYee) |
+| 임베디드 (Pi·잠금·센서) | [@still-rainbow](https://github.com/still-rainbow) |
