@@ -51,6 +51,18 @@
 
 사용자 앱에서 챗봇과 대화하며 우산 분실 처리와 이용 정책을 안내받는 화면입니다.
 
+### 사용자 앱
+
+- 로그인과 현재 대여·이용 내역·미정산 금액 조회
+- 카카오맵 기반 대여소 위치와 재고 확인
+- 알림 조회와 서비스 안내 챗봇
+
+### 엣지 장치
+
+- Raspberry Pi 5: 키오스크 WebSocket 서버, 백엔드와의 MQTT 연동, 서보 잠금과 Hall 센서 제어
+- Jetson Orin Nano: 카메라 제어, InsightFace·pgvector 얼굴 인증, 우산 검수 추론, 미리보기 스트림
+- Pi와 Jetson은 ZeroMQ로 촬영·추론 명령과 결과 메타데이터만 주고받음
+
 ## 서비스 흐름
 
 ```text
@@ -81,6 +93,8 @@ MySQL에서 대여·슬롯·검수 상태를 관리하며, 관리자 웹은 REST
 | Backend | Java 21, Spring Boot, Spring Security, JPA, Flyway, JWT |
 | Admin Web | React, TypeScript, Vite, TanStack Query, Zustand, Tailwind CSS |
 | Kiosk | React, TypeScript, Vite, Zustand, Tailwind CSS, PWA |
+| User App | React Native, Expo, TypeScript, TanStack Query, Zustand, NativeWind |
+| Edge | Raspberry Pi 5, Jetson Orin Nano, Python, Flask, paho-mqtt, ZeroMQ, InsightFace, pgvector |
 | AI | Python, Ultralytics YOLO, DINOv2, Anomalib PatchCore, ONNX |
 | Data & Messaging | MySQL, Mosquitto MQTT, WebSocket |
 | Build & Test | Docker Compose, GitHub Actions, JUnit, Vitest |
@@ -91,8 +105,12 @@ MySQL에서 대여·슬롯·검수 상태를 관리하며, 관리자 웹은 REST
 Billisan/
 ├── backend/                  # 인증, 대여 상태, 재고·검수 API, MQTT, 챗봇
 ├── frontend/
+│   ├── app/                  # 사용자 앱
 │   ├── web/                  # 관리자 웹
 │   └── kiosk/                # 대여·반납 키오스크
+├── iot/
+│   ├── pi/                   # Raspberry Pi 장치 제어·키오스크 WebSocket·MQTT
+│   └── orin/                 # Jetson 카메라·얼굴 인증·검수 추론
 └── ai/
     └── anomaly_detection/    # 우산 검출, 데이터 전처리, 학습·추론
 ```
@@ -106,7 +124,10 @@ Node.js 22.12 이상을 사용하며, 백엔드 실행에는 Java 21 또는 Dock
 | --- | --- | --- |
 | 관리자 웹 | `frontend/web` | `pnpm install --frozen-lockfile` → `pnpm dev` |
 | 키오스크 | `frontend/kiosk` | `npm ci` → `npm run dev` |
+| 사용자 앱 | `frontend/app` | `npm ci` → `npm start` |
+| Pi · Jetson | `iot/pi`, `iot/orin` | `pip install -r requirements.txt` → `python pi_service.py` / `python orin_service.py` |
 | 백엔드 | `backend` | `docker compose --env-file .env up --build` |
 
 관리자 웹은 pnpm 9.15.9를 사용합니다. 상세 설정은 [관리자 웹](frontend/web/README.md),
-[키오스크](frontend/kiosk/README.md), [AI 파이프라인](ai/anomaly_detection/README.md) 문서를 참고하세요.
+[키오스크](frontend/kiosk/README.md), [사용자 앱](frontend/app/README.md), [AI 파이프라인](ai/anomaly_detection/README.md) 문서를 참고하세요.
+`iot/`의 장치 코드는 시연 장비 기준으로 작성되어 있으므로 실행 전 [SECURITY.md](SECURITY.md)의 장치 설정 항목을 확인하세요.

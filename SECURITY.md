@@ -1,8 +1,9 @@
 # Security and publication notes
 
 The published history omits private captured images, datasets, trained models, runtime logs,
-private configuration and account seed data. Contributor metadata and the development
-history are retained. This reduces repository disclosure risks; it is not a production
+private configuration, internal planning documents and account seed data. Personal names,
+e-mail addresses, internal hosts and fixed credentials were replaced with placeholders.
+Contributor accounts and the development history are retained. This reduces repository disclosure risks; it is not a production
 security certification.
 
 Reviewed screenshots and demonstration media are included for project documentation.
@@ -24,6 +25,11 @@ Reviewed screenshots and demonstration media are included for project documentat
   There is no such proxy implementation in this repository. Browser URLs must not carry secrets.
 - Raw Pi WebSocket payloads and close reasons are not logged by the kiosk. Do not enable
   debug logging of identities, biometrics, credentials or LLM conversation contents in production.
+- `iot/` is the as-built demonstration runtime for the Raspberry Pi and Jetson. Its
+  `config.py` files contain placeholders (`change-me`, `localhost`, `127.0.0.1`) that must be
+  replaced locally, preferably through environment variables. Its Jetson preview checks a
+  token in the query string and its MQTT client connects without credentials or TLS; adapt
+  both before using the hardened Compose broker or any shared network.
 - Production admin UI builds ignore the development authentication bypass. Mock login
   only demonstrates UI behavior and cannot secure backend APIs.
 
