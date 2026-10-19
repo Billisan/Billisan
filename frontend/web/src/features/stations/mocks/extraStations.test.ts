@@ -47,7 +47,13 @@ describe('가상 대여소 (목업 전용)', () => {
          * 이미 있으면 그대로 읽습니다 — 이 테스트 하나 때문에 매번 빌드하면 느립니다.
          */
         if (!existsSync(DIST_ASSETS)) {
-            execFileSync('npm', ['run', 'build'], { cwd: WEB_ROOT, stdio: 'ignore', shell: true });
+            // Vitest 가 NODE_ENV=test 를 물려주면 개발 모드로 빌드되므로 배포 모드를 명시합니다.
+            execFileSync('npm', ['run', 'build'], {
+                cwd: WEB_ROOT,
+                stdio: 'ignore',
+                shell: true,
+                env: { ...process.env, NODE_ENV: 'production' },
+            });
         }
 
         const bundles = readdirSync(DIST_ASSETS).filter((f) => f.endsWith('.js'));
