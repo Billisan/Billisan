@@ -36,9 +36,19 @@
 - 우산 상태 변경과 관리자 최종 판정
 - JWT 기반 관리자 인증과 역할별 API 접근 제어
 
-![관리자 웹의 대여소 관리 화면](assets/admin-stations.png)
+![관리자 웹의 대시보드 화면](assets/admin-dashboard.png)
 
-대여소별 슬롯 사용 현황과 우산 재고 상태를 한눈에 확인할 수 있습니다.
+캠퍼스 지도 위에 대여소별 재고 분포를 표시하고, 재고 순위와 파손 검수 대기 건수를 함께 보여주는 대시보드입니다.
+
+<table>
+  <tr>
+    <td align="center" width="33%"><img src="assets/admin-stations.png" alt="관리자 웹의 대여소 관리 화면" /><br />대여소 관리</td>
+    <td align="center" width="33%"><img src="assets/admin-inventory.png" alt="관리자 웹의 우산 재고 화면" /><br />우산 재고</td>
+    <td align="center" width="33%"><img src="assets/admin-inspections.png" alt="관리자 웹의 파손 검수 화면" /><br />파손 검수</td>
+  </tr>
+</table>
+
+대여소별 재고 상태, 슬롯 단위 우산 상태, AI 검수 결과에 대한 관리자 판정을 각 화면에서 처리합니다.
 
 ### 서비스 안내 챗봇
 
